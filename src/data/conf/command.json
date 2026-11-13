@@ -1,0 +1,65 @@
+{
+    "version": "v1",
+    "description": "标准 cli parse 命令声明配置, 程序 cmd 接口.",
+    "command": {
+        "name": "lightpc",
+        "key": "lightpc",
+        "usage": "键入 lightpc --help 查看帮助",
+        "usageText": "",
+        "description": "",
+        "flags": [
+            {
+                "name": "version",
+                "key": "lightpc.version",
+                "usage": "显示当前版本",
+                "required": false,
+                "hidden": false,
+                "deprecated": false,
+                "local": true,
+                "onlyOnce": true,
+                "aliases": [
+                    "v"
+                ],
+                "value": {
+                    "type": "bool",
+                    "default": false
+                }
+            },
+            {
+                "name": "help",
+                "key": "lightpc.help",
+                "usage": "显示所有指令帮助",
+                "required": false,
+                "hidden": false,
+                "deprecated": false,
+                "local": true,
+                "onlyOnce": true,
+                "aliases": [
+                    "h"
+                ],
+                "value": {
+                    "type": "bool",
+                    "default": false
+                }
+            },
+            {
+                "name": "mode",
+                "key": "lightpc.mode",
+                "usage": "选择启动模式",
+                "required": true,
+                "hidden": false,
+                "deprecated": false,
+                "local": true,
+                "onlyOnce": true,
+                "aliases": [
+                    "m"
+                ],
+                "value": {
+                    "type": "int",
+                    "default": 2
+                }
+            }
+        ],
+        "subCommands": []
+    }
+}

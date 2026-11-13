@@ -1,0 +1,25 @@
+{
+    "version": "v1",
+    "description": "错误映射定义, 包含错误码, 种类, 信息模板",
+    "root": {
+        "description": "根因",
+        "definition": [
+            {
+                "code": "10010000",
+                "kind": "Fatal"
+            },
+            {
+                "code": "10010001",
+                "kind": "Unknown"
+            },
+            {
+                "code": "10010002",
+                "kind": "Not Exist"
+            },
+            {
+                "code": "10010003",
+                "kind": "Operation Denied"
+            }
+        ]
+    }
+}

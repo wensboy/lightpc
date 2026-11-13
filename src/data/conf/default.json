@@ -1,0 +1,10 @@
+{
+    "application": {
+        "name": "lightpc",
+        "description": "轻量级pc启动和构建工具",
+        "window": {
+            "width": 800,
+            "height": 600
+        }
+    }
+}
