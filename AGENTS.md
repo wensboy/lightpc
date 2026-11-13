@@ -77,12 +77,12 @@ task build
 ### Methods and Conventions
 
 - [Project Structure](./docs/ref/project-structure.md)
-- [Backend Rules](./.docs/ref/backend-rules.md)
+- [Backend Rules](./docs/ref/backend-rules.md)
 - [Frontend Rules](./docs/ref/frontend-rules.md)
 
 ### Features
 
-- [bootsteap](./docs/feature/01-bootstrap.md)
+- [bootstrap](./docs/feature/01-bootstrap.md)
 - [config](./docs/feature/02-config.md)
 - [log](./docs/feature/03-log.md)
 - [engine runtime](./docs/feature/04-engine-runtime.md)
