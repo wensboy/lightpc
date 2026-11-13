@@ -1,1 +1,129 @@
-{}
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://lightpc.local/schema/command.schema.json",
+    "title": "lightpc cli command declarations",
+    "description": "Command tree loaded from data/conf/command.json and turned into urfave/cli commands.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "version",
+        "command"
+    ],
+    "properties": {
+        "version": {
+            "type": "string",
+            "minLength": 1
+        },
+        "description": {
+            "type": "string"
+        },
+        "command": {
+            "$ref": "#/$defs/command"
+        }
+    },
+    "$defs": {
+        "command": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "key": {
+                    "type": "string"
+                },
+                "usage": {
+                    "type": "string"
+                },
+                "usageText": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "flags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/flag"
+                    }
+                },
+                "subCommands": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/command"
+                    }
+                }
+            }
+        },
+        "flag": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "name",
+                "value"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "key": {
+                    "type": "string"
+                },
+                "usage": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "hidden": {
+                    "type": "boolean"
+                },
+                "deprecated": {
+                    "type": "boolean"
+                },
+                "local": {
+                    "type": "boolean"
+                },
+                "onlyOnce": {
+                    "type": "boolean"
+                },
+                "aliases": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "value": {
+                    "$ref": "#/$defs/value"
+                }
+            }
+        },
+        "value": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "string",
+                        "bool",
+                        "int",
+                        "int64",
+                        "uint",
+                        "float64"
+                    ]
+                },
+                "default": {}
+            }
+        }
+    }
+}

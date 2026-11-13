@@ -1,1 +1,49 @@
-{}
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://lightpc.local/schema/default.schema.json",
+    "title": "lightpc application defaults",
+    "description": "Default application configuration loaded from data/conf/default.json.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "application"
+    ],
+    "properties": {
+        "application": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "name",
+                "description",
+                "window"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "description": {
+                    "type": "string"
+                },
+                "window": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "width",
+                        "height"
+                    ],
+                    "properties": {
+                        "width": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "height": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
