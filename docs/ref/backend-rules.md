@@ -11,6 +11,7 @@
 5. Package names that collide with the standard library must be disambiguated with a domain-qualified import alias written in lowerCamelCase.
 6. Code annotated with a TODO comment must be implemented strictly according to the described steps, with attention to potential vulnerabilities. The implementation approach is unconstrained, but the function signature must not be changed.
 7. File names within a package must be strongly semantic. Follow the less-is-more principle and avoid excessive fragmentation.
+8. Do not use an import alias for packages under internal/ when their names do not collide; when a collision occurs, add the **inter** prefix to the alias.
 
 ## Must Not
 
@@ -25,5 +26,7 @@
 4. Under `internal/cast`, `cast.go` defines reusable cast functions for complex structures, and `fallback.go` defines reusable cast functions with callbacks (default values). ~~In general, conversions should be handled directly with `spf13/cast`, and any wrapper functions should also be built on top of it.~~
 5. Use `.` to separate key parts when the key points to a valid value, and `::` when there is no corresponding value or the value is invalid. When a key has distinct semantic segments, use `.` within a segment and `:` between segments.
 6. Keys used to look up a value do not need to be centralized in const declarations for the sake of avoiding hardcoding; keys that are not used for value lookup should be. For example, a config lookup key can be a literal string, while an event name should be centralized as a const.
+7. Whenever a `data/conf/*.json` file changes, verify that the configuration and its corresponding schema stay in sync, and update the schema according to the RFC-defined JSON Schema standard.
+8. The `engine/<sub>/` directories under `domain/` correspond to those under `backend/engine/`: `domain/` declares interfaces only, while `engine` provides the implementations. Domain packages take their name from the directory, whereas packages under `backend/engine/<sub>/` are named `<dir_name>impl`.
 
 ## SHOULD NOT
