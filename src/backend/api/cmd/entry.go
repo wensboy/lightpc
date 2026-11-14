@@ -30,6 +30,7 @@ func Execute(eCtx domainContext.EmbedContext) int {
 		Context:       context.Background(),
 		EmbedContext:  eCtx,
 		ConfigContext: cfg,
+		ErrorContext:  bootstrap.SetupErrors(cfg),
 	}
 	setupCommand(rootCmd, appCtx)
 	if err := rootCmd.Run(appCtx, os.Args); err != nil {

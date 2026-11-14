@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"errors"
 	"io/fs"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -11,9 +10,19 @@ import (
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
 	"github.com/wensboy/lightpc/backend/internal/cast"
+	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
+// ErrKeyInvalidMode reports a boot mode that the bootstrap does not dispatch.
+const ErrKeyInvalidMode = "error::bootstrap::invalid_mode"
+
+// BootstrapErrors lists every error published when the bootstrap dispatches a mode.
+var BootstrapErrors = []interError.Option{
+	{Key: ErrKeyInvalidMode, Code: interError.ErrCodeInvalidParam, Msg: "bootstrap: invalid boot mode"},
+}
+
 func Boot(bootCtx domainContext.BootContext) error {
+	interError.RegisterAll(&bootCtx.AppContext, BootstrapErrors...)
 	switch bootCtx.Mode {
 	case domainContext.ModeTui:
 		return RunTui(bootCtx.AppContext)
@@ -22,7 +31,7 @@ func Boot(bootCtx domainContext.BootContext) error {
 	case domainContext.ModeGui:
 		return RunGui(bootCtx.AppContext)
 	}
-	return errors.New("无效启动模式, 执行终止")
+	return interError.Retrieve(ErrKeyInvalidMode)
 }
 
 func RunTui(appCtx domainContext.AppContext) error {
@@ -35,7 +44,6 @@ func RunWeb(appCtx domainContext.AppContext) error {
 
 func RunGui(appCtx domainContext.AppContext) error {
 	cfg := appCtx.ConfigContext
-	appCtx.ErrorContext = SetupErrors(cfg)
 
 	appRuntime := domainRuntime.NewAppRuntime().WithAppContext(appCtx)
 	engineRuntime := domainRuntime.NewEngineRuntime().WithAppRuntime(appRuntime)

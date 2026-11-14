@@ -1,10 +1,13 @@
 package bootstrap
 
 import (
+	"strings"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	"github.com/wensboy/lightpc/backend/internal/config"
+	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
 func SetupConfig(eCtx domainContext.EmbedContext) *config.Config {
@@ -73,7 +76,7 @@ func SetupErrors(cfg domainContext.ConfigContext) domainContext.ErrorContext {
 	if !ok {
 		return errorContext
 	}
-	for _, group := range groups {
+	for groupName, group := range groups {
 		definition, ok := cast.To[map[string]any](group)
 		if !ok {
 			continue
@@ -89,8 +92,15 @@ func SetupErrors(cfg domainContext.ConfigContext) domainContext.ErrorContext {
 			}
 			code, codeOK := cast.To[string](record["code"])
 			kind, kindOK := cast.To[string](record["kind"])
-			if codeOK && kindOK {
-				errorContext[code] = kind
+			if !codeOK || !kindOK {
+				continue
+			}
+			errorContext[code] = kind
+			if groupName == "root" {
+				interError.Register(
+					interError.KeyInternalPrefix+strings.ToLower(strings.Join(strings.Fields(kind), "_")),
+					interError.New(interError.Option{Code: code, Kind: kind, Msg: kind}),
+				)
 			}
 		}
 	}
