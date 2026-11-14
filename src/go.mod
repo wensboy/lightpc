@@ -3,6 +3,7 @@ module github.com/wensboy/lightpc
 go 1.26.0
 
 require (
+	github.com/jmoiron/sqlx v1.4.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/urfave/cli/v3 v3.14.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.34
