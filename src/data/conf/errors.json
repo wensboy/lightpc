@@ -19,6 +19,23 @@
             {
                 "code": "10010003",
                 "kind": "Operation Denied"
+            },
+            {
+                "code": "10010004",
+                "kind": "Operation Failed"
+            },
+            {
+                "code": "10010005",
+                "kind": "Invalid Parameter"
+            }
+        ]
+    },
+    "engine": {
+        "description": "引擎错误",
+        "definition": [
+            {
+                "code": "10020000",
+                "kind": "Invalid Path"
             }
         ]
     }
