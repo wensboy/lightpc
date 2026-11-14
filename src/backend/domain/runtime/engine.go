@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"errors"
 	"maps"
 	"slices"
 	"strings"
@@ -11,7 +10,16 @@ import (
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 
 	"github.com/wensboy/lightpc/backend/internal/ebus"
+	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
+
+// ErrKeyDependencyCycle reports that engines depend on each other in a cycle.
+const ErrKeyDependencyCycle = "error::engine.runtime::dependency_cycle"
+
+// EngineRuntimeErrors lists every error published when the engine runtime starts.
+var EngineRuntimeErrors = []interError.Option{
+	{Key: ErrKeyDependencyCycle, Code: interError.ErrCodeUnknown, Msg: "engine runtime: dependency cycle detected"},
+}
 
 // EngineRuntime 管理所有引擎的生命周期.
 type EngineRuntime struct {
@@ -98,6 +106,12 @@ func (er *EngineRuntime) Run() error {
 		State string `json:"state"`
 	}
 
+	engineCtx := domainEngine.EngineContext{Ebus: er.ebus}
+	if er.appRuntime != nil {
+		engineCtx.AppCtx = &er.appRuntime.appCtx
+	}
+	interError.RegisterAll(engineCtx.AppCtx, EngineRuntimeErrors...)
+
 	er.mu.RLock()
 	snapshot := make(map[string]domainEngine.Engine, len(er.registry))
 	maps.Copy(snapshot, er.registry)
@@ -135,7 +149,7 @@ func (er *EngineRuntime) Run() error {
 			progressed = true
 		}
 		if !progressed {
-			return errors.New("engine dependency cycle detected")
+			return interError.Retrieve(ErrKeyDependencyCycle)
 		}
 	}
 
@@ -145,11 +159,6 @@ func (er *EngineRuntime) Run() error {
 
 	if er.eFn != nil {
 		er.eFn(domainEngine.EngineEventContext{Registry: snapshot, Ebus: er.ebus})
-	}
-
-	engineCtx := domainEngine.EngineContext{Ebus: er.ebus}
-	if er.appRuntime != nil {
-		engineCtx.AppCtx = &er.appRuntime.appCtx
 	}
 
 	for _, engine := range ordered {
