@@ -7,9 +7,6 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// ErrKeyUnsupportedCommand reports a command type the dispatcher does not know.
-const ErrKeyUnsupportedCommand = "error::engine.store::unsupported_command"
-
 // Command marks every database command.
 //
 // Implementations identify commands with a type switch. SQL commands are provided here;
