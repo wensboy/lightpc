@@ -2,11 +2,12 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://lightpc.local/schema/default.schema.json",
     "title": "lightpc application defaults",
-    "description": "Default application configuration loaded from data/conf/default.json.",
+    "description": "Default configuration loaded from data/conf/default.json.",
     "type": "object",
     "additionalProperties": false,
     "required": [
-        "application"
+        "application",
+        "runtime"
     ],
     "properties": {
         "application": {
@@ -40,6 +41,47 @@
                         "height": {
                             "type": "integer",
                             "minimum": 1
+                        }
+                    }
+                }
+            }
+        },
+        "runtime": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "store"
+            ],
+            "properties": {
+                "store": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "root",
+                        "fs"
+                    ],
+                    "properties": {
+                        "root": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "fs": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "fileMode",
+                                "dirMode"
+                            ],
+                            "properties": {
+                                "fileMode": {
+                                    "type": "string",
+                                    "pattern": "^0o[0-7]{3}$"
+                                },
+                                "dirMode": {
+                                    "type": "string",
+                                    "pattern": "^0o[0-7]{3}$"
+                                }
+                            }
                         }
                     }
                 }
