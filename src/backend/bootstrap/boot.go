@@ -9,6 +9,7 @@ import (
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
+	storeimpl "github.com/wensboy/lightpc/backend/engine/store"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
@@ -67,6 +68,9 @@ func RunGui(appCtx domainContext.AppContext) error {
 			_ = engine.Restart()
 		})
 	})
+	engineRuntime.Register(
+		storeimpl.NewFS(),
+	)
 	serviceRuntime := domainRuntime.NewServiceRuntime().WithAppRuntime(appRuntime)
 
 	opt := ui.RegisterService(serviceRuntime)
