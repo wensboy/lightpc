@@ -9,9 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
+	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	"github.com/wensboy/lightpc/backend/domain/engine/store"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
@@ -36,20 +38,16 @@ type FS struct {
 	fileMode fs.FileMode
 	dirMode  fs.FileMode
 	mu       sync.RWMutex
+	ectx     domainEngine.EngineContext
 	state    domainEngine.EngineState
 	closed   bool
 }
 
-// NewFS builds an FS. Callers must call Validate before concurrent use.
+// NewFS builds an FS. Every field starts at its zero value; defaults come from configuration during Init.
 func NewFS(opts ...FSOption) *FS {
-	f := &FS{fileMode: 0o644, dirMode: 0o755, state: domainEngine.EnginePending}
+	f := &FS{state: domainEngine.EnginePending}
 	for _, opt := range opts {
 		opt(f)
-	}
-	if f.root != "" {
-		if abs, err := filepath.Abs(f.root); err == nil {
-			f.root = abs
-		}
 	}
 	return f
 }
@@ -88,30 +86,77 @@ func (f *FS) State() domainEngine.EngineState {
 	return f.state
 }
 
-// Init implements domainEngine.Engine: it publishes the store errors, then validates root.
+// Init implements domainEngine.Engine: it keeps the engine context, publishes the store errors,
+// applies configuration defaults for fields left at their zero value, ensures root and watches signals.
 func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 	f.setState(domainEngine.EnginePending)
 	interError.RegisterAll(eCtx.AppCtx, store.Errors...)
+
+	f.mu.Lock()
+	f.ectx = eCtx
+	if eCtx.AppCtx != nil && eCtx.AppCtx.ConfigContext != nil {
+		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.store.root", &f.root, "", func(text string) (string, bool) {
+			if strings.HasPrefix(text, "~") {
+				home, err := os.UserHomeDir()
+				if err != nil {
+					return "", false
+				}
+				text = filepath.Join(home, strings.TrimPrefix(text, "~"))
+			}
+			abs, err := filepath.Abs(text)
+			if err != nil {
+				return "", false
+			}
+			return abs, true
+		})
+		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.store.fs.fileMode", &f.fileMode, 0, func(text string) (fs.FileMode, bool) {
+			mode, err := strconv.ParseUint(text, 0, 32)
+			if err != nil {
+				return 0, false
+			}
+			return fs.FileMode(mode), true
+		})
+		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.store.fs.dirMode", &f.dirMode, 0, func(text string) (fs.FileMode, bool) {
+			mode, err := strconv.ParseUint(text, 0, 32)
+			if err != nil {
+				return 0, false
+			}
+			return fs.FileMode(mode), true
+		})
+	}
+	root, dirMode := f.root, f.dirMode
+	f.mu.Unlock()
+
+	if root != "" && dirMode != 0 {
+		if err := os.MkdirAll(root, dirMode); err != nil {
+			f.setState(domainEngine.EngineError)
+			return interError.Retrieve(store.ErrKeyInvalid).Wrap(fmt.Errorf("create root: %w", err))
+		}
+	}
+
 	if err := f.Validate(); err != nil {
 		f.setState(domainEngine.EngineError)
 		return err
 	}
+
+	watchStopSignal(eCtx.Ebus, store.NameFs, f.Close)
 	f.setState(domainEngine.EngineReady)
 	return nil
 }
 
-// Start implements domainEngine.Engine.
+// Start implements domainEngine.Engine. FS serves requests synchronously, so it only moves the state.
 func (f *FS) Start() error {
 	f.setState(domainEngine.EngineRunning)
 	return nil
 }
 
-// Restart implements domainEngine.Engine by reopening root and validating it again.
+// Restart implements domainEngine.Engine by reopening root with the retained context and validating it again.
 func (f *FS) Restart() error {
 	f.mu.Lock()
 	f.closed = false
+	eCtx := f.ectx
 	f.mu.Unlock()
-	return f.Init(domainEngine.EngineContext{})
+	return f.Init(eCtx)
 }
 
 // Stop implements domainEngine.Engine by closing the store.

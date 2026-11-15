@@ -31,6 +31,7 @@ type SQL struct {
 	db           *sqlx.DB
 	queryTimeout time.Duration
 	mu           sync.RWMutex
+	ectx         domainEngine.EngineContext
 	state        domainEngine.EngineState
 	closed       bool
 }
@@ -69,30 +70,39 @@ func (s *SQL) State() domainEngine.EngineState {
 	return s.state
 }
 
-// Init implements domainEngine.Engine: it publishes the store errors, then validates the pool.
+// Init implements domainEngine.Engine: it keeps the engine context, publishes the store errors,
+// validates the pool and watches signals.
 func (s *SQL) Init(eCtx domainEngine.EngineContext) error {
 	s.setState(domainEngine.EnginePending)
 	interError.RegisterAll(eCtx.AppCtx, store.Errors...)
+
+	s.mu.Lock()
+	s.ectx = eCtx
+	s.mu.Unlock()
+
 	if err := s.Validate(); err != nil {
 		s.setState(domainEngine.EngineError)
 		return err
 	}
+
+	watchStopSignal(eCtx.Ebus, store.NameDb, s.Close)
 	s.setState(domainEngine.EngineReady)
 	return nil
 }
 
-// Start implements domainEngine.Engine.
+// Start implements domainEngine.Engine. SQL serves requests synchronously, so it only moves the state.
 func (s *SQL) Start() error {
 	s.setState(domainEngine.EngineRunning)
 	return nil
 }
 
-// Restart implements domainEngine.Engine by reopening the pool and validating it again.
+// Restart implements domainEngine.Engine by reopening the pool with the retained context and validating it again.
 func (s *SQL) Restart() error {
 	s.mu.Lock()
 	s.closed = false
+	eCtx := s.ectx
 	s.mu.Unlock()
-	return s.Init(domainEngine.EngineContext{})
+	return s.Init(eCtx)
 }
 
 // Stop implements domainEngine.Engine by closing the store.
