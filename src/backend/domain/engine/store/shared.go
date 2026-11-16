@@ -1,9 +1,11 @@
 package store
 
-import interError "github.com/wensboy/lightpc/backend/internal/error"
+import (
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
+	interError "github.com/wensboy/lightpc/backend/internal/error"
+)
 
 const (
-	// GroupStore is the engine group shared by every store implementation.
 	GroupStore = "store"
 
 	NameFs = "fs"
@@ -31,3 +33,8 @@ var Errors = []interError.Option{
 	{Key: ErrKeyClosed, Code: interError.ErrCodeFatal, Msg: "store: closed"},
 	{Key: ErrKeyUnsupportedCommand, Code: interError.ErrCodeInvalidParam, Msg: "store: unsupported command"},
 }
+
+var (
+	StoreFs = domainEngine.EngineDep(GroupStore, NameFs)
+	StoreDb = domainEngine.EngineDep(GroupStore, NameDb)
+)
