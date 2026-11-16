@@ -71,6 +71,7 @@ func RunGui(appCtx domainContext.AppContext) error {
 	engineRuntime.Register(
 		storeimpl.NewFS(),
 	)
+	SetupLog(cfg, engineRuntime)
 	serviceRuntime := domainRuntime.NewServiceRuntime().WithAppRuntime(appRuntime)
 
 	opt := ui.RegisterService(serviceRuntime)

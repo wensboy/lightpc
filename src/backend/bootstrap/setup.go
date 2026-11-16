@@ -5,6 +5,8 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
+	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
+	logimpl "github.com/wensboy/lightpc/backend/engine/log"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	"github.com/wensboy/lightpc/backend/internal/config"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
@@ -105,4 +107,10 @@ func SetupErrors(cfg domainContext.ConfigContext) domainContext.ErrorContext {
 		}
 	}
 	return errorContext
+}
+
+// SetupLog 设置 slog 全局日志并把所有 log engines 注册到引擎运行时; 装配细节由日志实现包承担.
+func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
+	logEngines := logimpl.Setup(cfg)
+	er.Register(logEngines...)
 }
