@@ -19,6 +19,8 @@ const (
 	ErrKeyInvalid  = "error::engine.store::invalid_argument"
 	ErrKeyEscape   = "error::engine.store::path_escapes_root"
 	ErrKeyClosed   = "error::engine.store::closed"
+	// ErrKeyReadOnly reports a write against a path served from an embedded file system.
+	ErrKeyReadOnly = "error::engine.store::read_only"
 	// ErrKeyUnsupportedCommand reports a command type the dispatcher does not know.
 	ErrKeyUnsupportedCommand = "error::engine.store::unsupported_command"
 )
@@ -31,6 +33,7 @@ var Errors = []interError.Option{
 	{Key: ErrKeyInvalid, Code: interError.ErrCodeUnknown, Msg: "store: invalid argument"},
 	{Key: ErrKeyEscape, Code: interError.ErrCodeOpDenied, Msg: "store: path escapes root"},
 	{Key: ErrKeyClosed, Code: interError.ErrCodeFatal, Msg: "store: closed"},
+	{Key: ErrKeyReadOnly, Code: interError.ErrCodeOpDenied, Msg: "store: read only"},
 	{Key: ErrKeyUnsupportedCommand, Code: interError.ErrCodeInvalidParam, Msg: "store: unsupported command"},
 }
 

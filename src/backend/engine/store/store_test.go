@@ -2,6 +2,7 @@ package storeimpl
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"os"
 	"path/filepath"
@@ -104,6 +105,51 @@ func TestFSInitKeepsConfiguredOverrides(t *testing.T) {
 	}
 	if fsStore.fileMode != 0o600 || fsStore.dirMode != 0o700 {
 		t.Fatalf("modes = %v/%v", fsStore.fileMode, fsStore.dirMode)
+	}
+}
+
+var testEmbed embed.FS
+
+func newEmbeddedEngineContext(t *testing.T) domainEngine.EngineContext {
+	t.Helper()
+	return domainEngine.EngineContext{AppCtx: &domainContext.AppContext{
+		Context:      context.Background(),
+		EmbedContext: domainContext.EmbedContext{"/testdata": &testEmbed},
+	}}
+}
+
+func TestFSReportsMissingEmbeddedContent(t *testing.T) {
+	fsStore := NewFS(WithRoot(t.TempDir()))
+	if err := fsStore.Init(newEmbeddedEngineContext(t)); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	missing := interError.Retrieve(store.ErrKeyNotFound)
+
+	if _, err := fsStore.Get(ctx, "embed://testdata/hello.txt"); !errors.Is(err, missing) {
+		t.Fatalf("get err = %v", err)
+	}
+	if _, err := fsStore.Stat(ctx, "embed://testdata"); !errors.Is(err, missing) {
+		t.Fatalf("stat err = %v", err)
+	}
+}
+
+func TestFSRejectsEmbeddedWrites(t *testing.T) {
+	fsStore := NewFS(WithRoot(t.TempDir()))
+	if err := fsStore.Init(newEmbeddedEngineContext(t)); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	readOnly := interError.Retrieve(store.ErrKeyReadOnly)
+
+	if err := fsStore.Put(ctx, "embed://testdata/hello.txt", []byte("x")); !errors.Is(err, readOnly) {
+		t.Fatalf("put err = %v", err)
+	}
+	if err := fsStore.Delete(ctx, "embed://testdata/hello.txt"); !errors.Is(err, readOnly) {
+		t.Fatalf("delete err = %v", err)
+	}
+	if err := fsStore.MkdirAll(ctx, "embed://testdata/sub"); !errors.Is(err, readOnly) {
+		t.Fatalf("mkdir err = %v", err)
 	}
 }
 

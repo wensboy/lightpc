@@ -3,6 +3,7 @@ package storeimpl
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -198,6 +199,13 @@ func (f *FS) Get(ctx context.Context, p string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if fsys, inner, ok := f.embedTarget(p); ok {
+		data, err := fsys.ReadFile(inner)
+		if err != nil {
+			return nil, mapEmbedErr(err)
+		}
+		return data, nil
+	}
 	root, _, _, err := f.rootAndModes()
 	if err != nil {
 		return nil, err
@@ -218,6 +226,9 @@ func (f *FS) Put(ctx context.Context, p string, data []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if _, _, ok := f.embedTarget(p); ok {
+		return interError.Retrieve(store.ErrKeyReadOnly)
+	}
 	root, fileMode, _, err := f.rootAndModes()
 	if err != nil {
 		return err
@@ -234,6 +245,9 @@ func (f *FS) Delete(ctx context.Context, p string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if _, _, ok := f.embedTarget(p); ok {
+		return interError.Retrieve(store.ErrKeyReadOnly)
+	}
 	root, _, _, err := f.rootAndModes()
 	if err != nil {
 		return err
@@ -249,6 +263,19 @@ func (f *FS) Delete(ctx context.Context, p string) error {
 func (f *FS) Stat(ctx context.Context, p string) (store.FileInfo, error) {
 	if err := ctx.Err(); err != nil {
 		return store.FileInfo{}, err
+	}
+	if fsys, inner, ok := f.embedTarget(p); ok {
+		info, err := fs.Stat(fsys, inner)
+		if err != nil {
+			return store.FileInfo{}, mapEmbedErr(err)
+		}
+		return store.FileInfo{
+			Path:    inner,
+			Size:    info.Size(),
+			Mode:    info.Mode(),
+			ModTime: info.ModTime(),
+			IsDir:   info.IsDir(),
+		}, nil
 	}
 	root, _, _, err := f.rootAndModes()
 	if err != nil {
@@ -276,6 +303,34 @@ func (f *FS) Stat(ctx context.Context, p string) (store.FileInfo, error) {
 func (f *FS) List(ctx context.Context, prefix string) ([]store.FileInfo, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	if fsys, inner, ok := f.embedTarget(prefix); ok {
+		var out []store.FileInfo
+		walkErr := fs.WalkDir(fsys, inner, func(p string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			out = append(out, store.FileInfo{
+				Path:    p,
+				Size:    info.Size(),
+				Mode:    info.Mode(),
+				ModTime: info.ModTime(),
+				IsDir:   info.IsDir(),
+			})
+			return nil
+		})
+		if walkErr != nil {
+			return nil, mapEmbedErr(walkErr)
+		}
+		sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
+		return out, nil
 	}
 	root, _, _, err := f.rootAndModes()
 	if err != nil {
@@ -324,6 +379,9 @@ func (f *FS) MkdirAll(ctx context.Context, p string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if _, _, ok := f.embedTarget(p); ok {
+		return interError.Retrieve(store.ErrKeyReadOnly)
+	}
 	root, _, dirMode, err := f.rootAndModes()
 	if err != nil {
 		return err
@@ -355,6 +413,59 @@ func (f *FS) rootAndModes() (string, fs.FileMode, fs.FileMode, error) {
 		return "", 0, 0, interError.Retrieve(store.ErrKeyInvalid).Wrap(errors.New("FS not validated, call Validate first"))
 	}
 	return f.root, f.fileMode, f.dirMode, nil
+}
+
+// embedPrefix marks a path that is served from an embedded file system instead of root.
+const embedPrefix = "embed://"
+
+// embedTarget resolves p to an embedded file system and the path inside it. The longest matching
+// EmbedContext key wins, so "/frontend/dist" is preferred over "/frontend". Reads use the returned
+// pair, writes must be rejected because embedded content is immutable.
+func (f *FS) embedTarget(p string) (*embed.FS, string, bool) {
+	rest, found := strings.CutPrefix(p, embedPrefix)
+	if !found {
+		return nil, "", false
+	}
+
+	f.mu.RLock()
+	appCtx := f.ectx.AppCtx
+	f.mu.RUnlock()
+	if appCtx == nil {
+		return nil, "", false
+	}
+
+	rest = strings.TrimPrefix(rest, "/")
+	var (
+		target  *embed.FS
+		inner   string
+		matched int
+	)
+	for key, fsys := range appCtx.EmbedContext {
+		if fsys == nil {
+			continue
+		}
+		// The context key selects the file system while the whole remaining path stays intact: an
+		// embed directive such as "all:data" keeps "data/" as the first segment inside the FS.
+		prefix := strings.Trim(key, "/")
+		if rest != prefix && !strings.HasPrefix(rest, prefix+"/") {
+			continue
+		}
+		if len(prefix) > matched {
+			target, inner, matched = fsys, rest, len(prefix)
+		}
+	}
+	return target, inner, target != nil
+}
+
+// mapEmbedErr translates io/fs errors into store errors so callers can use errors.Is.
+func mapEmbedErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return interError.Retrieve(store.ErrKeyNotFound).Wrap(err)
+	}
+	return err
 }
 
 // resolve maps the virtual path p to an absolute path below root.
