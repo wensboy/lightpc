@@ -79,3 +79,5 @@ EngineRuntime.Exit: 取走并清空 execStack, 逆序 Stop, 逐个 emit stop/err
 - `AppRuntime.Run` 丢弃 engine 启动错误(`_ = ar.er.Run()`), 单个引擎失败不会阻断窗口拉起; 需要可观测性时应在该处记录或上报.
 - store 引擎在 `Init` 中保存 `EngineContext` 并注册 `engine::stop` 监听, 只有 payload 的 `group.name` 与自身匹配才执行 `Close`.
 - store 的默认值统一由 `context.AssignIfZero` 在 `Init` 内联应用, `New` 阶段不写死任何默认值.
+- `EngineDep(group, name)` 统一依赖 key 的拼接: `group` 为空返回空串, `name` 为空返回 `group`, 否则返回 `group.name`; 注册、依赖解析与 `EngineContext.Engines` 的 key 都复用该函数.
+- `store.StoreFs` / `store.StoreDb` 与 `log.LogDirect` / `log.LogFanout` / `log.LogPattern` 均由 `EngineDep` 生成, 引擎的 `Deps()` 直接引用这些常量而不是手写字符串.
