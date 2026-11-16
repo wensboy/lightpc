@@ -67,7 +67,10 @@ EngineRuntime.Exit: 取走并清空 execStack, 逆序 Stop, 逐个 emit stop/err
 ## 细节
 
 - 引擎注册 key 为 `group.name`, 对应 backend-rules SHOULD 5 的"value 有效用 `.` 分隔"; 查询时 `group` 为空返回空列表, `name` 为空返回组内全部引擎.
-- `Run` 的拓扑排序为确定性的 Kahn 迭代(key 排序后逐轮推进), 未注册的依赖视为已满足, 某一轮无法推进即判定为依赖环.
+- `Run` 的拓扑排序为确定性的 Kahn 迭代(key 排序后逐轮推进), 某一轮无法推进即判定为依赖环; 未注册的依赖不再视为已满足, 直接返回 `error::engine.runtime::missing_dependency`.
+- `Register` 跳过 `nil` 与 `group`/`name` 为空的引擎, 避免注册出非法 ekey.
+- 每个引擎 `Init` 前按自身 `Deps()` 经 `Engine(group, name)` 过滤出依赖实例写入 `EngineContext.Engines`(key 为实例自身的 `group.name`); 无依赖时为空 map, 不会与其它引擎共享.
+- 依赖项可以只写组名(`core`), 此时 `Engine(group, "")` 命中该组全部引擎, 必须全部注入而非只取首个; 依赖匹配为空才判定为缺失.
 - `Run` 与 `Exit` emit 的 payload 统一为 `map[string]any{group,name,state}`; `Run` 中在同函数内定义同 tag 的 struct, on 侧用 `cast.ToStruct` 解析.
 - `Exit` 先取走并清空 `execStack` 再逆序 `Stop`, 避免重复退出.
 - `EngineRuntime.Run` 在启动前调用 `WithEventFn` 注入的回调, 把 registry 快照与总线交给外部注册监听; 未注入时跳过.
