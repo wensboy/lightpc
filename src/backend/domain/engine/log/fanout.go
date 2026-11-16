@@ -2,11 +2,11 @@ package log
 
 import "log/slog"
 
-// FanoutClient is the client side of the fanout log engine. One record is delivered to every
-// handler bound to the resolved name.
+// FanoutClient is the client side of the fanout log engine. One record is delivered to every handler
+// bound to the resolved name; an empty name addresses every registered handler.
 type FanoutClient interface {
-	// Logger returns a logger broadcasting to every handler bound to name.
-	// An unknown name reports false.
+	// Logger returns a logger broadcasting to the handlers bound to name, or to every handler when
+	// name is empty. When nothing matches it reports false.
 	Logger(name string) (*slog.Logger, bool)
 }
 

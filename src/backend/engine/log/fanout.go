@@ -99,10 +99,24 @@ func (fl *FanoutLog) Stop() error {
 	return nil
 }
 
-// Logger implements domainLog.FanoutClient by broadcasting to every handler bound to name.
+// Logger implements domainLog.FanoutClient. A non empty name narrows the broadcast to its own
+// handlers, while an empty name addresses every registered handler, which is what the slog default
+// logger relies on for development output.
 func (fl *FanoutLog) Logger(name string) (*slog.Logger, bool) {
 	fl.mu.RLock()
-	handlers := slices.Clone(fl.handlers[name])
+	var handlers []slog.Handler
+	if name == "" {
+		size := 0
+		for _, list := range fl.handlers {
+			size += len(list)
+		}
+		handlers = make([]slog.Handler, 0, size)
+		for _, list := range fl.handlers {
+			handlers = append(handlers, list...)
+		}
+	} else {
+		handlers = slices.Clone(fl.handlers[name])
+	}
 	fl.mu.RUnlock()
 	if len(handlers) == 0 {
 		return nil, false

@@ -35,8 +35,33 @@ func TestFanoutLogMatchesExactName(t *testing.T) {
 	if _, ok := fanoutLog.Logger("ap"); ok {
 		t.Fatal("a prefix must not match")
 	}
-	if _, ok := fanoutLog.Logger(""); ok {
-		t.Fatal("an empty name must not match")
+	if _, ok := fanoutLog.Logger("other"); ok {
+		t.Fatal("an unknown name must not match")
+	}
+}
+
+func TestFanoutLogEmptyNameBroadcastsEveryHandler(t *testing.T) {
+	first := &bytes.Buffer{}
+	second := &bytes.Buffer{}
+	fanoutLog := NewFanoutLog(
+		WithFanoutHandler("app", slog.NewTextHandler(first, nil)),
+		WithFanoutHandler("worker", slog.NewTextHandler(second, nil)),
+	)
+
+	logger, ok := fanoutLog.Logger("")
+	if !ok {
+		t.Fatal("an empty name must resolve to every registered handler")
+	}
+	logger.Info("hello")
+
+	if first.Len() == 0 || second.Len() == 0 {
+		t.Fatalf("first = %d, second = %d", first.Len(), second.Len())
+	}
+}
+
+func TestFanoutLogEmptyNameWithoutHandlers(t *testing.T) {
+	if _, ok := NewFanoutLog().Logger(""); ok {
+		t.Fatal("an empty registry must report false")
 	}
 }
 
