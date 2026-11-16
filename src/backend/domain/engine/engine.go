@@ -17,8 +17,9 @@ type EngineState string
 
 // EngineContext 作为引擎初始化传递上下文传递必要的信息.
 type EngineContext struct {
-	AppCtx *domainContext.AppContext
-	Ebus   domainBus.Bus
+	AppCtx  *domainContext.AppContext
+	Ebus    domainBus.Bus
+	Engines map[string]Engine // 依赖过滤暴露引擎依赖的引擎.
 }
 
 // EngineEventContext 用于外部定义引擎事件处理能力.

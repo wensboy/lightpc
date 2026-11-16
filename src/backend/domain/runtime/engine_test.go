@@ -8,6 +8,7 @@ import (
 	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	"github.com/wensboy/lightpc/backend/internal/cast"
+	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
 type stubEngine struct {
@@ -16,6 +17,7 @@ type stubEngine struct {
 	deps     []string
 	state    domainEngine.EngineState
 	order    *[]string
+	initCtx  domainEngine.EngineContext
 	initErr  error
 	startErr error
 	stopErr  error
@@ -26,7 +28,8 @@ func (s *stubEngine) Name() string                    { return s.name }
 func (s *stubEngine) Deps() []string                  { return s.deps }
 func (s *stubEngine) State() domainEngine.EngineState { return s.state }
 
-func (s *stubEngine) Init(domainEngine.EngineContext) error {
+func (s *stubEngine) Init(eCtx domainEngine.EngineContext) error {
+	s.initCtx = eCtx
 	if s.initErr != nil {
 		s.state = domainEngine.EngineError
 		return s.initErr
@@ -211,5 +214,75 @@ func TestEngineRuntimeCallsEventFn(t *testing.T) {
 	}
 	if len(registry) != 1 || registry["core.a"] == nil {
 		t.Fatalf("registry = %v", registry)
+	}
+}
+
+func TestEngineRuntimeRegisterSkipsEmptyIdentity(t *testing.T) {
+	engineRuntime := NewEngineRuntime()
+	engineRuntime.Register(
+		&stubEngine{group: "", name: "a"},
+		&stubEngine{group: "core", name: ""},
+		&stubEngine{group: "", name: ""},
+		&stubEngine{group: "core", name: "ok"},
+	)
+
+	if engines := engineRuntime.Engine("core", ""); len(engines) != 1 || engines[0].Name() != "ok" {
+		t.Fatalf("engines = %v", engines)
+	}
+	if engines := engineRuntime.Engine("", ""); engines != nil {
+		t.Fatalf("engines = %v", engines)
+	}
+}
+
+func TestEngineRuntimeRunFailsOnMissingDependency(t *testing.T) {
+	engineRuntime := NewEngineRuntime()
+	engineRuntime.Register(&stubEngine{group: "core", name: "a", deps: []string{"core.missing"}})
+
+	if err := engineRuntime.Run(); !errors.Is(err, interError.Retrieve(ErrKeyMissingDependency)) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestEngineRuntimeRunInjectsDependencies(t *testing.T) {
+	dependency := &stubEngine{group: "core", name: "b"}
+	dependent := &stubEngine{group: "core", name: "a", deps: []string{"core.b"}}
+	engineRuntime := NewEngineRuntime()
+	engineRuntime.Register(dependent, dependency)
+
+	if err := engineRuntime.Run(); err != nil {
+		t.Fatal(err)
+	}
+	if dependent.initCtx.Engines["core.b"] != dependency {
+		t.Fatalf("engines = %v", dependent.initCtx.Engines)
+	}
+	if len(dependency.initCtx.Engines) != 0 {
+		t.Fatalf("engines = %v", dependency.initCtx.Engines)
+	}
+}
+
+func TestEngineRuntimeRunInjectsGroupDependencies(t *testing.T) {
+	first := &stubEngine{group: "core", name: "b"}
+	second := &stubEngine{group: "core", name: "c"}
+	dependent := &stubEngine{group: "app", name: "a", deps: []string{"core"}}
+	engineRuntime := NewEngineRuntime()
+	engineRuntime.Register(first, second, dependent)
+
+	if err := engineRuntime.Run(); err != nil {
+		t.Fatal(err)
+	}
+	if len(dependent.initCtx.Engines) != 2 {
+		t.Fatalf("engines = %v", dependent.initCtx.Engines)
+	}
+	if dependent.initCtx.Engines["core.b"] != first || dependent.initCtx.Engines["core.c"] != second {
+		t.Fatalf("engines = %v", dependent.initCtx.Engines)
+	}
+}
+
+func TestEngineRuntimeRunFailsOnEmptyGroupDependency(t *testing.T) {
+	engineRuntime := NewEngineRuntime()
+	engineRuntime.Register(&stubEngine{group: "app", name: "a", deps: []string{"missing"}})
+
+	if err := engineRuntime.Run(); !errors.Is(err, interError.Retrieve(ErrKeyMissingDependency)) {
+		t.Fatalf("err = %v", err)
 	}
 }

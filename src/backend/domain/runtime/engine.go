@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -13,12 +14,17 @@ import (
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
-// ErrKeyDependencyCycle reports that engines depend on each other in a cycle.
-const ErrKeyDependencyCycle = "error::engine.runtime::dependency_cycle"
+const (
+	// ErrKeyDependencyCycle reports that engines depend on each other in a cycle.
+	ErrKeyDependencyCycle = "error::engine.runtime::dependency_cycle"
+	// ErrKeyMissingDependency reports that an engine depends on an engine that is not registered.
+	ErrKeyMissingDependency = "error::engine.runtime::missing_dependency"
+)
 
 // EngineRuntimeErrors lists every error published when the engine runtime starts.
 var EngineRuntimeErrors = []interError.Option{
 	{Key: ErrKeyDependencyCycle, Code: interError.ErrCodeUnknown, Msg: "engine runtime: dependency cycle detected"},
+	{Key: ErrKeyMissingDependency, Code: interError.ErrCodeInvalidParam, Msg: "engine runtime: missing dependency"},
 }
 
 // EngineRuntime 管理所有引擎的生命周期.
@@ -60,11 +66,13 @@ func (er *EngineRuntime) WithAppBus(appBus domainBus.Bus) *EngineRuntime {
 	return er
 }
 
+// Register stores engines under group.name. A nil engine or an empty group or name is skipped,
+// so an invalid ekey can never reach the registry.
 func (er *EngineRuntime) Register(e ...domainEngine.Engine) {
 	er.mu.Lock()
 	defer er.mu.Unlock()
 	for _, engine := range e {
-		if engine == nil {
+		if engine == nil || engine.Group() == "" || engine.Name() == "" {
 			continue
 		}
 		er.registry[engine.Group()+"."+engine.Name()] = engine
@@ -99,6 +107,8 @@ func (er *EngineRuntime) Engine(group, name string) []domainEngine.Engine {
 	return engines
 }
 
+// Run initialises and starts every engine in dependency order. Each engine receives the engines
+// it depends on through EngineContext; a missing or cyclic dependency aborts the start.
 func (er *EngineRuntime) Run() error {
 	type engineEvent struct {
 		Group string `json:"group"`
@@ -133,11 +143,18 @@ func (er *EngineRuntime) Run() error {
 			}
 			ready := true
 			for _, dependency := range snapshot[key].Deps() {
-				if _, registered := snapshot[dependency]; !registered {
-					continue
+				group, name, _ := strings.Cut(dependency, ".")
+				matched := er.Engine(group, name)
+				if len(matched) == 0 {
+					return interError.Retrieve(ErrKeyMissingDependency).Wrap(fmt.Errorf("engine %s depends on missing engine %s", key, dependency))
 				}
-				if _, ok := resolved[dependency]; !ok {
-					ready = false
+				for _, dependencyEngine := range matched {
+					if _, ok := resolved[dependencyEngine.Group()+"."+dependencyEngine.Name()]; !ok {
+						ready = false
+						break
+					}
+				}
+				if !ready {
 					break
 				}
 			}
@@ -164,6 +181,14 @@ func (er *EngineRuntime) Run() error {
 	for _, engine := range ordered {
 		event := engineEvent{Group: engine.Group(), Name: engine.Name()}
 		payload := map[string]any{"group": event.Group, "name": event.Name, "state": ""}
+
+		engineCtx.Engines = make(map[string]domainEngine.Engine, len(engine.Deps()))
+		for _, dependency := range engine.Deps() {
+			group, name, _ := strings.Cut(dependency, ".")
+			for _, dependencyEngine := range er.Engine(group, name) {
+				engineCtx.Engines[dependencyEngine.Group()+"."+dependencyEngine.Name()] = dependencyEngine
+			}
+		}
 
 		if err := engine.Init(engineCtx); err != nil {
 			event.State = string(engine.State())
