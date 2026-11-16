@@ -80,4 +80,5 @@ logger.Info
 - 结构定义在 `domain/config/map.go`(`LogItem` / `LogOutput` / `LogSerializer`), 装配与解析在 `engine/log/setup.go`, 引导层不再持有配置结构与处理函数.
 - `internal/log` 提供映射: `ParseLevel`(文本 -> `slog.Level`, 未知回退 info)、`ParseMode`(如 `0o644` -> `FileMode`)、`NewSerializer`(text / json, 未知回退 text).
 - 文件输出的 `path` 支持 `~` 前缀, 父目录在构建时自动创建; `handler` 为 `file` 走 `FileHandler`, 其余走 `ConsoleHandler`(`out` 可取 `stdout` / `stderr`).
-- direct 组的第一个条目被设为 `slog` 全局默认 logger, 后续可通过 `direct.Logger(name)` 取回任意具名 logger.
+- `slog` 全局默认 logger 固定取自 fanout 引擎的空名句柄: `fanout.Logger("")` 聚合全部已注册 handler, 一次普通 `slog` 调用即同时落到 stdout 与配置的 file.
+- fanout 的 `Logger(name)` 有双语义: name 非空只广播该名称下的 handler, name 为空广播全部 handler; direct / pattern 仍按各自规则匹配.
