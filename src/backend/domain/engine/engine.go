@@ -41,3 +41,16 @@ type Engine interface {
 	Restart() error
 	Stop() error
 }
+
+// EngineDep composes the dependency key of an engine with the same algorithm the registry uses.
+// An empty group yields an empty key, an empty name yields the group, otherwise it is group.name.
+func EngineDep(group, name string) string {
+	switch {
+	case group == "":
+		return ""
+	case name == "":
+		return group
+	default:
+		return group + "." + name
+	}
+}

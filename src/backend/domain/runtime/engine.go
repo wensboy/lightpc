@@ -75,7 +75,7 @@ func (er *EngineRuntime) Register(e ...domainEngine.Engine) {
 		if engine == nil || engine.Group() == "" || engine.Name() == "" {
 			continue
 		}
-		er.registry[engine.Group()+"."+engine.Name()] = engine
+		er.registry[domainEngine.EngineDep(engine.Group(), engine.Name())] = engine
 	}
 }
 
@@ -149,7 +149,7 @@ func (er *EngineRuntime) Run() error {
 					return interError.Retrieve(ErrKeyMissingDependency).Wrap(fmt.Errorf("engine %s depends on missing engine %s", key, dependency))
 				}
 				for _, dependencyEngine := range matched {
-					if _, ok := resolved[dependencyEngine.Group()+"."+dependencyEngine.Name()]; !ok {
+					if _, ok := resolved[domainEngine.EngineDep(dependencyEngine.Group(), dependencyEngine.Name())]; !ok {
 						ready = false
 						break
 					}
@@ -186,7 +186,7 @@ func (er *EngineRuntime) Run() error {
 		for _, dependency := range engine.Deps() {
 			group, name, _ := strings.Cut(dependency, ".")
 			for _, dependencyEngine := range er.Engine(group, name) {
-				engineCtx.Engines[dependencyEngine.Group()+"."+dependencyEngine.Name()] = dependencyEngine
+				engineCtx.Engines[domainEngine.EngineDep(dependencyEngine.Group(), dependencyEngine.Name())] = dependencyEngine
 			}
 		}
 
