@@ -4,9 +4,11 @@ import (
 	"log/slog"
 	"sync"
 
+	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	domainLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	"github.com/wensboy/lightpc/backend/domain/engine/store"
+	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
 var (
@@ -18,7 +20,7 @@ var (
 // DirectOption is a critical construction parameter for DirectLog.
 type DirectOption func(*DirectLog)
 
-// WithDirectHandler binds handler to name before the engine starts.
+// WithDirectHandler binds handler to name immediately; it is meant for programmatic wiring.
 func WithDirectHandler(name string, handler slog.Handler) DirectOption {
 	return func(dl *DirectLog) {
 		if name == "" || handler == nil {
@@ -28,10 +30,22 @@ func WithDirectHandler(name string, handler slog.Handler) DirectOption {
 	}
 }
 
+// WithDirectItem records one configured logger. Its handlers are opened during Init, after the store
+// engine has created the root directory the log files live in.
+func WithDirectItem(item domainConfig.LogItem) DirectOption {
+	return func(dl *DirectLog) {
+		if item.Name == "" {
+			return
+		}
+		dl.items = append(dl.items, item)
+	}
+}
+
 // DirectLog implements the direct log engine: handlers are registered under an exact name and a
 // record written through one logger is consumed by exactly one handler.
 type DirectLog struct {
 	handlers map[string]slog.Handler
+	items    []domainConfig.LogItem
 
 	mu     sync.RWMutex
 	ectx   domainEngine.EngineContext
@@ -54,7 +68,7 @@ func (dl *DirectLog) Group() string { return domainLog.GroupLog }
 // Name implements domainEngine.Engine.
 func (dl *DirectLog) Name() string { return domainLog.NameDirect }
 
-// Deps implements domainEngine.Engine.
+// Deps implements domainEngine.Engine: log files live below the store root.
 func (dl *DirectLog) Deps() []string { return []string{store.StoreFs} }
 
 // State implements domainEngine.Engine.
@@ -64,11 +78,19 @@ func (dl *DirectLog) State() domainEngine.EngineState {
 	return dl.state
 }
 
-// Init implements domainEngine.Engine: it keeps the engine context and becomes ready.
+// Init implements domainEngine.Engine: it keeps the engine context, opens every configured handler
+// and becomes ready.
 func (dl *DirectLog) Init(eCtx domainEngine.EngineContext) error {
+	interError.RegisterAll(eCtx.AppCtx, domainLog.Errors...)
+
 	dl.mu.Lock()
 	defer dl.mu.Unlock()
 	dl.ectx = eCtx
+	for _, entry := range entriesOf(dl.items) {
+		for _, handler := range buildHandlers(entry) {
+			dl.handlers[entry.name] = handler
+		}
+	}
 	dl.state = domainEngine.EngineReady
 	return nil
 }

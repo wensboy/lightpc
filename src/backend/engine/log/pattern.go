@@ -5,9 +5,11 @@ import (
 	"path"
 	"sync"
 
+	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	domainLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	"github.com/wensboy/lightpc/backend/domain/engine/store"
+	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
 var (
@@ -19,7 +21,8 @@ var (
 // PatternOption is a critical construction parameter for PatternLog.
 type PatternOption func(*PatternLog)
 
-// WithPatternHandler appends handler to the handler set bound to pattern before the engine starts.
+// WithPatternHandler appends handler to the set bound to pattern immediately; it is meant for
+// programmatic wiring.
 func WithPatternHandler(pattern string, handler slog.Handler) PatternOption {
 	return func(pl *PatternLog) {
 		if pattern == "" || handler == nil {
@@ -29,10 +32,22 @@ func WithPatternHandler(pattern string, handler slog.Handler) PatternOption {
 	}
 }
 
+// WithPatternItem records one configured logger. Its handlers are opened during Init, after the store
+// engine has created the root directory the log files live in.
+func WithPatternItem(item domainConfig.LogItem) PatternOption {
+	return func(pl *PatternLog) {
+		if item.Name == "" {
+			return
+		}
+		pl.items = append(pl.items, item)
+	}
+}
+
 // PatternLog implements the pattern log engine: one record is delivered to every handler whose glob
 // pattern matches the resolved name.
 type PatternLog struct {
 	handlers map[string][]slog.Handler
+	items    []domainConfig.LogItem
 
 	mu     sync.RWMutex
 	ectx   domainEngine.EngineContext
@@ -55,7 +70,7 @@ func (pl *PatternLog) Group() string { return domainLog.GroupLog }
 // Name implements domainEngine.Engine.
 func (pl *PatternLog) Name() string { return domainLog.NamePattern }
 
-// Deps implements domainEngine.Engine.
+// Deps implements domainEngine.Engine: log files live below the store root.
 func (pl *PatternLog) Deps() []string { return []string{store.StoreFs} }
 
 // State implements domainEngine.Engine.
@@ -65,11 +80,17 @@ func (pl *PatternLog) State() domainEngine.EngineState {
 	return pl.state
 }
 
-// Init implements domainEngine.Engine: it keeps the engine context and becomes ready.
+// Init implements domainEngine.Engine: it keeps the engine context, opens every configured handler
+// and becomes ready.
 func (pl *PatternLog) Init(eCtx domainEngine.EngineContext) error {
+	interError.RegisterAll(eCtx.AppCtx, domainLog.Errors...)
+
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	pl.ectx = eCtx
+	for _, entry := range entriesOf(pl.items) {
+		pl.handlers[entry.name] = append(pl.handlers[entry.name], buildHandlers(entry)...)
+	}
 	pl.state = domainEngine.EngineReady
 	return nil
 }

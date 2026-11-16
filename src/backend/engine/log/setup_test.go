@@ -8,6 +8,7 @@ import (
 
 	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	domainLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	"github.com/wensboy/lightpc/backend/internal/config"
@@ -79,6 +80,11 @@ func TestSetupDirectAndFanout(t *testing.T) {
 	if len(engines) != 2 {
 		t.Fatalf("engines = %d", len(engines))
 	}
+	for _, engine := range engines {
+		if err := engine.Init(domainEngine.EngineContext{}); err != nil {
+			t.Fatalf("init %s: %v", engine.Name(), err)
+		}
+	}
 
 	directClient, ok := cast.As[domainLog.DirectClient](engines[0])
 	if !ok {
@@ -137,6 +143,11 @@ func TestSetupFromConfigFile(t *testing.T) {
 	engines := Setup(domainContext.ConfigContext(fileSource))
 	if len(engines) != 1 {
 		t.Fatalf("engines = %d", len(engines))
+	}
+	for _, engine := range engines {
+		if err := engine.Init(domainEngine.EngineContext{}); err != nil {
+			t.Fatalf("init %s: %v", engine.Name(), err)
+		}
 	}
 
 	fanoutClient, ok := cast.As[domainLog.FanoutClient](engines[0])

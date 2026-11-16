@@ -1,24 +1,17 @@
 package logimpl
 
 import (
-	"io"
-	"log/slog"
-	"os"
-	"path/filepath"
-	"strings"
-
 	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	"github.com/wensboy/lightpc/backend/internal/cast"
-	interLog "github.com/wensboy/lightpc/backend/internal/log"
 )
 
 // Setup builds the log engines described by runtime.log.<group>[].
 //
-// Each group yields at most one engine: every item of the group is registered into that engine, and a
-// missing or empty group yields no engine at all. The fanout engine becomes the slog default through
-// its empty name, so a plain slog call reaches every configured handler.
+// Each group yields at most one engine and a missing or empty group yields none. Only configuration is
+// read here: handlers are opened during Init, once the store engine has created the root directory.
+// The fanout engine publishes itself as the slog default so a plain slog call reaches every sink.
 func Setup(cfg domainContext.ConfigContext) []domainEngine.Engine {
 	engines := make([]domainEngine.Engine, 0, 3)
 	value, ok := cfg.Lookup("default.runtime.log")
@@ -30,135 +23,44 @@ func Setup(cfg domainContext.ConfigContext) []domainEngine.Engine {
 		return engines
 	}
 
-	if items, ok := cast.To[[]any](groups["direct"]); ok && len(items) > 0 {
+	if items := parseItems(groups["direct"]); len(items) > 0 {
 		options := make([]DirectOption, 0, len(items))
-		for _, raw := range items {
-			name, handlers := setupItem(raw)
-			if name == "" {
-				continue
-			}
-			for _, handler := range handlers {
-				options = append(options, WithDirectHandler(name, handler))
-			}
+		for _, item := range items {
+			options = append(options, WithDirectItem(item))
 		}
-		if len(options) > 0 {
-			engines = append(engines, NewDirectLog(options...))
-		}
+		engines = append(engines, NewDirectLog(options...))
 	}
 
-	if items, ok := cast.To[[]any](groups["fanout"]); ok && len(items) > 0 {
+	if items := parseItems(groups["fanout"]); len(items) > 0 {
 		options := make([]FanoutOption, 0, len(items))
-		for _, raw := range items {
-			name, handlers := setupItem(raw)
-			if name == "" {
-				continue
-			}
-			for _, handler := range handlers {
-				options = append(options, WithFanoutHandler(name, handler))
-			}
+		for _, item := range items {
+			options = append(options, WithFanoutItem(item))
 		}
-		if len(options) > 0 {
-			fanoutLog := NewFanoutLog(options...)
-			engines = append(engines, fanoutLog)
-			// The slog default resolves through the fanout engine with an empty name, so every
-			// registered handler receives the record.
-			if logger, ok := fanoutLog.Logger(""); ok {
-				slog.SetDefault(logger)
-			}
-		}
+		engines = append(engines, NewFanoutLog(options...))
 	}
 
-	if items, ok := cast.To[[]any](groups["pattern"]); ok && len(items) > 0 {
+	if items := parseItems(groups["pattern"]); len(items) > 0 {
 		options := make([]PatternOption, 0, len(items))
-		for _, raw := range items {
-			name, handlers := setupItem(raw)
-			if name == "" {
-				continue
-			}
-			for _, handler := range handlers {
-				options = append(options, WithPatternHandler(name, handler))
-			}
+		for _, item := range items {
+			options = append(options, WithPatternItem(item))
 		}
-		if len(options) > 0 {
-			engines = append(engines, NewPatternLog(options...))
-		}
+		engines = append(engines, NewPatternLog(options...))
 	}
 
 	return engines
 }
 
-// setupItem parses one configured item and builds every handler it declares. An empty name is
-// reported when the entry has no usable output, which lets the caller skip it.
-func setupItem(raw any) (string, []slog.Handler) {
-	record, ok := cast.To[map[string]any](raw)
+// parseItems reads every configured item of one group, skipping the entries without a name.
+func parseItems(raw any) []domainConfig.LogItem {
+	records, ok := cast.To[[]any](raw)
 	if !ok {
-		return "", nil
+		return nil
 	}
-	item := domainConfig.LogItem{}
-	cast.ToStruct(record, &item, "json")
-	if item.Name == "" {
-		return "", nil
-	}
-
-	level := interLog.ParseLevel(item.Level)
-
-	// The direct group declares one output object while fanout and pattern declare an array, so both
-	// shapes are normalised into a single list here.
-	var outputs []any
-	if list, ok := cast.To[[]any](item.Output); ok {
-		outputs = list
-	} else if item.Output != nil {
-		outputs = []any{item.Output}
-	}
-
-	handlers := make([]slog.Handler, 0, len(outputs))
-	for _, rawOutput := range outputs {
-		source, ok := cast.To[map[string]any](rawOutput)
-		if !ok {
-			continue
+	items := make([]domainConfig.LogItem, 0, len(records))
+	for _, record := range records {
+		if item, ok := parseItem(record); ok {
+			items = append(items, item)
 		}
-		output := domainConfig.LogOutput{}
-		cast.ToStruct(source, &output, "json")
-
-		// Level filtering belongs to the outer handler, so the serializer keeps its default level.
-		serializerOption := interLog.SerializerOption{AddSource: output.Serializer.EnableSource}
-
-		if item.Handler == "file" {
-			path := output.Path
-			if strings.HasPrefix(path, "~") {
-				home, err := os.UserHomeDir()
-				if err != nil {
-					continue
-				}
-				path = filepath.Join(home, strings.TrimPrefix(path, "~"))
-			}
-			if path == "" {
-				continue
-			}
-			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-				continue
-			}
-			handlers = append(handlers, interLog.NewFileHandler(interLog.FileOption{
-				SerializerOption: serializerOption,
-				Serializer:       output.Serializer.Type,
-				Path:             path,
-				Mode:             int(interLog.ParseMode(output.Mode)),
-			}).WithLevel(level))
-			continue
-		}
-
-		out := io.Writer(os.Stdout)
-		if strings.EqualFold(output.Out, "stderr") {
-			out = os.Stderr
-		}
-		handlers = append(handlers, interLog.NewConsoleHandler(interLog.ConsoleOption{
-			SerializerOption: serializerOption,
-			Serializer:       output.Serializer.Type,
-			Out:              out,
-		}).WithLevel(level))
 	}
-	if len(handlers) == 0 {
-		return "", nil
-	}
-	return item.Name, handlers
+	return items
 }

@@ -75,6 +75,8 @@ logger.Info
 - 过滤集中在 `Enabled`: 级别下限、输出可用性(out 与 serializer 非空)、`closed` 三者一次判定, `Handle` 不再承担过滤职责.
 - `closed` 使用 `atomic.Bool`, `Enabled` 可无锁读取; `mu` 只用于串行化 `Handle` 的写入.
 - 装配逻辑位于 `engine/log` 的 `Setup`, 读取 `default.runtime.log.<group>[]`, 三组各构建一个实例: direct 每个 item 对应一个具名 logger, fanout 与 pattern 把同一 item 的全部 output 追加到同一名称下; `bootstrap.SetupLog` 只做转发.
+- `Setup` 只解析配置, 文件 handler 延迟到 `Init` 才打开: 此时 `store.fs` 已按依赖顺序创建好 root, log 不再抢先建目录; 单个输出不可用时按 `error::engine.log::handler_failed` 记录后跳过, 不影响其它输出.
+- 日志引擎在 `Init` 中通过 `interError.RegisterAll` 发布 `domain/engine/log.Errors`, 覆盖无效条目与 handler 创建失败两类错误.
 - 分组缺失或列表为空时不创建实例, 因此返回值长度在 0~3 之间.
 - `output` 在 direct 组是对象, 在 fanout / pattern 组是数组; `logimpl.setupItem` 统一转成列表再逐个构建 handler, 两种形态共用一条解析路径.
 - 结构定义在 `domain/config/map.go`(`LogItem` / `LogOutput` / `LogSerializer`), 装配与解析在 `engine/log/setup.go`, 引导层不再持有配置结构与处理函数.
