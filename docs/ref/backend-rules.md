@@ -29,5 +29,6 @@
 7. Whenever a `data/conf/*.json` file changes, verify that the configuration and its corresponding schema stay in sync, and update the schema according to the RFC-defined JSON Schema standard.
 8. The `engine/<sub>/` directories under `domain/` correspond to those under `backend/engine/`: `domain/` declares interfaces only, while `engine` provides the implementations. Domain packages take their name from the directory, whereas packages under `backend/engine/<sub>/` are named `<dir_name>impl`.
 9. Struct definitions of every engine under `backend/engine/` must separate basic fields from core fields with a blank line. Core fields, which drive core control operations, are declared from the top of the struct downwards; basic fields, which are inherent configuration and base context, are declared from the bottom upwards. Example: the struct in `db.go:30-38`.
+10. Packages under `domain/engine/<sub>/` do not need a domain prefixed alias when imported; import them by their own package name. Example: `direct.go:10-10, 72-72`.
 
 ## SHOULD NOT
