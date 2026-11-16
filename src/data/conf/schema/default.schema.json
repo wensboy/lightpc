@@ -50,7 +50,8 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-                "store"
+                "store",
+                "log"
             ],
             "properties": {
                 "store": {
@@ -84,6 +85,118 @@
                             }
                         }
                     }
+                },
+                "log": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "direct": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/logItem"
+                            }
+                        },
+                        "fanout": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/logItem"
+                            }
+                        },
+                        "pattern": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/logItem"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "$defs": {
+        "logItem": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "name",
+                "level",
+                "handler",
+                "output"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "level": {
+                    "type": "string",
+                    "enum": [
+                        "debug",
+                        "info",
+                        "warn",
+                        "warning",
+                        "error"
+                    ]
+                },
+                "handler": {
+                    "type": "string",
+                    "enum": [
+                        "",
+                        "file"
+                    ]
+                },
+                "output": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/logOutput"
+                        },
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                                "$ref": "#/$defs/logOutput"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "logOutput": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "serializer"
+            ],
+            "properties": {
+                "serializer": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": [
+                                "text",
+                                "json"
+                            ]
+                        },
+                        "enableSource": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "out": {
+                    "type": "string",
+                    "enum": [
+                        "stdout",
+                        "stderr"
+                    ]
+                },
+                "path": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string",
+                    "pattern": "^0o[0-7]{3}$"
                 }
             }
         }

@@ -14,6 +14,92 @@
                 "fileMode": "0o644",
                 "dirMode": "0o755"
             }
+        },
+        "log": {
+            "direct": [
+                {
+                    "name": "dev.console",
+                    "level": "debug",
+                    "handler": "",
+                    "output": {
+                        "serializer": {
+                            "type": "text",
+                            "enableSource": true
+                        },
+                        "out": "stdout"
+                    }
+                },
+                {
+                    "name": "dev.file",
+                    "level": "debug",
+                    "handler": "file",
+                    "output": {
+                        "serializer": {
+                            "type": "json",
+                            "enableSource": false
+                        },
+                        "path": "~/.config/lightpc/logs/direct_debug.log",
+                        "mode": "0o644"
+                    }
+                }
+            ],
+            "fanout":[
+                {
+                    "name": "dev.test",
+                    "level": "debug",
+                    "handler": "file",
+                    "output": [
+                        {
+                            "serializer": {
+                                "type": "json",
+                                "enableSource": false
+                            },
+                            "path": "~/.config/lightpc/logs/fanout_debug.log",
+                            "mode": "0o644"
+                        },
+                        {
+                            "serializer": {
+                                "type": "json",
+                                "enableSource": false
+                            },
+                            "path": "~/.config/lightpc/logs/fanout_info.log",
+                            "mode": "0o644"
+                        }
+                    ]
+                }
+            ],
+            "pattern": [
+                {
+                    "name": "network.debug",
+                    "level": "debug",
+                    "handler": "file",
+                    "output": [
+                        {
+                            "serializer": {
+                                "type": "json",
+                                "enableSource": false
+                            },
+                            "path": "~/.config/lightpc/logs/network_debug.log",
+                            "mode": "0o644"
+                        }
+                    ]
+                },
+                {
+                    "name": "network.info",
+                    "level": "info",
+                    "handler": "file",
+                    "output": [
+                        {
+                            "serializer": {
+                                "type": "json",
+                                "enableSource": false
+                            },
+                            "path": "~/.config/lightpc/logs/network_info.log",
+                            "mode": "0o644"
+                        }
+                    ]
+                }
+            ]
         }
     }
 }
