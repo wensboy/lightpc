@@ -1,6 +1,7 @@
 package logimpl
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -100,6 +101,10 @@ func TestSetupDirectAndFanout(t *testing.T) {
 	if _, err := os.Stat(debugPath); err != nil {
 		t.Fatalf("the log file must be created: %v", err)
 	}
+
+	if _, ok := slog.Default().Handler().(*slog.MultiHandler); !ok {
+		t.Fatalf("the slog default must fan out to every handler, got %T", slog.Default().Handler())
+	}
 }
 
 func TestSetupWithoutConfig(t *testing.T) {
@@ -128,36 +133,22 @@ func TestSetupFromConfigFile(t *testing.T) {
 	fileSource := config.NewFileSource()
 	fileSource.Parse(domainContext.FsContext{Paths: []string{"../../../data/conf/default.json"}})
 
+	// The shipped configuration only declares the fanout group.
 	engines := Setup(domainContext.ConfigContext(fileSource))
-	if len(engines) != 3 {
+	if len(engines) != 1 {
 		t.Fatalf("engines = %d", len(engines))
 	}
 
-	directClient, ok := cast.As[domainLog.DirectClient](engines[0])
+	fanoutClient, ok := cast.As[domainLog.FanoutClient](engines[0])
 	if !ok {
-		t.Fatal("the first engine must expose DirectClient")
+		t.Fatal("the engine must expose FanoutClient")
 	}
-	for _, name := range []string{"dev.console", "dev.file"} {
-		if _, ok := directClient.Logger(name); !ok {
-			t.Fatalf("direct logger %q must be resolved", name)
+	for _, name := range []string{"dev.file", "dev.console"} {
+		if _, ok := fanoutClient.Logger(name); !ok {
+			t.Fatalf("fanout logger %q must be resolved", name)
 		}
 	}
-
-	fanoutClient, ok := cast.As[domainLog.FanoutClient](engines[1])
-	if !ok {
-		t.Fatal("the second engine must expose FanoutClient")
-	}
-	if _, ok := fanoutClient.Logger("dev.test"); !ok {
-		t.Fatal("fanout logger dev.test must be resolved")
-	}
-
-	patternClient, ok := cast.As[domainLog.PatternClient](engines[2])
-	if !ok {
-		t.Fatal("the third engine must expose PatternClient")
-	}
-	for _, name := range []string{"network.debug", "network.info"} {
-		if _, ok := patternClient.Logger(name); !ok {
-			t.Fatalf("pattern logger %q must be resolved", name)
-		}
+	if _, ok := fanoutClient.Logger(""); !ok {
+		t.Fatal("the slog default must resolve to every fanout handler")
 	}
 }

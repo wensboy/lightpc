@@ -17,7 +17,8 @@ import (
 // Setup builds the log engines described by runtime.log.<group>[].
 //
 // Each group yields at most one engine: every item of the group is registered into that engine, and a
-// missing or empty group yields no engine at all. The first direct entry becomes the slog default.
+// missing or empty group yields no engine at all. The fanout engine becomes the slog default through
+// its empty name, so a plain slog call reaches every configured handler.
 func Setup(cfg domainContext.ConfigContext) []domainEngine.Engine {
 	engines := make([]domainEngine.Engine, 0, 3)
 	value, ok := cfg.Lookup("default.runtime.log")
@@ -31,25 +32,17 @@ func Setup(cfg domainContext.ConfigContext) []domainEngine.Engine {
 
 	if items, ok := cast.To[[]any](groups["direct"]); ok && len(items) > 0 {
 		options := make([]DirectOption, 0, len(items))
-		defaultName := ""
 		for _, raw := range items {
 			name, handlers := setupItem(raw)
 			if name == "" {
 				continue
-			}
-			if defaultName == "" {
-				defaultName = name
 			}
 			for _, handler := range handlers {
 				options = append(options, WithDirectHandler(name, handler))
 			}
 		}
 		if len(options) > 0 {
-			directLog := NewDirectLog(options...)
-			engines = append(engines, directLog)
-			if logger, ok := directLog.Logger(defaultName); ok {
-				slog.SetDefault(logger)
-			}
+			engines = append(engines, NewDirectLog(options...))
 		}
 	}
 
@@ -65,7 +58,13 @@ func Setup(cfg domainContext.ConfigContext) []domainEngine.Engine {
 			}
 		}
 		if len(options) > 0 {
-			engines = append(engines, NewFanoutLog(options...))
+			fanoutLog := NewFanoutLog(options...)
+			engines = append(engines, fanoutLog)
+			// The slog default resolves through the fanout engine with an empty name, so every
+			// registered handler receives the record.
+			if logger, ok := fanoutLog.Logger(""); ok {
+				slog.SetDefault(logger)
+			}
 		}
 	}
 
