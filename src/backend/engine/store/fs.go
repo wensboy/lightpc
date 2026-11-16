@@ -37,10 +37,11 @@ type FS struct {
 	root     string
 	fileMode fs.FileMode
 	dirMode  fs.FileMode
-	mu       sync.RWMutex
-	ectx     domainEngine.EngineContext
-	state    domainEngine.EngineState
-	closed   bool
+
+	mu     sync.RWMutex
+	ectx   domainEngine.EngineContext
+	state  domainEngine.EngineState
+	closed bool
 }
 
 // NewFS builds an FS. Every field starts at its zero value; defaults come from configuration during Init.

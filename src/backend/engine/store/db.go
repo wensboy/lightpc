@@ -30,10 +30,11 @@ func WithDB(db *sqlx.DB) SQLOption {
 type SQL struct {
 	db           *sqlx.DB
 	queryTimeout time.Duration
-	mu           sync.RWMutex
-	ectx         domainEngine.EngineContext
-	state        domainEngine.EngineState
-	closed       bool
+
+	mu     sync.RWMutex
+	ectx   domainEngine.EngineContext
+	state  domainEngine.EngineState
+	closed bool
 }
 
 // NewSQL builds a SQL instance. Callers must call Validate before concurrent use.
