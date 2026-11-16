@@ -7,15 +7,15 @@ import (
 
 	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	domainLog "github.com/wensboy/lightpc/backend/domain/engine/log"
+	"github.com/wensboy/lightpc/backend/domain/engine/log"
 	"github.com/wensboy/lightpc/backend/domain/engine/store"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
 var (
-	_ domainEngine.Engine    = (*FanoutLog)(nil)
-	_ domainLog.FanoutClient = (*FanoutLog)(nil)
-	_ domainLog.FanoutServer = (*FanoutLog)(nil)
+	_ domainEngine.Engine = (*FanoutLog)(nil)
+	_ log.FanoutClient    = (*FanoutLog)(nil)
+	_ log.FanoutServer    = (*FanoutLog)(nil)
 )
 
 // FanoutOption is a critical construction parameter for FanoutLog.
@@ -64,10 +64,10 @@ func NewFanoutLog(opts ...FanoutOption) *FanoutLog {
 }
 
 // Group implements domainEngine.Engine.
-func (fl *FanoutLog) Group() string { return domainLog.GroupLog }
+func (fl *FanoutLog) Group() string { return log.GroupLog }
 
 // Name implements domainEngine.Engine.
-func (fl *FanoutLog) Name() string { return domainLog.NameFanout }
+func (fl *FanoutLog) Name() string { return log.NameFanout }
 
 // Deps implements domainEngine.Engine: log files live below the store root.
 func (fl *FanoutLog) Deps() []string { return []string{store.StoreFs} }
@@ -82,7 +82,7 @@ func (fl *FanoutLog) State() domainEngine.EngineState {
 // Init implements domainEngine.Engine: it keeps the engine context, opens every configured handler,
 // becomes ready and publishes the empty name aggregate as the slog default.
 func (fl *FanoutLog) Init(eCtx domainEngine.EngineContext) error {
-	interError.RegisterAll(eCtx.AppCtx, domainLog.Errors...)
+	interError.RegisterAll(eCtx.AppCtx, log.Errors...)
 
 	fl.mu.Lock()
 	fl.ectx = eCtx
@@ -124,7 +124,7 @@ func (fl *FanoutLog) Stop() error {
 	return nil
 }
 
-// Logger implements domainLog.FanoutClient. A non empty name narrows the broadcast to its own
+// Logger implements log.FanoutClient. A non empty name narrows the broadcast to its own
 // handlers, while an empty name addresses every registered handler, which is what the slog default
 // logger relies on for development output.
 func (fl *FanoutLog) Logger(name string) (*slog.Logger, bool) {
@@ -149,7 +149,7 @@ func (fl *FanoutLog) Logger(name string) (*slog.Logger, bool) {
 	return slog.New(slog.NewMultiHandler(handlers...)), true
 }
 
-// Register implements domainLog.FanoutServer by appending handler to the set bound to name.
+// Register implements log.FanoutServer by appending handler to the set bound to name.
 func (fl *FanoutLog) Register(name string, handler slog.Handler) {
 	if name == "" || handler == nil {
 		return

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
-	domainLog "github.com/wensboy/lightpc/backend/domain/engine/log"
+	"github.com/wensboy/lightpc/backend/domain/engine/log"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 	interLog "github.com/wensboy/lightpc/backend/internal/log"
@@ -79,7 +79,7 @@ func entriesOf(items []domainConfig.LogItem) []logEntry {
 	for _, item := range items {
 		entry, ok := parseEntry(item)
 		if !ok {
-			slog.Default().Warn("log item skipped", "name", item.Name, "err", interError.Retrieve(domainLog.ErrKeyInvalidItem))
+			slog.Default().Warn("log item skipped", "name", item.Name, "err", interError.Retrieve(log.ErrKeyInvalidItem))
 			continue
 		}
 		entries = append(entries, entry)
@@ -100,17 +100,17 @@ func buildHandlers(entry logEntry) []slog.Handler {
 			if strings.HasPrefix(path, "~") {
 				home, err := os.UserHomeDir()
 				if err != nil {
-					slog.Default().Warn("log output skipped", "path", path, "err", interError.Retrieve(domainLog.ErrKeyHandlerFailed).Wrap(err))
+					slog.Default().Warn("log output skipped", "path", path, "err", interError.Retrieve(log.ErrKeyHandlerFailed).Wrap(err))
 					continue
 				}
 				path = filepath.Join(home, strings.TrimPrefix(path, "~"))
 			}
 			if path == "" {
-				slog.Default().Warn("log output skipped", "name", entry.name, "err", interError.Retrieve(domainLog.ErrKeyInvalidItem))
+				slog.Default().Warn("log output skipped", "name", entry.name, "err", interError.Retrieve(log.ErrKeyInvalidItem))
 				continue
 			}
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-				slog.Default().Warn("log output skipped", "path", path, "err", interError.Retrieve(domainLog.ErrKeyHandlerFailed).Wrap(err))
+				slog.Default().Warn("log output skipped", "path", path, "err", interError.Retrieve(log.ErrKeyHandlerFailed).Wrap(err))
 				continue
 			}
 			handlers = append(handlers, interLog.NewFileHandler(interLog.FileOption{

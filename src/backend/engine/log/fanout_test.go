@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	domainLog "github.com/wensboy/lightpc/backend/domain/engine/log"
+	"github.com/wensboy/lightpc/backend/domain/engine/log"
 )
 
 func TestFanoutLogBroadcastsToEveryHandler(t *testing.T) {
@@ -89,7 +89,7 @@ func TestFanoutLogIgnoresInvalidRegistration(t *testing.T) {
 func TestFanoutLogLifecycle(t *testing.T) {
 	fanoutLog := NewFanoutLog(WithFanoutHandler("app", slog.NewTextHandler(io.Discard, nil)))
 
-	if fanoutLog.Group() != domainLog.GroupLog || fanoutLog.Name() != domainLog.NameFanout {
+	if fanoutLog.Group() != log.GroupLog || fanoutLog.Name() != log.NameFanout {
 		t.Fatalf("identity = %s.%s", fanoutLog.Group(), fanoutLog.Name())
 	}
 	if fanoutLog.State() != domainEngine.EnginePending {

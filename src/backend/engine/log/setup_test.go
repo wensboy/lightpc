@@ -9,7 +9,7 @@ import (
 	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	domainLog "github.com/wensboy/lightpc/backend/domain/engine/log"
+	"github.com/wensboy/lightpc/backend/domain/engine/log"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	"github.com/wensboy/lightpc/backend/internal/config"
 )
@@ -86,7 +86,7 @@ func TestSetupDirectAndFanout(t *testing.T) {
 		}
 	}
 
-	directClient, ok := cast.As[domainLog.DirectClient](engines[0])
+	directClient, ok := cast.As[log.DirectClient](engines[0])
 	if !ok {
 		t.Fatal("the first engine must expose DirectClient")
 	}
@@ -96,7 +96,7 @@ func TestSetupDirectAndFanout(t *testing.T) {
 		}
 	}
 
-	fanoutClient, ok := cast.As[domainLog.FanoutClient](engines[1])
+	fanoutClient, ok := cast.As[log.FanoutClient](engines[1])
 	if !ok {
 		t.Fatal("the second engine must expose FanoutClient")
 	}
@@ -150,7 +150,7 @@ func TestSetupFromConfigFile(t *testing.T) {
 		}
 	}
 
-	fanoutClient, ok := cast.As[domainLog.FanoutClient](engines[0])
+	fanoutClient, ok := cast.As[log.FanoutClient](engines[0])
 	if !ok {
 		t.Fatal("the engine must expose FanoutClient")
 	}

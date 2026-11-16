@@ -6,15 +6,15 @@ import (
 
 	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	domainLog "github.com/wensboy/lightpc/backend/domain/engine/log"
+	"github.com/wensboy/lightpc/backend/domain/engine/log"
 	"github.com/wensboy/lightpc/backend/domain/engine/store"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
 var (
-	_ domainEngine.Engine    = (*DirectLog)(nil)
-	_ domainLog.DirectClient = (*DirectLog)(nil)
-	_ domainLog.DirectServer = (*DirectLog)(nil)
+	_ domainEngine.Engine = (*DirectLog)(nil)
+	_ log.DirectClient    = (*DirectLog)(nil)
+	_ log.DirectServer    = (*DirectLog)(nil)
 )
 
 // DirectOption is a critical construction parameter for DirectLog.
@@ -63,10 +63,10 @@ func NewDirectLog(opts ...DirectOption) *DirectLog {
 }
 
 // Group implements domainEngine.Engine.
-func (dl *DirectLog) Group() string { return domainLog.GroupLog }
+func (dl *DirectLog) Group() string { return log.GroupLog }
 
 // Name implements domainEngine.Engine.
-func (dl *DirectLog) Name() string { return domainLog.NameDirect }
+func (dl *DirectLog) Name() string { return log.NameDirect }
 
 // Deps implements domainEngine.Engine: log files live below the store root.
 func (dl *DirectLog) Deps() []string { return []string{store.StoreFs} }
@@ -81,7 +81,7 @@ func (dl *DirectLog) State() domainEngine.EngineState {
 // Init implements domainEngine.Engine: it keeps the engine context, opens every configured handler
 // and becomes ready.
 func (dl *DirectLog) Init(eCtx domainEngine.EngineContext) error {
-	interError.RegisterAll(eCtx.AppCtx, domainLog.Errors...)
+	interError.RegisterAll(eCtx.AppCtx, log.Errors...)
 
 	dl.mu.Lock()
 	defer dl.mu.Unlock()
@@ -121,7 +121,7 @@ func (dl *DirectLog) Stop() error {
 	return nil
 }
 
-// Logger implements domainLog.DirectClient by returning the logger bound to name.
+// Logger implements log.DirectClient by returning the logger bound to name.
 func (dl *DirectLog) Logger(name string) (*slog.Logger, bool) {
 	dl.mu.RLock()
 	defer dl.mu.RUnlock()
@@ -132,7 +132,7 @@ func (dl *DirectLog) Logger(name string) (*slog.Logger, bool) {
 	return slog.New(handler), true
 }
 
-// Register implements domainLog.DirectServer by binding handler to name.
+// Register implements log.DirectServer by binding handler to name.
 func (dl *DirectLog) Register(name string, handler slog.Handler) {
 	if name == "" || handler == nil {
 		return
