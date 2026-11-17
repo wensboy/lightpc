@@ -18,7 +18,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { EllipsisVerticalIcon, CircleUserRoundIcon, CreditCardIcon, BellIcon, LogOutIcon } from "lucide-react"
+import { EllipsisVerticalIcon, CircleUserRoundIcon, CreditCardIcon, BellIcon, BellDotIcon, BellOffIcon, LogOutIcon } from "lucide-react"
 
 export type NavUserLabels = {
   account: string
@@ -27,9 +27,22 @@ export type NavUserLabels = {
   logout: string
 }
 
+// NotificationBadge picks the notification glyph: unread when something has not been seen, muted while
+// do not disturb is on, and the plain bell otherwise.
+export type NotificationBadge = 'default' | 'unread' | 'muted'
+
+const notificationIcons = {
+  default: BellIcon,
+  unread: BellDotIcon,
+  muted: BellOffIcon,
+}
+
 export function NavUser({
   user,
   labels,
+  notificationBadge = 'default',
+  onAccount,
+  onNotifications,
 }: {
   user: {
     name: string
@@ -37,8 +50,13 @@ export function NavUser({
     avatar: string
   }
   labels: NavUserLabels
+  notificationBadge?: NotificationBadge
+  onAccount?: () => void
+  onNotifications?: () => void
 }) {
   const { isMobile } = useSidebar()
+  const NotificationIcon = notificationIcons[notificationBadge]
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -84,7 +102,7 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={onAccount}>
                 <CircleUserRoundIcon
                 />
                 {labels.account}
@@ -94,9 +112,8 @@ export function NavUser({
                 />
                 {labels.billing}
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BellIcon
-                />
+              <DropdownMenuItem onClick={onNotifications}>
+                <NotificationIcon />
                 {labels.notifications}
               </DropdownMenuItem>
             </DropdownMenuGroup>

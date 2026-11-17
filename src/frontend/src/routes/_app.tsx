@@ -2,7 +2,12 @@ import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { getToken } from '@/features/auth/session'
 import { AppSidebar } from '@/features/dashboard/layouts/AppSidebar'
+import { AccountDialog } from '@/features/account/components/AccountDialog'
+import { CommandPalette } from '@/features/command/components/CommandPalette'
 import { SiteHeader } from '@/features/dashboard/layouts/SiteHeader'
+import { HelpDialog } from '@/features/help/components/HelpDialog'
+import { NotificationsSheet } from '@/features/notifications/components/NotificationsSheet'
+import { SettingsDialog } from '@/features/settings/components/SettingsDialog'
 
 export const Route = createFileRoute('/_app')({
   // Every page below this layout requires a session; without one the user lands on the login page.
@@ -24,6 +29,11 @@ function AppLayout() {
         <SiteHeader />
         <Outlet />
       </SidebarInset>
+      <SettingsDialog />
+      <HelpDialog />
+      <CommandPalette />
+      <NotificationsSheet />
+      <AccountDialog />
     </SidebarProvider>
   )
 }

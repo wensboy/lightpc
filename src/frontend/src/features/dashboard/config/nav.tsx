@@ -1,10 +1,10 @@
 import {
   ChartBarIcon,
   CircleHelpIcon,
+  CommandIcon,
   FolderIcon,
   LayoutDashboardIcon,
   ListIcon,
-  SearchIcon,
   Settings2Icon,
   UsersIcon,
 } from 'lucide-react'
@@ -18,8 +18,8 @@ export type NavLink = {
 }
 
 export type NavAction = {
+  key: 'command' | 'help' | 'settings'
   title: string
-  url: string
   icon: ReactNode
 }
 
@@ -35,11 +35,12 @@ export function buildPrimaryNav(text: Dictionary): NavLink[] {
   ]
 }
 
-// buildSecondaryNav returns the items stacked from the bottom of the sidebar upwards.
+// buildSecondaryNav returns the items stacked from the bottom of the sidebar upwards. Each entry
+// carries a key so the shell opens the matching overlay instead of navigating.
 export function buildSecondaryNav(text: Dictionary): NavAction[] {
   return [
-    { title: text.dashboard.nav.search, url: '#', icon: <SearchIcon /> },
-    { title: text.dashboard.nav.help, url: '#', icon: <CircleHelpIcon /> },
-    { title: text.dashboard.nav.settings, url: '#', icon: <Settings2Icon /> },
+    { key: 'command', title: text.dashboard.nav.command, icon: <CommandIcon /> },
+    { key: 'help', title: text.dashboard.nav.help, icon: <CircleHelpIcon /> },
+    { key: 'settings', title: text.dashboard.nav.settings, icon: <Settings2Icon /> },
   ]
 }

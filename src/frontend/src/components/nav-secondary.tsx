@@ -10,26 +10,27 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
+export type NavSecondaryItem = {
+  key: string
+  title: string
+  icon: React.ReactNode
+}
+
 export function NavSecondary({
   items,
+  onSelect,
   ...props
 }: {
-  items: {
-    title: string
-    url: string
-    icon: React.ReactNode
-  }[]
+  items: NavSecondaryItem[]
+  onSelect?: (key: string) => void
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>
-        <SidebarMenu>
+        <SidebarMenu className="gap-1">
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                tooltip={item.title}
-                render={<a href={item.url} />}
-              >
+              <SidebarMenuButton tooltip={item.title} onClick={() => onSelect?.(item.key)}>
                 {item.icon}
                 <span>{item.title}</span>
               </SidebarMenuButton>

@@ -11,12 +11,21 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import { buildPrimaryNav, buildSecondaryNav } from '@/features/dashboard/config/nav'
+import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
 import { useText } from '@/locales'
+import { useDialogStore } from '@/stores/dialog'
 
 // AppSidebar assembles the shell: team switcher on top, the primary and secondary navigation in the
 // middle, and the user menu at the bottom. All labels come from the text dictionary.
 export function AppSidebar() {
   const text = useText()
+  const openSettings = useDialogStore((state) => state.openSettings)
+  const openHelp = useDialogStore((state) => state.openHelp)
+  const openCommand = useDialogStore((state) => state.openCommand)
+  const openAccount = useDialogStore((state) => state.openAccount)
+  const openNotifications = useNotificationStore((state) => state.openSheet)
+  const hasUnreadNotifications = useNotificationStore((state) => state.unread)
+  const doNotDisturb = useNotificationStore((state) => state.doNotDisturb)
 
   const teams = [
     {
@@ -34,7 +43,7 @@ export function AppSidebar() {
   const user = {
     name: text.dashboard.user.name,
     email: text.dashboard.user.email,
-    avatar: '/wails.png',
+    avatar: '/avatar-moty.png',
   }
 
   return (
@@ -47,7 +56,23 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={buildPrimaryNav(text)} />
-        <NavSecondary items={buildSecondaryNav(text)} className="mt-auto" />
+        <NavSecondary
+          items={buildSecondaryNav(text)}
+          onSelect={(key) => {
+            switch (key) {
+              case 'settings':
+                openSettings()
+                break
+              case 'help':
+                openHelp()
+                break
+              case 'command':
+                openCommand()
+                break
+            }
+          }}
+          className="mt-auto"
+        />
       </SidebarContent>
       <SidebarFooter>
         <NavUser
@@ -58,6 +83,11 @@ export function AppSidebar() {
             notifications: text.dashboard.user.notifications,
             logout: text.dashboard.user.logout,
           }}
+          notificationBadge={
+            hasUnreadNotifications ? 'unread' : doNotDisturb ? 'muted' : 'default'
+          }
+          onAccount={openAccount}
+          onNotifications={openNotifications}
         />
       </SidebarFooter>
       <SidebarRail />
