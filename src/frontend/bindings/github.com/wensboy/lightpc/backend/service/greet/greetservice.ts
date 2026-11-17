@@ -20,6 +20,13 @@ export function Deinit(): $CancellablePromise<void> {
     return $Call.ByID(681832175);
 }
 
+/**
+ * Greet writes one record through every log route before answering.
+ * 
+ * Per invocation the expected outcome is: one console record, two records in debug.log (slog default
+ * and the named direct logger), one record each in process.log and error.log, two records in
+ * network_debug_up.log and one in network_warn_up.log.
+ */
 export function Greet(name: string): $CancellablePromise<string> {
     return $Call.ByID(1912442891, name);
 }
@@ -28,6 +35,9 @@ export function Group(): $CancellablePromise<string> {
     return $Call.ByID(802239537);
 }
 
+/**
+ * Init resolves the log engines from the service context so Greet can exercise every sink.
+ */
 export function Init(sCtx: service$0.ServiceContext): $CancellablePromise<void> {
     return $Call.ByID(1899894628, sCtx);
 }

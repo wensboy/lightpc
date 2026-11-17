@@ -15,6 +15,7 @@ export interface AppContext {
     "Context": context$0.Context;
     "EmbedContext": EmbedContext;
     "ConfigContext": ConfigContext;
+    "ErrorContext": ErrorContext;
 }
 
 export type ConfigContext = any;
@@ -24,3 +25,8 @@ export type ConfigContext = any;
  * key 按照规范总是以相对 src 的目录路径, 对于单结构多嵌入, key 定义为语义功能.
  */
 export type EmbedContext = { [_ in string]?: embed$0.FS | null } | null;
+
+/**
+ * ErrorContext 映射 Code 到 Kind. 非并发安全, 逻辑上确保多协程不会出现并发读写问题.
+ */
+export type ErrorContext = { [_ in string]?: string } | null;

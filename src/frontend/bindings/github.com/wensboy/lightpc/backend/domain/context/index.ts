@@ -4,5 +4,6 @@
 export type {
     AppContext,
     ConfigContext,
-    EmbedContext
+    EmbedContext,
+    ErrorContext
 } from "./models.js";
