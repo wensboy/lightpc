@@ -2,6 +2,7 @@
 .codebuddy/
 .claude/
 .codex/
+.agents/
 test/
-*.db.agents/
+*.db
 skills-lock.json
