@@ -1,3 +1,4 @@
+import { currentText } from '@/locales'
 import type { AuthService, AuthSession, LoginInput } from '@/services/auth'
 
 // Development credentials live only here so no business component ever sees them.
@@ -17,7 +18,7 @@ export const authMock: AuthService = {
   async login(input: LoginInput): Promise<AuthSession> {
     await delay()
     if (input.email !== mockAccount.email || input.password !== mockAccount.password) {
-      throw new Error('Invalid email or password.')
+      throw new Error(currentText().auth.errors.invalidCredentials)
     }
     return { token: `mock.${Date.now()}`, email: input.email }
   },

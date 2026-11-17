@@ -1,10 +1,13 @@
 import { Link } from '@tanstack/react-router'
 import { GalleryVerticalEndIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useText } from '@/locales'
 
 // AuthLayout follows the login-02 block: the form sits in the left column with the brand in its top
 // corner, and the artwork fills the right column on wide windows.
 export function AuthLayout({ children }: { children: ReactNode }) {
+  const text = useText()
+
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
@@ -13,7 +16,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <GalleryVerticalEndIcon className="size-4" />
             </div>
-            lightpc
+            {text.common.app.name}
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-center">

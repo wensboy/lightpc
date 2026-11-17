@@ -1,15 +1,5 @@
-import {
-  ChartBarIcon,
-  CircleHelpIcon,
-  FolderIcon,
-  GalleryVerticalEndIcon,
-  LayoutDashboardIcon,
-  ListIcon,
-  SearchIcon,
-  Settings2Icon,
-  UsersIcon,
-} from 'lucide-react'
-import { NavMain, type NavMainItem } from '@/components/nav-main'
+import { GalleryVerticalEndIcon } from 'lucide-react'
+import { NavMain } from '@/components/nav-main'
 import { NavSecondary } from '@/components/nav-secondary'
 import { NavUser } from '@/components/nav-user'
 import { TeamSwitcher } from '@/components/team-switcher'
@@ -20,54 +10,55 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar'
-
-const teams = [
-  {
-    name: 'lightpc',
-    logo: <GalleryVerticalEndIcon className="size-4" />,
-    plan: 'Local workspace',
-  },
-  {
-    name: 'lightpc dev',
-    logo: <GalleryVerticalEndIcon className="size-4" />,
-    plan: 'Development',
-  },
-]
-
-const user = {
-  name: 'lightpc user',
-  email: 'user@lightpc.local',
-  avatar: '/wails.png',
-}
-
-const navMain: NavMainItem[] = [
-  { title: 'Dashboard', to: '/', icon: <LayoutDashboardIcon /> },
-  { title: 'Lifecycle', to: '/lifecycle', icon: <ListIcon /> },
-  { title: 'Analytics', to: '/analytics', icon: <ChartBarIcon /> },
-  { title: 'Projects', to: '/projects', icon: <FolderIcon /> },
-  { title: 'Team', to: '/team', icon: <UsersIcon /> },
-]
-
-const navSecondary = [
-  { title: 'Settings', url: '#', icon: <Settings2Icon /> },
-  { title: 'Get Help', url: '#', icon: <CircleHelpIcon /> },
-  { title: 'Search', url: '#', icon: <SearchIcon /> },
-]
+import { buildPrimaryNav, buildSecondaryNav } from '@/features/dashboard/config/nav'
+import { useText } from '@/locales'
 
 // AppSidebar assembles the shell: team switcher on top, the primary and secondary navigation in the
-// middle, and the user menu at the bottom.
+// middle, and the user menu at the bottom. All labels come from the text dictionary.
 export function AppSidebar() {
+  const text = useText()
+
+  const teams = [
+    {
+      name: text.dashboard.workspace.primary,
+      logo: <GalleryVerticalEndIcon className="size-4" />,
+      plan: text.dashboard.workspace.primaryPlan,
+    },
+    {
+      name: text.dashboard.workspace.secondary,
+      logo: <GalleryVerticalEndIcon className="size-4" />,
+      plan: text.dashboard.workspace.secondaryPlan,
+    },
+  ]
+
+  const user = {
+    name: text.dashboard.user.name,
+    email: text.dashboard.user.email,
+    avatar: '/wails.png',
+  }
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <TeamSwitcher teams={teams} />
+        <TeamSwitcher
+          teams={teams}
+          labels={{ teams: text.dashboard.workspace.teams, addTeam: text.dashboard.workspace.addTeam }}
+        />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navMain} />
-        <NavSecondary items={navSecondary} className="mt-auto" />
+        <NavMain items={buildPrimaryNav(text)} />
+        <NavSecondary items={buildSecondaryNav(text)} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={user} />
+        <NavUser
+          user={user}
+          labels={{
+            account: text.dashboard.user.account,
+            billing: text.dashboard.user.billing,
+            notifications: text.dashboard.user.notifications,
+            logout: text.dashboard.user.logout,
+          }}
+        />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

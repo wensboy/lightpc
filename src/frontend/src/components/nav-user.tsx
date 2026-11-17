@@ -20,14 +20,23 @@ import {
 } from "@/components/ui/sidebar"
 import { EllipsisVerticalIcon, CircleUserRoundIcon, CreditCardIcon, BellIcon, LogOutIcon } from "lucide-react"
 
+export type NavUserLabels = {
+  account: string
+  billing: string
+  notifications: string
+  logout: string
+}
+
 export function NavUser({
   user,
+  labels,
 }: {
   user: {
     name: string
     email: string
     avatar: string
   }
+  labels: NavUserLabels
 }) {
   const { isMobile } = useSidebar()
   return (
@@ -78,24 +87,24 @@ export function NavUser({
               <DropdownMenuItem>
                 <CircleUserRoundIcon
                 />
-                Account
+                {labels.account}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <CreditCardIcon
                 />
-                Billing
+                {labels.billing}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <BellIcon
                 />
-                Notifications
+                {labels.notifications}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <LogOutIcon
               />
-              Log out
+              {labels.logout}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -14,11 +14,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { AuthLayout } from '@/features/auth/layouts/AuthLayout'
 import { setToken } from '@/features/auth/session'
+import { useText } from '@/locales'
 import { auth } from '@/mocks'
 import { loginSchema, type LoginInput } from '@/services/auth'
 
 // LoginPage validates with Zod through React Hook Form and hands the payload to the auth service.
 export function LoginPage() {
+  const text = useText()
   const navigate = useNavigate()
   const [message, setMessage] = useState('')
   const { register, handleSubmit, formState } = useForm<LoginInput>({
@@ -33,7 +35,7 @@ export function LoginPage() {
       setToken(session.token)
       await navigate({ to: '/' })
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Login failed.')
+      setMessage(error instanceof Error ? error.message : text.auth.errors.loginFailed)
     }
   })
 
@@ -42,13 +44,13 @@ export function LoginPage() {
       <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
         <FieldGroup>
           <div className="flex flex-col items-center gap-1 text-center">
-            <h1 className="text-2xl font-bold">Login to your account</h1>
+            <h1 className="text-2xl font-bold">{text.auth.login.title}</h1>
             <p className="text-sm text-balance text-muted-foreground">
-              Enter your email below to login to your account
+              {text.auth.login.description}
             </p>
           </div>
           <Field>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <FieldLabel htmlFor="email">{text.auth.login.emailLabel}</FieldLabel>
             <Input
               id="email"
               type="email"
@@ -60,9 +62,9 @@ export function LoginPage() {
           </Field>
           <Field>
             <div className="flex items-center">
-              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <FieldLabel htmlFor="password">{text.auth.login.passwordLabel}</FieldLabel>
               <a href="#" className="ml-auto text-sm underline-offset-4 hover:underline">
-                Forgot your password?
+                {text.auth.login.forgotPassword}
               </a>
             </div>
             <Input
@@ -76,18 +78,18 @@ export function LoginPage() {
           {message ? <FieldError>{message}</FieldError> : null}
           <Field>
             <Button type="submit" disabled={formState.isSubmitting}>
-              Login
+              {text.auth.login.submit}
             </Button>
           </Field>
-          <FieldSeparator>Or continue with</FieldSeparator>
+          <FieldSeparator>{text.auth.login.separator}</FieldSeparator>
           <Field>
             <Button variant="outline" type="button">
-              Login with GitHub
+              {text.auth.login.github}
             </Button>
             <FieldDescription className="text-center">
-              Don&apos;t have an account?{' '}
+              {text.auth.login.noAccount}{' '}
               <Link to="/signup" className="underline underline-offset-4">
-                Sign up
+                {text.auth.login.signupLink}
               </Link>
             </FieldDescription>
           </Field>
