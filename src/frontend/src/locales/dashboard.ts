@@ -6,7 +6,7 @@ export const dashboard = {
     analytics: 'Analytics',
     projects: 'Projects',
     team: 'Team',
-    search: 'Search',
+    command: 'Command',
     help: 'Get Help',
     settings: 'Settings',
   },

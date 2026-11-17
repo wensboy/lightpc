@@ -1,0 +1,40 @@
+// Account holds the labels of the account dialog shell and its sections.
+export const account = {
+  title: 'Account',
+  description: 'Manage your account profile and security.',
+  tabs: {
+    profile: 'Profile',
+    security: 'Security',
+  },
+  editMode: 'Edit mode',
+  clear: 'Clear fields',
+  profile: {
+    groupTitle: 'Basic profile',
+    uidLabel: 'UID',
+    uidPlaceholder: 'Immutable identifier',
+    nameLabel: 'Username',
+    namePlaceholder: 'Your display name',
+    accountLabel: 'Account',
+    accountPlaceholder: 'Account identifier',
+    avatarLabel: 'Avatar',
+    avatarHint: 'Click the avatar to upload an image',
+    avatarFallback: 'M',
+  },
+  security: {
+    groupTitle: 'Password',
+    oldLabel: 'Current password',
+    oldPlaceholder: 'Enter your current password',
+    newLabel: 'New password',
+    newPlaceholder: 'At least 8 characters',
+    checkLabel: 'Confirm password',
+    checkPlaceholder: 'Repeat the new password',
+  },
+  errors: {
+    uidRequired: 'UID is required.',
+    nameRequired: 'Username is required.',
+    accountRequired: 'Account is required.',
+    oldPasswordRequired: 'Current password is required.',
+    shortPassword: 'Password must be at least 8 characters long.',
+    passwordMismatch: 'The two passwords do not match.',
+  },
+}
