@@ -4,22 +4,33 @@
 
 ## Tech
 
-- **Core framework**: React 19.3+
-- **Language**: TypeScript 5.x (Strict Mode)
-- **Build tool**: Vite 8.x
-- **Styling**: Tailwind CSS v4.x
-- **UI components**: shadcn/ui
-- **State management**: Zustand v5 + React Context
-- **Forms**: React Hook Form v7 + Zod v4
-- **Code style**: Biome
-- **Package manager**: pnpm 10.x+ (content-addressable storage and strict dependency isolation)
-- **CI install mode**: `--frozen-lockfile` (detected automatically in CI)
-- **Dependency governance**: `pnpm-workspace.yaml` (overrides, peerDependencyRules)
-- **Lifecycle safety**: `pnpm approve-builds` (dependency build scripts are blocked by default)
-- **Mock strategy**: dependency injection (DI) with interception at the service layer
-- **Mock tooling**: Vitest (unit-test mocks) / MSW (for occasional HTTP requests) / a custom wrapper for Wails bridge mocks
-- **Data validation**: Zod (reuse the schemas of real business models)
-- **Environment control**: Vite environment variables (`import.meta.env.MODE` / `.env.development`)
+- Core Stack
+  - Core framework: React 19.3+
+  - Language: TypeScript 5.x (Strict Mode)
+  - Build tool: Vite 8.x
+  - Styling: Tailwind CSS v4.x
+  - UI components: shadcn/ui
+  - State management: Zustand v5 + React Context
+  - Forms: React Hook Form v7 + Zod v4
+  - Code style: Biome
+
+- Toolchain & CI
+  - Package manager: pnpm 10.x+ (content-addressable storage and strict dependency isolation)
+  - CI install mode: `--frozen-lockfile` (detected automatically in CI)
+  - Dependency governance: `pnpm-workspace.yaml` (overrides, peerDependencyRules)
+  - Lifecycle safety: `pnpm approve-builds` (dependency build scripts are blocked by default)
+
+- Mock System
+  - Mock strategy: dependency injection (DI) with interception at the service layer
+  - Mock tooling: Vitest (unit-test mocks) / MSW (for occasional HTTP requests) / a custom wrapper for Wails bridge mocks
+  - Data validation (Mock): Zod (reuse the schemas of real business models)
+  - Environment control: Vite environment variables (`import.meta.env.MODE` / `.env.development`)
+
+- Text & i18n
+  - Approach (Text): a lightweight, strongly typed dictionary with room for partial i18n extension
+  - Implementation (Text): TypeScript constant enums/dictionaries plus a custom hook (`useText`)
+  - Data validation (Text): Zod (validate the types of dynamic interpolation arguments)
+  - Interpolation engine: a lightweight interpolation library (such as `interpolate` or plain template-string replacement)
 
 ## Must
 
@@ -38,6 +49,12 @@
 13. Use an environment variable (such as `VITE_ENABLE_MOCK=true`) as the global mock switch. The service layer loads mock implementations from `src/mocks/` only when the flag is explicitly enabled in a development or test environment.
 14. Ensure the shape of mock data, including field types and nesting, passes the real Zod schema. Adding or removing mock fields must be accompanied by the corresponding schema update.
 15. When removing a feature, delete its mock files under `src/mocks/` in the same change and state this in the PR description.
+16. Centralise all static text in the system — including but not limited to page titles, button labels, form labels, toast messages, empty-state hints and confirmation dialogs — under `src/locales/` or `src/constants/texts/`.
+17. Split the text dictionary by domain or module (such as `auth.ts`, `dashboard.ts`, `common.ts`) and export it through a single entry file (such as `index.ts`); never maintain one giant dictionary with hundreds of keys in a single file.
+18. Make dictionary keys highly readable with the `module.component.meaning` namespace convention (for example `auth.login.submitBtn`).
+19. In React components, inject and read text through a shared hook (such as `const t = useText()`) or a strongly typed helper so TypeScript can provide completion and compile-time checks.
+20. For text with dynamic variables (such as `Welcome back, {name}`), use a functional dictionary with parameter interpolation and constrain the argument types strictly with Zod or TS generics.
+21. Handle the mapping of `Error Code` values returned by the Go backend in one place. The backend returns only a code; the front end translates it into a readable localised message through the dictionary.
 
 ## Must Not
 
@@ -57,6 +74,9 @@
 14. Bundle mock dependencies (such as MSW or faker.js) or mock configuration into production. A `wails build` artifact must never contain any mock code.
 15. Hard-code real, sensitive user information or secrets in mock data, even in test environments. Use generators such as faker or sanitised static fixtures instead.
 16. Use mocks with serious side effects, such as writing to a real database or triggering a paid external API.
+17. Hard-code user-facing strings in `.tsx` components or any UI logic (`<button>Submit</button>` and `placeholder="Enter your username"` are both violations).
+18. Inline complex conditional text assembly in components (such as `isVip ? 'VIP' : 'Regular' + ' member'`); move it into a computed property of the dictionary or a dedicated formatter.
+19. Rely on string literals as conditions for business logic (such as `if (text === 'Success')`); business logic must use a dedicated enum or status code, while text is display only.
 
 ## SHOULD
 
@@ -75,6 +95,10 @@
 13. Provide a dedicated `MockEventService` for Wails' event system (backend-to-WebView push). It lets the frontend trigger event streams without the Go backend, so UI response logic can be tested end to end.
 14. For external HTTP requests that do not cross the Wails bridge, intercept them at the network layer with MSW (Mock Service Worker) to keep the request path consistent.
 15. Split mock files by feature (such as `auth.mock.ts` and `dashboard.mock.ts`) to mirror the `src/features/` layout.
+16. Use a dictionary structure that combines flat and nested entries. For example `Common.Confirm` for global actions and `Pages.Auth.Login.Title` for a specific page.
+17. Reserve an interface for future i18n expansion. Even if only Chinese is supported today, design the top level as `{ 'zh-CN': {...}, 'en-US': {...} }` so `react-i18next` can be plugged in later.
+18. Provide dedicated static text for mocks. Fixture data under `src/mocks/` (names, emails, addresses, and so on) should also come from a unified mock dictionary to keep the front/end contract consistent.
+19. Lazy load long text such as terms of service or a privacy policy so the main bundle stays small.
 
 ## SHOULD NOT
 
@@ -90,3 +114,6 @@
 10. Write multiple conflicting mocks for the same endpoint in components or services. For complex scenarios, use a parameterised mock factory instead.
 11. Introduce a heavy dependency purely to generate mock data, such as importing all locale packs from `@faker-js/faker`. Import selectively or use a lightweight generator.
 12. Rely on manually changing global state in the browser console to switch mock data. Switch through controlled code configuration or a development-only UI panel.
+13. Pull in a heavy full i18n runtime just for simple text replacement. In a client-only Wails app, prefer a lightweight plain-TS dictionary.
+14. Mix text keys from different domains in one file, which causes meaningless Git conflicts (for example changing a Dashboard copy produces a diff in the Auth module).
+15. Execute unescaped HTML inside text interpolation. If rich text must be rendered, use `dangerouslySetInnerHTML` explicitly and sanitise it with DOMPurify; never insert user input directly into an interpolation template.
