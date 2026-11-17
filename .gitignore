@@ -3,4 +3,5 @@
 .claude/
 .codex/
 test/
-*.db
+*.db.agents/
+skills-lock.json
