@@ -53,7 +53,7 @@ EngineRuntime.Exit: 取走并清空 execStack, 逆序 Stop, 逐个 emit stop/err
 | `Stop` | `Close`, 状态 `Stopped` | 同 |
 | `Restart` | 复用保存的 ectx 重新 `Init` | 同 |
 
-- FS 的 root 来自 `default.runtime.store.root`(`~` 经 `os.UserHomeDir` 展开), 权限位来自 `fs.fileMode` / `fs.dirMode`.
+- FS 的 root 来自 `default.runtime.store.root`, 由 `internal/path` 的 `Parse` 解析(`local://~/.config/lightpc/` 展开 `~` 并转绝对路径), 权限位来自 `fs.fileMode` / `fs.dirMode`.
 - `ServiceRuntime.Run` 先把 `EngineRuntime.registry` 快照为 `ServiceContext.Engines`, 再逐个 `Init`.
 - `AppRuntime.Exit` 顺序相反: 先 `ServiceRuntime.Exit` 再 `EngineRuntime.Exit`.
 
@@ -81,3 +81,7 @@ EngineRuntime.Exit: 取走并清空 execStack, 逆序 Stop, 逐个 emit stop/err
 - store 的默认值统一由 `context.AssignIfZero` 在 `Init` 内联应用, `New` 阶段不写死任何默认值.
 - `EngineDep(group, name)` 统一依赖 key 的拼接: `group` 为空返回空串, `name` 为空返回 `group`, 否则返回 `group.name`; 注册、依赖解析与 `EngineContext.Engines` 的 key 都复用该函数.
 - `store.StoreFs` / `store.StoreDb` 与 `log.LogDirect` / `log.LogFanout` / `log.LogPattern` 均由 `EngineDep` 生成, 引擎的 `Deps()` 直接引用这些常量而不是手写字符串.
+- `internal/path` 是纯函数、无状态的路径解析包, 约定所有文件性质资源统一写作 `proto://<source-path>`: `local` 解析为绝对路径, `embed` 保留斜杠分隔且不带前导斜杠的相对路径; 未知 proto 或空 embed 路径返回 `ErrUnsupported`.
+- `FS.resolve` 对显式 `local://` 的路径先用 `path.Relative` 锚定到 root, 越界返回 `ErrKeyEscape`; 不带 proto 的虚拟路径仍按原逻辑相对 root 解析, 因此调用方既可以传 `local://...`, 也可以传 `logs/a.log`.
+- `FS.embedTarget` 复用 `path.Parse` 判定 `embed://`, 再按 `EmbedContext` 的最长前缀键选择内嵌文件系统; 写入类操作对 embed 路径统一返回 `ErrKeyReadOnly`.
+- 声明顺序遵循 SHOULD 12: 文件内自上而下为 `const` -> `var` -> `type` -> 导出函数 -> 未导出函数, 类型与其自身方法可交叉定义.
