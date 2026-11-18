@@ -12,6 +12,7 @@ import (
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 	interLog "github.com/wensboy/lightpc/backend/internal/log"
+	"github.com/wensboy/lightpc/backend/internal/path"
 )
 
 // logEntry is one configured logger: a name, its level and the outputs it writes to.
@@ -96,27 +97,23 @@ func buildHandlers(entry logEntry) []slog.Handler {
 		serializerOption := interLog.SerializerOption{AddSource: output.Serializer.EnableSource}
 
 		if entry.handler == "file" {
-			path := output.Path
-			if strings.HasPrefix(path, "~") {
-				home, err := os.UserHomeDir()
-				if err != nil {
-					slog.Default().Warn("log output skipped", "path", path, "err", interError.Retrieve(log.ErrKeyHandlerFailed).Wrap(err))
-					continue
-				}
-				path = filepath.Join(home, strings.TrimPrefix(path, "~"))
-			}
-			if path == "" {
+			if output.Path == "" {
 				slog.Default().Warn("log output skipped", "name", entry.name, "err", interError.Retrieve(log.ErrKeyInvalidItem))
 				continue
 			}
-			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-				slog.Default().Warn("log output skipped", "path", path, "err", interError.Retrieve(log.ErrKeyHandlerFailed).Wrap(err))
+			target, err := path.Parse(output.Path)
+			if err != nil || target.IsEmbed() {
+				slog.Default().Warn("log output skipped", "path", output.Path, "err", interError.Retrieve(log.ErrKeyHandlerFailed).Wrap(err))
+				continue
+			}
+			if err := os.MkdirAll(filepath.Dir(target.Path), 0o755); err != nil {
+				slog.Default().Warn("log output skipped", "path", target.Path, "err", interError.Retrieve(log.ErrKeyHandlerFailed).Wrap(err))
 				continue
 			}
 			handlers = append(handlers, interLog.NewFileHandler(interLog.FileOption{
 				SerializerOption: serializerOption,
 				Serializer:       output.Serializer.Type,
-				Path:             path,
+				Path:             target.Path,
 				Mode:             int(interLog.ParseMode(output.Mode)),
 			}).WithLevel(entry.level))
 			continue

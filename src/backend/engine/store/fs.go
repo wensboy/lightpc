@@ -18,6 +18,7 @@ import (
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	"github.com/wensboy/lightpc/backend/domain/engine/store"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
+	"github.com/wensboy/lightpc/backend/internal/path"
 )
 
 var (
@@ -98,18 +99,11 @@ func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 	f.ectx = eCtx
 	if eCtx.AppCtx != nil && eCtx.AppCtx.ConfigContext != nil {
 		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.store.root", &f.root, "", func(text string) (string, bool) {
-			if strings.HasPrefix(text, "~") {
-				home, err := os.UserHomeDir()
-				if err != nil {
-					return "", false
-				}
-				text = filepath.Join(home, strings.TrimPrefix(text, "~"))
-			}
-			abs, err := filepath.Abs(text)
-			if err != nil {
+			target, err := path.Parse(text)
+			if err != nil || target.IsEmbed() {
 				return "", false
 			}
-			return abs, true
+			return target.Path, true
 		})
 		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.store.fs.fileMode", &f.fileMode, 0, func(text string) (fs.FileMode, bool) {
 			mode, err := strconv.ParseUint(text, 0, 32)
@@ -163,13 +157,6 @@ func (f *FS) Restart() error {
 
 // Stop implements domainEngine.Engine by closing the store.
 func (f *FS) Stop() error { return f.Close() }
-
-// setState stores the engine state.
-func (f *FS) setState(state domainEngine.EngineState) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.state = state
-}
 
 // Validate checks that root exists and is a directory, then normalizes it to a real absolute path.
 // It must be called before concurrent use.
@@ -415,15 +402,12 @@ func (f *FS) rootAndModes() (string, fs.FileMode, fs.FileMode, error) {
 	return f.root, f.fileMode, f.dirMode, nil
 }
 
-// embedPrefix marks a path that is served from an embedded file system instead of root.
-const embedPrefix = "embed://"
-
 // embedTarget resolves p to an embedded file system and the path inside it. The longest matching
 // EmbedContext key wins, so "/frontend/dist" is preferred over "/frontend". Reads use the returned
 // pair, writes must be rejected because embedded content is immutable.
 func (f *FS) embedTarget(p string) (*embed.FS, string, bool) {
-	rest, found := strings.CutPrefix(p, embedPrefix)
-	if !found {
+	target, err := path.Parse(p)
+	if err != nil || !target.IsEmbed() {
 		return nil, "", false
 	}
 
@@ -434,9 +418,9 @@ func (f *FS) embedTarget(p string) (*embed.FS, string, bool) {
 		return nil, "", false
 	}
 
-	rest = strings.TrimPrefix(rest, "/")
+	rest := target.Path
 	var (
-		target  *embed.FS
+		found   *embed.FS
 		inner   string
 		matched int
 	)
@@ -451,10 +435,10 @@ func (f *FS) embedTarget(p string) (*embed.FS, string, bool) {
 			continue
 		}
 		if len(prefix) > matched {
-			target, inner, matched = fsys, rest, len(prefix)
+			found, inner, matched = fsys, rest, len(prefix)
 		}
 	}
-	return target, inner, target != nil
+	return found, inner, found != nil
 }
 
 // mapEmbedErr translates io/fs errors into store errors so callers can use errors.Is.
@@ -468,10 +452,28 @@ func mapEmbedErr(err error) error {
 	return err
 }
 
-// resolve maps the virtual path p to an absolute path below root.
+// resolve maps the virtual path p to an absolute path below root. A p that carries an explicit proto
+// is anchored at root first, so configured local:// values and plain store paths share one entry point.
 func resolve(root, p string) (string, error) {
-	clean := filepath.Clean("/" + p)
-	rel := strings.TrimPrefix(clean, string(filepath.Separator))
+	target, err := path.Parse(p)
+	if err != nil {
+		return "", interError.Retrieve(store.ErrKeyInvalid).Wrap(err)
+	}
+	if target.IsEmbed() {
+		return "", interError.Retrieve(store.ErrKeyInvalid)
+	}
+
+	rel := p
+	if target.Explicit {
+		var ok bool
+		rel, ok = path.Relative(root, target.Path)
+		if !ok {
+			return "", interError.Retrieve(store.ErrKeyEscape)
+		}
+	}
+
+	clean := filepath.Clean("/" + rel)
+	rel = strings.TrimPrefix(clean, string(filepath.Separator))
 	abs := filepath.Join(root, rel)
 
 	if !withinRoot(root, abs) {
@@ -508,4 +510,11 @@ func mapFSErr(err error) error {
 	default:
 		return err
 	}
+}
+
+// setState stores the engine state.
+func (f *FS) setState(state domainEngine.EngineState) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.state = state
 }

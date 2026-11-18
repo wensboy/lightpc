@@ -37,6 +37,11 @@ type SQL struct {
 	closed bool
 }
 
+// sqlTx adapts *sqlx.Tx to store.Tx.
+type sqlTx struct {
+	tx *sqlx.Tx
+}
+
 // NewSQL builds a SQL instance. Callers must call Validate before concurrent use.
 func NewSQL(opts ...SQLOption) *SQL {
 	s := &SQL{state: domainEngine.EnginePending}
@@ -108,13 +113,6 @@ func (s *SQL) Restart() error {
 
 // Stop implements domainEngine.Engine by closing the store.
 func (s *SQL) Stop() error { return s.Close() }
-
-// setState stores the engine state.
-func (s *SQL) setState(state domainEngine.EngineState) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.state = state
-}
 
 // Validate checks that the connection pool is configured. It must be called before concurrent use.
 func (s *SQL) Validate() error {
@@ -192,24 +190,6 @@ func (s *SQL) Close() error {
 	return nil
 }
 
-// snapshot snapshots the pool and the timeout, and reports an error when SQL is invalid or closed.
-func (s *SQL) snapshot() (*sqlx.DB, time.Duration, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.closed {
-		return nil, 0, interError.Retrieve(store.ErrKeyClosed)
-	}
-	if s.db == nil {
-		return nil, 0, interError.Retrieve(store.ErrKeyInvalid).Wrap(errors.New("db not configured"))
-	}
-	return s.db, s.queryTimeout, nil
-}
-
-// sqlTx adapts *sqlx.Tx to store.Tx.
-type sqlTx struct {
-	tx *sqlx.Tx
-}
-
 // Dispatch implements store.Dispatcher with the same semantics as SQL.Dispatch.
 func (t *sqlTx) Dispatch(ctx context.Context, cmd store.Command) (store.Response, error) {
 	switch c := cmd.(type) {
@@ -235,3 +215,23 @@ func (t *sqlTx) Commit() error { return t.tx.Commit() }
 
 // Rollback implements store.Tx.Rollback.
 func (t *sqlTx) Rollback() error { return t.tx.Rollback() }
+
+// setState stores the engine state.
+func (s *SQL) setState(state domainEngine.EngineState) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.state = state
+}
+
+// snapshot snapshots the pool and the timeout, and reports an error when SQL is invalid or closed.
+func (s *SQL) snapshot() (*sqlx.DB, time.Duration, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.closed {
+		return nil, 0, interError.Retrieve(store.ErrKeyClosed)
+	}
+	if s.db == nil {
+		return nil, 0, interError.Retrieve(store.ErrKeyInvalid).Wrap(errors.New("db not configured"))
+	}
+	return s.db, s.queryTimeout, nil
+}
