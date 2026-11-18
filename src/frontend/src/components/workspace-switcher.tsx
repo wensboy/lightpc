@@ -20,25 +20,25 @@ import {
 } from "@/components/ui/sidebar"
 import { ChevronsUpDownIcon, PlusIcon } from "lucide-react"
 
-export type TeamSwitcherLabels = {
-  teams: string
-  addTeam: string
+export type WorkspaceSwitcherLabels = {
+  workspaces: string
+  addWorkspace: string
 }
 
-export function TeamSwitcher({
-  teams,
+export function WorkspaceSwitcher({
+  workspaces,
   labels,
 }: {
-  teams: {
+  workspaces: {
     name: string
     logo: React.ReactNode
     plan: string
   }[]
-  labels: TeamSwitcherLabels
+  labels: WorkspaceSwitcherLabels
 }) {
   const { isMobile } = useSidebar()
-  const [activeTeam, setActiveTeam] = React.useState(teams[0])
-  if (!activeTeam) {
+  const [activeWorkspace, setActiveWorkspace] = React.useState(workspaces[0])
+  if (!activeWorkspace) {
     return null
   }
   return (
@@ -54,11 +54,11 @@ export function TeamSwitcher({
             }
           >
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-              {activeTeam.logo}
+              {activeWorkspace.logo}
             </div>
             <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-              <span className="truncate font-medium">{activeTeam.name}</span>
-              <span className="truncate text-xs">{activeTeam.plan}</span>
+              <span className="truncate font-medium">{activeWorkspace.name}</span>
+              <span className="truncate text-xs">{activeWorkspace.plan}</span>
             </div>
             <ChevronsUpDownIcon className="ml-auto group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>
@@ -70,18 +70,18 @@ export function TeamSwitcher({
           >
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-xs text-muted-foreground">
-                {labels.teams}
+                {labels.workspaces}
               </DropdownMenuLabel>
-              {teams.map((team, index) => (
+              {workspaces.map((workspace, index) => (
                 <DropdownMenuItem
-                  key={team.name}
-                  onClick={() => setActiveTeam(team)}
+                  key={workspace.name}
+                  onClick={() => setActiveWorkspace(workspace)}
                   className="gap-2 p-2"
                 >
                   <div className="flex size-6 items-center justify-center rounded-md border">
-                    {team.logo}
+                    {workspace.logo}
                   </div>
-                  {team.name}
+                  {workspace.name}
                   <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
                 </DropdownMenuItem>
               ))}
@@ -93,7 +93,7 @@ export function TeamSwitcher({
                   <PlusIcon className="size-4" />
                 </div>
                 <div className="font-medium text-muted-foreground">
-                  {labels.addTeam}
+                  {labels.addWorkspace}
                 </div>
               </DropdownMenuItem>
             </DropdownMenuGroup>

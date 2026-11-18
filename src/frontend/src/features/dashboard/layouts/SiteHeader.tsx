@@ -6,10 +6,9 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 // routeTitles maps a pathname to its dictionary key; the header never carries a literal title.
 const routeTitles = {
   '/': 'dashboard',
-  '/lifecycle': 'lifecycle',
   '/analytics': 'analytics',
-  '/projects': 'projects',
-  '/team': 'team',
+  '/log': 'log',
+  '/performance': 'performance',
 } as const
 
 type RouteTitle = keyof typeof routeTitles

@@ -2,7 +2,7 @@ import { GalleryVerticalEndIcon } from 'lucide-react'
 import { NavMain } from '@/components/nav-main'
 import { NavSecondary } from '@/components/nav-secondary'
 import { NavUser } from '@/components/nav-user'
-import { TeamSwitcher } from '@/components/team-switcher'
+import { WorkspaceSwitcher } from '@/components/workspace-switcher'
 import {
   Sidebar,
   SidebarContent,
@@ -10,6 +10,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar'
+import { useLogout } from '@/features/auth/useLogout'
 import { buildPrimaryNav, buildSecondaryNav } from '@/features/dashboard/config/nav'
 import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
 import { useText } from '@/locales'
@@ -22,12 +23,13 @@ export function AppSidebar() {
   const openSettings = useDialogStore((state) => state.openSettings)
   const openHelp = useDialogStore((state) => state.openHelp)
   const openCommand = useDialogStore((state) => state.openCommand)
+  const logout = useLogout()
   const openAccount = useDialogStore((state) => state.openAccount)
   const openNotifications = useNotificationStore((state) => state.openSheet)
   const hasUnreadNotifications = useNotificationStore((state) => state.unread)
   const doNotDisturb = useNotificationStore((state) => state.doNotDisturb)
 
-  const teams = [
+  const workspaces = [
     {
       name: text.dashboard.workspace.primary,
       logo: <GalleryVerticalEndIcon className="size-4" />,
@@ -49,9 +51,12 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <TeamSwitcher
-          teams={teams}
-          labels={{ teams: text.dashboard.workspace.teams, addTeam: text.dashboard.workspace.addTeam }}
+        <WorkspaceSwitcher
+          workspaces={workspaces}
+          labels={{
+            workspaces: text.dashboard.workspace.workspaces,
+            addWorkspace: text.dashboard.workspace.addWorkspace,
+          }}
         />
       </SidebarHeader>
       <SidebarContent>
@@ -79,7 +84,6 @@ export function AppSidebar() {
           user={user}
           labels={{
             account: text.dashboard.user.account,
-            billing: text.dashboard.user.billing,
             notifications: text.dashboard.user.notifications,
             logout: text.dashboard.user.logout,
           }}
@@ -88,6 +92,7 @@ export function AppSidebar() {
           }
           onAccount={openAccount}
           onNotifications={openNotifications}
+          onLogout={() => void logout()}
         />
       </SidebarFooter>
       <SidebarRail />

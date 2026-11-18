@@ -18,11 +18,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { EllipsisVerticalIcon, CircleUserRoundIcon, CreditCardIcon, BellIcon, BellDotIcon, BellOffIcon, LogOutIcon } from "lucide-react"
+import { EllipsisVerticalIcon, CircleUserRoundIcon, BellIcon, BellDotIcon, BellOffIcon, LogOutIcon } from "lucide-react"
 
 export type NavUserLabels = {
   account: string
-  billing: string
   notifications: string
   logout: string
 }
@@ -43,6 +42,7 @@ export function NavUser({
   notificationBadge = 'default',
   onAccount,
   onNotifications,
+  onLogout,
 }: {
   user: {
     name: string
@@ -53,6 +53,7 @@ export function NavUser({
   notificationBadge?: NotificationBadge
   onAccount?: () => void
   onNotifications?: () => void
+  onLogout?: () => void
 }) {
   const { isMobile } = useSidebar()
   const NotificationIcon = notificationIcons[notificationBadge]
@@ -107,18 +108,13 @@ export function NavUser({
                 />
                 {labels.account}
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCardIcon
-                />
-                {labels.billing}
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={onNotifications}>
                 <NotificationIcon />
                 {labels.notifications}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={onLogout}>
               <LogOutIcon
               />
               {labels.logout}

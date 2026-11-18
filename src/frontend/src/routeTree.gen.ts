@@ -14,9 +14,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
-import { Route as AppLifecycleRouteImport } from './routes/_app/lifecycle'
-import { Route as AppProjectsRouteImport } from './routes/_app/projects'
-import { Route as AppTeamRouteImport } from './routes/_app/team'
+import { Route as AppLogRouteImport } from './routes/_app/log'
+import { Route as AppPerformanceRouteImport } from './routes/_app/performance'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -42,19 +41,14 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
-const AppLifecycleRoute = AppLifecycleRouteImport.update({
-  id: '/lifecycle',
-  path: '/lifecycle',
+const AppLogRoute = AppLogRouteImport.update({
+  id: '/log',
+  path: '/log',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProjectsRoute = AppProjectsRouteImport.update({
-  id: '/projects',
-  path: '/projects',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTeamRoute = AppTeamRouteImport.update({
-  id: '/team',
-  path: '/team',
+const AppPerformanceRoute = AppPerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -63,17 +57,15 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/analytics': typeof AppAnalyticsRoute
-  '/lifecycle': typeof AppLifecycleRoute
-  '/projects': typeof AppProjectsRoute
-  '/team': typeof AppTeamRoute
+  '/log': typeof AppLogRoute
+  '/performance': typeof AppPerformanceRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/analytics': typeof AppAnalyticsRoute
-  '/lifecycle': typeof AppLifecycleRoute
-  '/projects': typeof AppProjectsRoute
-  '/team': typeof AppTeamRoute
+  '/log': typeof AppLogRoute
+  '/performance': typeof AppPerformanceRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -82,39 +74,23 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/_app/analytics': typeof AppAnalyticsRoute
-  '/_app/lifecycle': typeof AppLifecycleRoute
-  '/_app/projects': typeof AppProjectsRoute
-  '/_app/team': typeof AppTeamRoute
+  '/_app/log': typeof AppLogRoute
+  '/_app/performance': typeof AppPerformanceRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/login'
-    | '/signup'
-    | '/analytics'
-    | '/lifecycle'
-    | '/projects'
-    | '/team'
+  fullPaths: '/' | '/login' | '/signup' | '/analytics' | '/log' | '/performance'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/login'
-    | '/signup'
-    | '/analytics'
-    | '/lifecycle'
-    | '/projects'
-    | '/team'
-    | '/'
+  to: '/login' | '/signup' | '/analytics' | '/log' | '/performance' | '/'
   id:
     | '__root__'
     | '/_app'
     | '/login'
     | '/signup'
     | '/_app/analytics'
-    | '/_app/lifecycle'
-    | '/_app/projects'
-    | '/_app/team'
+    | '/_app/log'
+    | '/_app/performance'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
@@ -161,25 +137,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/lifecycle': {
-      id: '/_app/lifecycle'
-      path: '/lifecycle'
-      fullPath: '/lifecycle'
-      preLoaderRoute: typeof AppLifecycleRouteImport
+    '/_app/log': {
+      id: '/_app/log'
+      path: '/log'
+      fullPath: '/log'
+      preLoaderRoute: typeof AppLogRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/projects': {
-      id: '/_app/projects'
-      path: '/projects'
-      fullPath: '/projects'
-      preLoaderRoute: typeof AppProjectsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/team': {
-      id: '/_app/team'
-      path: '/team'
-      fullPath: '/team'
-      preLoaderRoute: typeof AppTeamRouteImport
+    '/_app/performance': {
+      id: '/_app/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof AppPerformanceRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -187,17 +156,15 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
-  AppLifecycleRoute: typeof AppLifecycleRoute
-  AppProjectsRoute: typeof AppProjectsRoute
-  AppTeamRoute: typeof AppTeamRoute
+  AppLogRoute: typeof AppLogRoute
+  AppPerformanceRoute: typeof AppPerformanceRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
-  AppLifecycleRoute: AppLifecycleRoute,
-  AppProjectsRoute: AppProjectsRoute,
-  AppTeamRoute: AppTeamRoute,
+  AppLogRoute: AppLogRoute,
+  AppPerformanceRoute: AppPerformanceRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

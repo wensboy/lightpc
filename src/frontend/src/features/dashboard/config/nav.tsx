@@ -2,18 +2,17 @@ import {
   ChartBarIcon,
   CircleHelpIcon,
   CommandIcon,
-  FolderIcon,
+  GaugeIcon,
   LayoutDashboardIcon,
-  ListIcon,
+  ScrollTextIcon,
   Settings2Icon,
-  UsersIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Dictionary } from '@/locales'
 
 export type NavLink = {
   title: string
-  to: '/' | '/lifecycle' | '/analytics' | '/projects' | '/team'
+  to: '/' | '/analytics' | '/log' | '/performance'
   icon: ReactNode
 }
 
@@ -28,10 +27,9 @@ export type NavAction = {
 export function buildPrimaryNav(text: Dictionary): NavLink[] {
   return [
     { title: text.dashboard.nav.dashboard, to: '/', icon: <LayoutDashboardIcon /> },
-    { title: text.dashboard.nav.lifecycle, to: '/lifecycle', icon: <ListIcon /> },
     { title: text.dashboard.nav.analytics, to: '/analytics', icon: <ChartBarIcon /> },
-    { title: text.dashboard.nav.projects, to: '/projects', icon: <FolderIcon /> },
-    { title: text.dashboard.nav.team, to: '/team', icon: <UsersIcon /> },
+    { title: text.dashboard.nav.log, to: '/log', icon: <ScrollTextIcon /> },
+    { title: text.dashboard.nav.performance, to: '/performance', icon: <GaugeIcon /> },
   ]
 }
 

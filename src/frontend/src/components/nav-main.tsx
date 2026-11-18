@@ -11,7 +11,7 @@ import {
 export type NavMainItem = {
   title: string
   icon?: ReactNode
-  to: '/' | '/lifecycle' | '/analytics' | '/projects' | '/team'
+  to: '/' | '/analytics' | '/log' | '/performance'
 }
 
 // NavMain renders the primary navigation. Items navigate through the router so the sidebar keeps its
