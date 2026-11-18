@@ -42,6 +42,44 @@ type Engine interface {
 	Stop() error
 }
 
+// EngineHook wraps an engine to expose explicit lifecycle hooks. A nil callback is a no-op, so a caller
+// only provides the hooks it needs.
+type EngineHook struct {
+	Engine
+	PreStart  func(Engine)
+	PostStart func(Engine)
+	PreStop   func(Engine)
+	PostStop  func(Engine)
+}
+
+// Start implements Engine: the pre hook runs before the engine starts and the post hook after it
+// succeeded, so a failing start skips the post hook.
+func (eh *EngineHook) Start() error {
+	callHook(eh.PreStart, eh.Engine)
+	if err := eh.Engine.Start(); err != nil {
+		return err
+	}
+	callHook(eh.PostStart, eh.Engine)
+	return nil
+}
+
+// Stop implements Engine and mirrors Start: a failing stop skips the post hook.
+func (eh *EngineHook) Stop() error {
+	callHook(eh.PreStop, eh.Engine)
+	if err := eh.Engine.Stop(); err != nil {
+		return err
+	}
+	callHook(eh.PostStop, eh.Engine)
+	return nil
+}
+
+// callHook runs hook with engine when the hook is set.
+func callHook(hook func(Engine), engine Engine) {
+	if hook != nil {
+		hook(engine)
+	}
+}
+
 // EngineDep composes the dependency key of an engine with the same algorithm the registry uses.
 // An empty group yields an empty key, an empty name yields the group, otherwise it is group.name.
 func EngineDep(group, name string) string {
