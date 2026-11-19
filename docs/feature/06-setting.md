@@ -6,33 +6,69 @@
 
 ## 对象与接口
 
-- `domain/engine/setting.Setting`: 分层设置中心的契约, 提供 `Layers()` / `Layered(key)` / `Resolve(key)` / `Set(layer, key, value)` / `Load(layer, values)` / `Keys()` / `Flush()`.
-- `domain/engine/setting.Layer`: 单层描述, 由 `Name` / `Mode`(`ModeReadOnly` / `ModeWriteOnly` / `ModeReadWrite`) / `Path` 组成; `Path` 使用 `proto://` 资源约定, 内存层留空.
-- `domain/engine/setting.Entry[T]`: 一份贡献, 记录 `Layer` / `Mode` / `Value`; 泛型只在解析侧有意义, 引擎按 `any` 传递.
-- `domain/service.SettingPayload`: 交付前端的负载, 由 `Schema` / `Values` / `Defaults` 三部分组成.
-- `domain/service.SettingClient`: 前端的调用面, 仅 `Payload()` 与 `Save(key, value)` 两个动作.
-- `engine/settingimpl.Setting`: 契约实现, 内部以 `map[string][]any` 存放每个 key 的分层贡献.
-- `engine/settingimpl.LayersFrom(cfg)`: 从 `default.runtime.setting.layers` 解析层列表, 供引导层注册.
-- `service/setting.SettingService`: 对外服务, 组装 `Payload`, 承接 `Save`, 并经 `store.fs` 读取 schema 资源.
+| 类型 | 位置 | 说明 |
+|---|---|---|
+| `Setting` | `domain/engine/setting` | 分层契约: `Layers` `Layered` `Resolve` `Set` `Load` `Keys` `Flush` |
+| `Layer` | `domain/engine/setting` | `Name` + `Mode`(`ModeReadOnly` / `ModeWriteOnly` / `ModeReadWrite`) + `Path` |
+| `Entry[T]` | `domain/engine/setting` | 一份贡献: `Layer` + `Mode` + `Value`, 泛型仅供解析侧使用 |
+| `SettingPayload` | `domain/service` | 交付前端: `Schema` + `Values` + `Defaults` |
+| `SettingClient` | `domain/service` | `Payload()` + `Save(key, value)` |
+| `Setting` | `engine/setting` | 契约实现, 用 `map[string][]any` 保存每个 key 的分层贡献 |
+| `LayersFrom` | `engine/setting` | 从 `default.runtime.setting.layers` 解析层列表 |
+| `SettingService` | `service/setting` | 组装负载 / 承接保存 / 经 `store.fs` 读 schema 资源 |
+
+```go
+type Layer struct {
+	Name string
+	Mode Mode
+	Path string // proto:// 资源路径, 内存层留空
+}
+```
+
+- 三层职责: `default`(随包发布的 `ro` 层) / `user`(唯一负责持久化的 `rw` 层) / `runtime`(内存层, 恒在顶层).
+- 注册 key 为 `setting.setting`; 依赖只有 `store.fs`.
 
 ## 逻辑
 
-1. **初始化**: `Init` 先对每个文件层调用 `ensureLayer` 补齐资源(`embed://` 只校验, `local://` 建目录并按可写性写入空文档), 再逐层 `loadLayer` 并启动 watch; `runtime` 层若未注册则追加到顶层.
-2. **读取**: `Resolve` 从最高优先级层向下找第一个贡献; `Keys` 汇总所有有贡献的 key 并升序返回.
-3. **写入**: `Set` 把值写入指定层, 目标为 `runtime` 时置脏标记; 同 key 的覆盖关系完全由层序保证, 引擎不做额外比较.
-4. **下沉**: `Flush` 只把 `runtime` 层的贡献合并进 `user` 层, 用 `nest` 还原成嵌套文档写盘, 随后清空 `runtime` 并清除脏标记.
-5. **持久化触发**: 手动(`Save` 后异步下沉, 不阻塞 UI)、间隔(`watchFlush` 每 30s 检查脏标记)、退出(`Stop` 前兜底一次).
-6. **外部变更**: watch 发现 mtime 变化后 `loadLayer` 只替换该层的贡献, 并在锁外逐 key `notify`, 以 `setting::changed` 事件广播.
-7. **对外服务**: `Payload` 返回 `schema`(取自 `default.runtime.setting.schema` 指向的 `embed://` 资源) + `values`(引擎聚合, 已嵌套还原) + `defaults`(`default` 层快照); `Save(key, value)` 接受点路径, 写入 `runtime` 后异步下沉.
+```
+Init
+  ├─ RegisterAll(setting.Errors)
+  ├─ runtime 层未注册 => 追加到顶层
+  └─ 逐个文件层: ensureLayer -> loadLayer -> watch
+
+ensureLayer(layer)
+  ├─ embed:// => 只 Stat 校验存在
+  ├─ local:// => 缺失则 MkdirAll 父目录, 可写层再写入 "{}\n"
+  └─ 失败 => 记录警告并跳过该层
+
+Resolve(key)      // 从最高优先级层向下找第一个贡献
+
+Set(layer, key, value)
+  ├─ 校验层存在且可写
+  ├─ putContribution
+  └─ 目标层是 runtime => dirty = true
+
+Flush
+  ├─ 未 dirty => 直接返回
+  ├─ 只取 runtime 的贡献, 合并进 user 层
+  ├─ nest 还原嵌套文档 -> store.fs.Put
+  └─ 清空 runtime, 清除 dirty
+
+watch -> loadLayer -> notify(setting::changed)
+```
+
+- 持久化三条触发: `SettingService.Save` 后异步下沉 / `watchFlush` 每 30s 检查脏标记 / `Stop` 前兜底.
+- `Payload` = schema(取自 `default.runtime.setting.schema`) + values(引擎聚合, 已嵌套还原) + defaults(`default` 层快照).
+- `Save(key, value)` 只接受点路径, 写入 `runtime` 后异步下沉, 前端因此可以按叶子提交, 不必回传整组.
 
 ## 注意点
 
 - 层优先级由数组顺序决定, 索引越大越高, 配置按升序书写, 不要依赖层名字母序.
 - `runtime` 层不写进配置: 它是"未保存编辑"的载体, 由引擎在 `Init` 阶段自建.
-- 文件是嵌套结构而引擎按点路径寻址, 两者靠 `nest` / `flatten` 互转; 改动任一侧都要同步另一侧, 否则读写不对称.
-- `Deps()` 只声明 `store.fs`. 依赖可选引擎(如 `log.direct`)会在该引擎缺席时让整条管线的依赖解析失败, 后续引擎全部跳过 Init.
-- `Flush` 只搬 `runtime` 的 key, 用户层里未被编辑的键不会被重写; 这也是并发编辑与文件重载可以各自独立的原因.
-- `Payload` 不做清洗: 用户层的非法值原样送达前端, 由渲染层回退到 `defaults` 并把它提升回 `runtime`, 形成闭环.
+- 文件是嵌套结构而引擎按点路径寻址, 两者靠 `nest` / `flatten` 互转, 改动任一侧都要同步另一侧.
+- `Deps()` 只声明 `store.fs`. 依赖可选引擎(如 `log.direct`)会在该引擎缺席时让整条管线在依赖解析阶段 `return`, 后续引擎全部跳过 Init.
+- `Flush` 只搬 `runtime` 的 key, 用户层里未被编辑的键不会被重写, 因此并发编辑与文件重载互不干扰.
+- `Payload` 不做清洗: 用户层的非法值原样送达前端, 由渲染层回退到 `defaults` 并提升回 `runtime`, 形成闭环.
 
 ## 细节
 
