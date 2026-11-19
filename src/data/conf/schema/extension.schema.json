@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lightpc.local/schema/extension.schema.json",
+  "title": "LightPC settings meta-schema",
+  "description": "Documents the renderer keywords a setting schema may use. Editors map setting.schema.json to this file, so x-drived and x-options are completed and documented instead of being reported as unknown properties. The standard keywords stay unrestricted on purpose, otherwise every type, properties or required would be flagged.",
+  "$vocabulary": {
+    "https://json-schema.org/draft/2020-12/vocab/core": true,
+    "https://json-schema.org/draft/2020-12/vocab/applicator": true,
+    "https://json-schema.org/draft/2020-12/vocab/validation": true,
+    "https://json-schema.org/draft/2020-12/vocab/meta-data": true,
+    "https://json-schema.org/draft/2020-12/vocab/format-annotation": true,
+    "https://json-schema.org/draft/2020-12/vocab/content": true,
+    "https://lightpc.local/vocab/renderer": false
+  },
+  "type": ["object", "boolean"],
+  "properties": {
+    "x-drived": {
+      "type": "boolean",
+      "description": "Marks a derived node: it backs other fields and is never rendered."
+    },
+    "x-options": {
+      "type": "object",
+      "description": "Where a select takes its options from. The referenced array is a sibling of the annotated node.",
+      "additionalProperties": false,
+      "required": ["from"],
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Sibling array property holding the options."
+        },
+        "field": {
+          "type": "string",
+          "description": "Property of each array entry used as the option label; omit it when the entries are already strings."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lightpc.local/schema/setting.schema.json",
+  "title": "LightPC Settings Schema",
+  "description": "As the sole standard and specification for all settings, everything adheres to a unified standard.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "appearence",
+    "general",
+    "account",
+    "advanced"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this schema.",
+      "x-drived": true
+    },
+    "appearence": {
+      "type": "object",
+      "description": "Visual preferences: color mode, corner radius, palette and typography.",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "radius",
+        "theme",
+        "font"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "Color mode requested by the user.",
+          "enum": [
+            "light",
+            "dark",
+            "system"
+          ]
+        },
+        "radius": {
+          "$ref": "#/$defs/size",
+          "description": "Corner radius applied to surfaces."
+        },
+        "theme": {
+          "type": "object",
+          "description": "Active palette and the palettes available to pick from.",
+          "additionalProperties": false,
+          "required": [
+            "default",
+            "palettes"
+          ],
+          "properties": {
+            "default": {
+              "type": "string",
+              "description": "Name of the palette used when nothing else is chosen.",
+              "minLength": 1,
+              "x-options": {
+                "from": "palettes",
+                "field": "name"
+              }
+            },
+            "palettes": {
+              "type": "array",
+              "description": "Every palette the user can switch to. Derived data: it backs theme.default and the palette lookup.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "light",
+                  "dark"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "light": {
+                    "$ref": "#/$defs/variables",
+                    "description": "Design tokens applied in light mode."
+                  },
+                  "dark": {
+                    "$ref": "#/$defs/variables",
+                    "description": "Design tokens applied in dark mode."
+                  }
+                }
+              },
+              "x-drived": true
+            }
+          },
+          "$comment": "Uses rendererExtension: palettes is x-drived and default pulls its options from it."
+        },
+        "font": {
+          "type": "object",
+          "description": "Typography preferences.",
+          "additionalProperties": false,
+          "required": [
+            "default",
+            "useSystem",
+            "builtin",
+            "size"
+          ],
+          "properties": {
+            "default": {
+              "type": "string",
+              "description": "Family used when nothing else is chosen.",
+              "minLength": 1,
+              "x-options": {
+                "from": "builtin"
+              }
+            },
+            "size": {
+              "$ref": "#/$defs/size",
+              "description": "Base font size."
+            },
+            "useSystem": {
+              "type": "boolean",
+              "description": "Include the fonts installed on the machine in the picker."
+            },
+            "builtin": {
+              "type": "array",
+              "description": "Fonts shipped with the application. Derived data: it backs font.default.",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "x-drived": true
+            }
+          }
+        }
+      }
+    },
+    "general": {
+      "type": "object",
+      "description": "Preferences that are not tied to a single feature.",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "availableLanguages"
+      ],
+      "properties": {
+        "language": {
+          "type": "string",
+          "description": "Interface language.",
+          "minLength": 1,
+          "x-options": {
+            "from": "availableLanguages",
+            "field": "name"
+          }
+        },
+        "availableLanguages": {
+          "type": "array",
+          "description": "Locales the interface can switch to. Derived data: it backs general.language.",
+          "x-drived": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "BCP 47 locale identifier.",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "description": "Name shown in the picker.",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "account": {
+      "$ref": "#/$defs/section",
+      "description": "Reserved for account preferences."
+    },
+    "advanced": {
+      "$ref": "#/$defs/section",
+      "description": "Reserved for advanced preferences."
+    }
+  },
+  "$defs": {
+    "size": {
+      "type": "string",
+      "description": "A length with an explicit unit, such as '8 px' or '1.5 rem'.",
+      "pattern": "^[0-9]+(\\.[0-9]+)?\\s?(px|rem|em)$"
+    },
+    "variables": {
+      "type": "object",
+      "description": "Design tokens keyed by CSS custom property; values are raw CSS colors.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "section": {
+      "type": "object",
+      "description": "An open section whose keys are defined once the feature lands."
+    }
+  }
+}

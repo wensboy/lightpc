@@ -9,7 +9,7 @@
     },
     "runtime": {
         "store": {
-            "root": "~/.config/lightpc/",
+            "root": "local://~/.config/lightpc/",
             "fs": {
                 "fileMode": "0o644",
                 "dirMode": "0o755"
@@ -28,7 +28,7 @@
                                 "type": "json",
                                 "enableSource": false
                             },
-                            "path": "~/.config/lightpc/logs/debug.log",
+                            "path": "local://~/.config/lightpc/logs/debug.log",
                             "mode": "0o644"
                         }
                     ]
@@ -49,6 +49,21 @@
                 }
             ],
             "pattern": []
+        },
+        "setting": {
+            "schema": "embed://data/conf/schema/setting.schema.json",
+            "layers": [
+                {
+                    "layer": "default",
+                    "path": "embed://data/conf/setting.default.json",
+                    "mode": "ro"
+                },
+                {
+                "layer": "user",
+                "path": "local://~/.config/lightpc/setting.json",
+                "mode": "rw"
+                }
+            ]
         }
     }
 }

@@ -1,0 +1,45 @@
+{
+    "$schema": "./schema/setting.schema.json",
+    "appearence": {
+        "mode": "light",
+        "radius": "8 px",
+        "theme": {
+            "default": "Default",
+            "palettes": [
+                {
+                    "name": "Default",
+                    "light": {},
+                    "dark": {}
+                },
+                {
+                    "name": "Gruvbox",
+                    "light": {},
+                    "dark": {}
+                }
+            ]
+        },
+        "font": {
+            "default": "Inter Medium",
+            "useSystem": true,
+            "builtin": [
+                "Inter Medium"
+            ],
+            "size": "12 px"
+        }
+    },
+    "general": {
+        "language": "English",
+        "availableLanguages": [
+            {
+                "id": "en-US",
+                "name": "English"
+            },
+            {
+                "id": "zh-CN",
+                "name": "Chinese(简)"
+            }
+        ]
+    },
+    "account": {},
+    "advanced": {}
+}

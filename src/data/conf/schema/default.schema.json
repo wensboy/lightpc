@@ -64,7 +64,9 @@
                     "properties": {
                         "root": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "pattern": "^local://.+",
+                            "description": "Absolute store root expressed as a local:// resource path."
                         },
                         "fs": {
                             "type": "object",
@@ -109,6 +111,40 @@
                             }
                         }
                     }
+                },
+                "setting": {
+                    "type": "array",
+                    "description": "Ordered setting layers; a higher index wins.",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "layer",
+                            "path",
+                            "mode"
+                        ],
+                        "properties": {
+                            "layer": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Layer name exposed to callers."
+                            },
+                            "path": {
+                                "type": "string",
+                                "pattern": "^(local|embed)://.+",
+                                "description": "Resource path of the layer document."
+                            },
+                            "mode": {
+                                "type": "string",
+                                "enum": [
+                                    "ro",
+                                    "wo",
+                                    "rw"
+                                ],
+                                "description": "Access mode of the layer."
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -142,8 +178,10 @@
                     "type": "string",
                     "enum": [
                         "",
-                        "file"
-                    ]
+                        "file",
+                        "console"
+                    ],
+                    "description": "Output kind: file opens the path, console writes to out."
                 },
                 "output": {
                     "oneOf": [
@@ -192,7 +230,8 @@
                     ]
                 },
                 "path": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(local|embed)://.+"
                 },
                 "mode": {
                     "type": "string",

@@ -6,6 +6,9 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
+    /* Wails emits plain JS bindings with JSDoc types, so they are compiled alongside TS sources. */
+    "allowJs": true,
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
