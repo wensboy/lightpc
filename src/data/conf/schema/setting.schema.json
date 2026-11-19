@@ -76,14 +76,27 @@
                     "minLength": 1
                   },
                   "light": {
-                    "$ref": "#/$defs/variables",
-                    "description": "Design tokens applied in light mode."
+                    "type": "object",
+                    "description": "Theme variables of this colour mode. Keys are the custom property names in camel case, so card-foreground is written as cardForeground.",
+                    "propertyNames": {
+                      "pattern": "^[a-z][a-zA-Z0-9]*$"
+                    },
+                    "additionalProperties": {
+                      "type": "string"
+                    }
                   },
                   "dark": {
-                    "$ref": "#/$defs/variables",
-                    "description": "Design tokens applied in dark mode."
+                    "type": "object",
+                    "description": "Theme variables of this colour mode. Keys are the custom property names in camel case, so card-foreground is written as cardForeground.",
+                    "propertyNames": {
+                      "pattern": "^[a-z][a-zA-Z0-9]*$"
+                    },
+                    "additionalProperties": {
+                      "type": "string"
+                    }
                   }
-                }
+                },
+                "$comment": "A user document may add a palette under a new name, or retune the colours of a shipped one. A shipped name merges key by key, so only the mentioned variables change."
               },
               "x-drived": true
             }
@@ -103,10 +116,14 @@
           "properties": {
             "default": {
               "type": "string",
-              "description": "Family used when nothing else is chosen.",
+              "description": "Family used when nothing else is chosen. While useSystem is off the options are the bundled families; while it is on they come from the system font list.",
               "minLength": 1,
               "x-options": {
                 "from": "builtin"
+              },
+              "x-options-when": {
+                "key": "useSystem",
+                "from": "systemFonts"
               }
             },
             "size": {
@@ -119,7 +136,7 @@
             },
             "builtin": {
               "type": "array",
-              "description": "Fonts shipped with the application. Derived data: it backs font.default.",
+              "description": "Families shipped with the application. Derived data: every entry must have a matching file under public/fonts, so the renderer never offers a font that cannot load.",
               "items": {
                 "type": "string",
                 "minLength": 1

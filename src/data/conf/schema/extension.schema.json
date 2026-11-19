@@ -12,7 +12,10 @@
     "https://json-schema.org/draft/2020-12/vocab/content": true,
     "https://lightpc.local/vocab/renderer": false
   },
-  "type": ["object", "boolean"],
+  "type": [
+    "object",
+    "boolean"
+  ],
   "properties": {
     "x-drived": {
       "type": "boolean",
@@ -22,7 +25,9 @@
       "type": "object",
       "description": "Where a select takes its options from. The referenced array is a sibling of the annotated node.",
       "additionalProperties": false,
-      "required": ["from"],
+      "required": [
+        "from"
+      ],
       "properties": {
         "from": {
           "type": "string",
@@ -31,6 +36,25 @@
         "field": {
           "type": "string",
           "description": "Property of each array entry used as the option label; omit it when the entries are already strings."
+        }
+      }
+    },
+    "x-options-when": {
+      "type": "object",
+      "description": "Overrides the option source while a boolean setting is enabled.",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "from"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Sibling property that switches the source, evaluated on the same object as the annotated node."
+        },
+        "from": {
+          "type": "string",
+          "description": "Alternative source, for example systemFonts."
         }
       }
     }

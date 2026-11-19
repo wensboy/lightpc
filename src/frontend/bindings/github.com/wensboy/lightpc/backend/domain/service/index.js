@@ -4,5 +4,6 @@
 
 export {
     ServiceContext,
-    SettingPayload
+    SettingPayload,
+    SettingTheme
 } from "./models.js";

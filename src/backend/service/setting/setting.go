@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 
+	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	"github.com/wensboy/lightpc/backend/domain/engine/setting"
 	"github.com/wensboy/lightpc/backend/domain/engine/store"
@@ -28,11 +31,18 @@ const runtimeLayerName = "runtime"
 // defaultLayerName is the read only layer shipped with the application.
 const defaultLayerName = "default"
 
+// builtinFontKey addresses the bundled font list, which is filtered against the shipped files.
+const builtinFontKey = "appearence.font.builtin"
+
+// themePalettesKey addresses the palette list shared by every theme picker.
+const themePalettesKey = "appearence.theme.palettes"
+
 // SettingService hands the settings schema and its aggregated values to the front end.
 type SettingService struct {
 	fileStore  store.FileStore
 	setting    setting.Setting
 	schemaPath string
+	appCtx     *domainContext.AppContext
 }
 
 // NewSettingService builds an uninitialised service.
@@ -65,6 +75,8 @@ func (s *SettingService) Init(sCtx domainService.ServiceContext) error {
 		return interError.Retrieve(setting.ErrKeyLayerUnknown).Wrap(fmt.Errorf("engine %q is not a setting engine", settingKey))
 	}
 	s.setting = instance
+
+	s.appCtx = sCtx.AppCtx
 
 	// The schema is a plain document, so its location comes from the configuration rather than a literal.
 	if sCtx.AppCtx != nil && sCtx.AppCtx.ConfigContext != nil {
@@ -107,11 +119,114 @@ func (s *SettingService) Payload() (domainService.SettingPayload, error) {
 		}
 		flat[key] = entry.Value
 	}
+	defaults := s.defaults()
+	s.pruneBuiltinFonts(flat)
+	mergeThemePalettes(flat, defaults)
+	// The palette list stays in the view because theme.default reads its options from it. It is marked as
+	// derived in the schema, so the renderer uses it for the picker without drawing a card of its own; the
+	// Themes field carries the same data already resolved for painting.
 	return domainService.SettingPayload{
-		Schema:   schema,
-		Values:   nestValues(flat),
-		Defaults: nestValues(s.defaults()),
+		Schema:      schema,
+		Values:      nestValues(flat),
+		Defaults:    nestValues(defaults),
+		SystemFonts: SystemFontFamilies(),
+		Themes:      buildThemes(flat),
 	}, nil
+}
+
+// pruneBuiltinFonts drops any declared family that has no matching file in the bundle. The picker can
+// therefore never offer a font that would fail to load, and a stale entry is reported instead of hidden.
+func (s *SettingService) pruneBuiltinFonts(flat map[string]any) {
+	raw, found := flat[builtinFontKey]
+	if !found {
+		return
+	}
+	list, ok := cast.To[[]any](raw)
+	if !ok {
+		return
+	}
+	bundled := s.bundledFamilies()
+	kept := make([]any, 0, len(list))
+	for _, entry := range list {
+		family, ok := cast.To[string](entry)
+		if !ok {
+			continue
+		}
+		if _, found := bundled[normaliseFamily(family)]; !found {
+			slog.Default().Warn("setting builtin font has no file", "family", family)
+			continue
+		}
+		kept = append(kept, family)
+	}
+	flat[builtinFontKey] = kept
+}
+
+// mergeThemePalettes combines the shipped palettes with the user ones. A user palette with a new name is
+// appended; an existing name is merged key by key, so a user file can retune one colour without restating
+// the whole palette.
+func mergeThemePalettes(flat, defaults map[string]any) {
+	shipped, ok := cast.To[[]any](defaults[themePalettesKey])
+	if !ok {
+		return
+	}
+
+	merged := slices.Clone(shipped)
+	position := make(map[string]int, len(shipped))
+	for index, entry := range merged {
+		item, ok := cast.To[map[string]any](entry)
+		if !ok {
+			continue
+		}
+		if name, ok := cast.To[string](item["name"]); ok && name != "" {
+			position[name] = index
+		}
+	}
+
+	custom, ok := cast.To[[]any](flat[themePalettesKey])
+	if !ok {
+		flat[themePalettesKey] = merged
+		return
+	}
+	for _, entry := range custom {
+		item, ok := cast.To[map[string]any](entry)
+		if !ok {
+			continue
+		}
+		name, ok := cast.To[string](item["name"])
+		if !ok || name == "" {
+			continue
+		}
+		if index, found := position[name]; found {
+			base, _ := cast.To[map[string]any](merged[index])
+			merged[index] = mergeTheme(base, item)
+			continue
+		}
+		position[name] = len(merged)
+		merged = append(merged, item)
+	}
+	flat[themePalettesKey] = merged
+}
+
+// mergeTheme folds a user palette into a shipped one, one colour mode and one key at a time. Keys the user
+// did not mention keep their shipped value.
+func mergeTheme(base, override map[string]any) map[string]any {
+	result := make(map[string]any, len(base))
+	for key, value := range base {
+		result[key] = value
+	}
+
+	for _, mode := range []string{"light", "dark"} {
+		basePalette, _ := cast.To[map[string]any](base[mode])
+		overridePalette, _ := cast.To[map[string]any](override[mode])
+		if len(overridePalette) == 0 {
+			continue
+		}
+		folded := make(map[string]any, len(basePalette)+len(overridePalette))
+		maps.Copy(folded, basePalette)
+		maps.Copy(folded, overridePalette)
+		result[mode] = folded
+	}
+	return result
 }
 
 // defaults collects what the default layer contributes, so the renderer has an authored value to fall back

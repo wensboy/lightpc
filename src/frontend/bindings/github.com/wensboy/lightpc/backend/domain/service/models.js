@@ -100,6 +100,24 @@ export class SettingPayload {
              */
             this["defaults"] = {};
         }
+        if (!("systemFonts" in $$source)) {
+            /**
+             * SystemFonts lists the families installed on the machine, so the picker can offer them while
+             * useSystem is on without the renderer knowing how to enumerate fonts.
+             * @member
+             * @type {string[]}
+             */
+            this["systemFonts"] = [];
+        }
+        if (!("themes" in $$source)) {
+            /**
+             * Themes holds every selectable palette, merged and keyed as CSS custom properties, so the renderer
+             * only has to write them onto the root element.
+             * @member
+             * @type {SettingTheme[]}
+             */
+            this["themes"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -113,6 +131,8 @@ export class SettingPayload {
         const $$createField0_0 = $$createType3;
         const $$createField1_0 = $$createType3;
         const $$createField2_0 = $$createType3;
+        const $$createField3_0 = $$createType4;
+        const $$createField4_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("schema" in $$parsedSource) {
             $$parsedSource["schema"] = $$createField0_0($$parsedSource["schema"]);
@@ -123,7 +143,67 @@ export class SettingPayload {
         if ("defaults" in $$parsedSource) {
             $$parsedSource["defaults"] = $$createField2_0($$parsedSource["defaults"]);
         }
+        if ("systemFonts" in $$parsedSource) {
+            $$parsedSource["systemFonts"] = $$createField3_0($$parsedSource["systemFonts"]);
+        }
+        if ("themes" in $$parsedSource) {
+            $$parsedSource["themes"] = $$createField4_0($$parsedSource["themes"]);
+        }
         return new SettingPayload(/** @type {Partial<SettingPayload>} */($$parsedSource));
+    }
+}
+
+/**
+ * SettingTheme is one palette with both colour modes resolved. Keys are CSS custom properties such as
+ * "--card-foreground" rather than the document's camel case form.
+ */
+export class SettingTheme {
+    /**
+     * Creates a new SettingTheme instance.
+     * @param {Partial<SettingTheme>} [$$source = {}] - The source object to create the SettingTheme.
+     */
+    constructor($$source = {}) {
+        if (!("name" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["name"] = "";
+        }
+        if (!("light" in $$source)) {
+            /**
+             * @member
+             * @type {{ [_ in string]?: string }}
+             */
+            this["light"] = {};
+        }
+        if (!("dark" in $$source)) {
+            /**
+             * @member
+             * @type {{ [_ in string]?: string }}
+             */
+            this["dark"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SettingTheme instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {SettingTheme}
+     */
+    static createFrom($$source = {}) {
+        const $$createField1_0 = $$createType7;
+        const $$createField2_0 = $$createType7;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("light" in $$parsedSource) {
+            $$parsedSource["light"] = $$createField1_0($$parsedSource["light"]);
+        }
+        if ("dark" in $$parsedSource) {
+            $$parsedSource["dark"] = $$createField2_0($$parsedSource["dark"]);
+        }
+        return new SettingTheme(/** @type {Partial<SettingTheme>} */($$parsedSource));
     }
 }
 
@@ -132,3 +212,7 @@ const $$createType0 = context$0.AppContext.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
 const $$createType2 = $Create.Map($Create.Any, $Create.Any);
 const $$createType3 = $Create.Map($Create.Any, $Create.Any);
+const $$createType4 = $Create.Array($Create.Any);
+const $$createType5 = SettingTheme.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = $Create.Map($Create.Any, $Create.Any);

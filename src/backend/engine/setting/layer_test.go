@@ -69,7 +69,8 @@ func TestInitKeepsExistingLocalLayer(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = instance.Stop() })
 
-	raw, found := instance.Resolve("general")
+	// Leaves are addressed by their dotted path, so the nested document resolves one level down.
+	raw, found := instance.Resolve("general.language")
 	if !found {
 		t.Fatal("the stored document must be loaded")
 	}
@@ -79,6 +80,9 @@ func TestInitKeepsExistingLocalLayer(t *testing.T) {
 	}
 	if entry.Layer != "user" {
 		t.Fatalf("layer = %q", entry.Layer)
+	}
+	if entry.Value != "Chinese" {
+		t.Fatalf("value = %v", entry.Value)
 	}
 }
 

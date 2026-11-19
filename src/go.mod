@@ -3,6 +3,7 @@ module github.com/wensboy/lightpc
 go 1.26.0
 
 require (
+	github.com/go-text/typesetting v0.3.5
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/urfave/cli/v3 v3.14.0
@@ -16,5 +17,6 @@ require (
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 )
