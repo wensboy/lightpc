@@ -16,6 +16,7 @@ type ServiceContext struct {
 type ServiceEventContext struct {
 	Services map[string]Service
 	Ebus     domainBus.Bus
+	AppEbus  domainBus.Bus // 向 app runtime 抛出事件
 	// Engines mirrors ServiceContext so event handlers can resolve an engine without keeping one alive.
 	Engines map[string]domainEngine.Engine
 }

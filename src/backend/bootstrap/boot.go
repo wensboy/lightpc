@@ -5,12 +5,9 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wensboy/lightpc/backend/api/ui"
-	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
-	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
 	storeimpl "github.com/wensboy/lightpc/backend/engine/store"
-	"github.com/wensboy/lightpc/backend/internal/cast"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
@@ -47,33 +44,16 @@ func RunGui(appCtx domainContext.AppContext) error {
 	cfg := appCtx.ConfigContext
 
 	appRuntime := domainRuntime.NewAppRuntime().WithAppContext(appCtx)
+
 	engineRuntime := domainRuntime.NewEngineRuntime().WithAppRuntime(appRuntime)
-	engineRuntime.WithEventFn(func(eec domainEngine.EngineEventContext) {
-		type engineEvent struct {
-			Group string `json:"group"`
-			Name  string `json:"name"`
-			State string `json:"state"`
-		}
-		eec.Ebus.On(domainBus.EventEngineError, func(payload any) {
-			source, ok := cast.To[map[string]any](payload)
-			if !ok {
-				return
-			}
-			event := engineEvent{}
-			cast.ToStruct(source, &event, "json")
-			engine, ok := eec.Engines[event.Group+"."+event.Name]
-			if !ok {
-				return
-			}
-			_ = engine.Restart()
-		})
-	})
 	engineRuntime.Register(
 		storeimpl.NewFS(),
 	)
 	SetupLog(cfg, engineRuntime)
 	SetupSetting(cfg, engineRuntime)
+
 	serviceRuntime := domainRuntime.NewServiceRuntime().WithAppRuntime(appRuntime)
+	SetupEventHandle(appRuntime, engineRuntime, serviceRuntime)
 
 	opt := ui.RegisterService(serviceRuntime)
 	if dist, ok := appCtx.EmbedContext["/frontend/dist"]; ok && dist != nil {
@@ -82,6 +62,8 @@ func RunGui(appCtx domainContext.AppContext) error {
 		}
 	}
 	app := SetupApp(cfg, opt)
+
+	SetupEventHandle(appRuntime, engineRuntime, serviceRuntime)
 
 	appRuntime.WithApp(app)
 	appRuntime.WithEngineRuntime(engineRuntime)

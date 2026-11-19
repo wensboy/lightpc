@@ -4,9 +4,12 @@ import (
 	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	domainApp "github.com/wensboy/lightpc/backend/domain/app"
+	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
+	domainService "github.com/wensboy/lightpc/backend/domain/service"
 	logimpl "github.com/wensboy/lightpc/backend/engine/log"
 	settingimpl "github.com/wensboy/lightpc/backend/engine/setting"
 	"github.com/wensboy/lightpc/backend/internal/cast"
@@ -148,4 +151,48 @@ func SetupSetting(cfg domainContext.ConfigContext, er *domainRuntime.EngineRunti
 		options = append(options, settingimpl.WithLayer(layer))
 	}
 	er.Register(settingimpl.NewSetting(options...))
+}
+
+// SetupEventHandle defines the event wiring of the three runtimes.
+//
+// ar owns the events that make the interface render again and forwards them to the webview. er keeps
+// engine traffic inside the engine bus and restarts a failed engine. sr keeps service traffic inside the
+// service bus. All three share one bus, so an event published by one layer is visible to the others.
+func SetupEventHandle(ar *domainRuntime.AppRuntime, er *domainRuntime.EngineRuntime, sr *domainRuntime.ServiceRuntime) {
+	ar.WithEventFn(func(aec domainApp.AppEventContext) {
+		if aec.App == nil {
+			return
+		}
+		for _, name := range domainBus.UiEvents {
+			aec.Ebus.On(name, func(payload any) {
+				aec.App.Event.Emit(name, payload)
+			})
+		}
+	})
+
+	er.WithEventFn(func(eec domainEngine.EngineEventContext) {
+		eec.Ebus.On(domainBus.EventEngineError, func(payload any) {
+			type engineEvent struct {
+				Group string `json:"group"`
+				Name  string `json:"name"`
+				State string `json:"state"`
+			}
+			source, ok := cast.To[map[string]any](payload)
+			if !ok {
+				return
+			}
+			event := engineEvent{}
+			cast.ToStruct(source, &event, "json")
+			engine, ok := eec.Engines[event.Group+"."+event.Name]
+			if !ok {
+				return
+			}
+			_ = engine.Restart()
+		})
+	})
+
+	sr.WithEventFn(func(_ domainService.ServiceEventContext) {
+		// Services already act on their own events. Anything else is shared through the common bus, so no
+		// forwarding is needed; the hook stays as the single entry point for service level reactions.
+	})
 }

@@ -26,6 +26,7 @@ type EngineContext struct {
 type EngineEventContext struct {
 	Engines map[string]Engine
 	Ebus    domainBus.Bus
+	AppEbus domainBus.Bus // 向 app runtime 抛出事件
 }
 
 // Engine 定义引擎实现的接口, 暴露底层能力, 为 service 编排逻辑提供接口.

@@ -12,3 +12,7 @@ const (
 	// setting event
 	EventSettingChanged = "setting::changed"
 )
+
+// UiEvents lists the bus events the interface re-renders from. Keeping the names in one place means a new
+// event is forwarded by adding a name, not by wiring another subscription in the layout.
+var UiEvents = []string{EventSettingChanged}
