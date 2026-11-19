@@ -17,3 +17,8 @@ type FanoutServer interface {
 	// An empty name or a nil handler is ignored.
 	Register(name string, handler slog.Handler)
 }
+
+type FanoutLog interface {
+	FanoutClient
+	FanoutServer
+}

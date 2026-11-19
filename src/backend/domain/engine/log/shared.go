@@ -33,3 +33,9 @@ var (
 	LogFanout  = domainEngine.EngineDep(GroupLog, NameFanout)
 	LogPattern = domainEngine.EngineDep(GroupLog, NamePattern)
 )
+
+type LogClient struct {
+	Direct  DirectLog
+	Fanout  FanoutLog
+	Pattern PatternLog
+}

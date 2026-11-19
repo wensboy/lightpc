@@ -5,8 +5,10 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
 	logimpl "github.com/wensboy/lightpc/backend/engine/log"
+	settingimpl "github.com/wensboy/lightpc/backend/engine/setting"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	"github.com/wensboy/lightpc/backend/internal/config"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
@@ -109,8 +111,41 @@ func SetupErrors(cfg domainContext.ConfigContext) domainContext.ErrorContext {
 	return errorContext
 }
 
-// SetupLog 设置 slog 全局日志并把所有 log engines 注册到引擎运行时; 装配细节由日志实现包承担.
 func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
-	logEngines := logimpl.Setup(cfg)
-	er.Register(logEngines...)
+	engines := make([]domainEngine.Engine, 0, 3)
+
+	if items := logimpl.ItemsFor(cfg, "direct"); len(items) > 0 {
+		options := make([]logimpl.DirectOption, 0, len(items))
+		for _, item := range items {
+			options = append(options, logimpl.WithDirectItem(item))
+		}
+		engines = append(engines, logimpl.NewDirectLog(options...))
+	}
+
+	if items := logimpl.ItemsFor(cfg, "fanout"); len(items) > 0 {
+		options := make([]logimpl.FanoutOption, 0, len(items))
+		for _, item := range items {
+			options = append(options, logimpl.WithFanoutItem(item))
+		}
+		engines = append(engines, logimpl.NewFanoutLog(options...))
+	}
+
+	if items := logimpl.ItemsFor(cfg, "pattern"); len(items) > 0 {
+		options := make([]logimpl.PatternOption, 0, len(items))
+		for _, item := range items {
+			options = append(options, logimpl.WithPatternItem(item))
+		}
+		engines = append(engines, logimpl.NewPatternLog(options...))
+	}
+
+	er.Register(engines...)
+}
+
+func SetupSetting(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
+	layers := settingimpl.LayersFrom(cfg)
+	options := make([]settingimpl.Option, 0, len(layers))
+	for _, layer := range layers {
+		options = append(options, settingimpl.WithLayer(layer))
+	}
+	er.Register(settingimpl.NewSetting(options...))
 }

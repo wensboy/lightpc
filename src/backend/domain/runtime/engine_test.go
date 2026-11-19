@@ -205,7 +205,7 @@ func TestEngineRuntimeCallsEventFn(t *testing.T) {
 	var registry map[string]domainEngine.Engine
 	engineRuntime := NewEngineRuntime()
 	engineRuntime.WithEventFn(func(eec domainEngine.EngineEventContext) {
-		registry = eec.Registry
+		registry = eec.Engines
 	})
 	engineRuntime.Register(&stubEngine{group: "core", name: "a"})
 

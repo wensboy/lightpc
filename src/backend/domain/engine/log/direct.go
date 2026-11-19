@@ -17,3 +17,8 @@ type DirectServer interface {
 	// An empty name or a nil handler is ignored.
 	Register(name string, handler slog.Handler)
 }
+
+type DirectLog interface {
+	DirectClient
+	DirectServer
+}

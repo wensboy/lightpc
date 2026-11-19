@@ -1,13 +1,20 @@
 package greet
 
 import (
+	"log/slog"
+
+	"github.com/wensboy/lightpc/backend/domain/engine/log"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
+	"github.com/wensboy/lightpc/backend/internal/cast"
 )
 
 // GreetService 结构下通常只包含该服务职责范围内最小的字段数据集合, 作为一个示例, 类似 check service, 实际服务注册时可忽略.
 // init 阶段从 service context 中获取必须的数据.
 // deinit 阶段释放必须的资源, 通过 ebus 发送必要的事件.
 type GreetService struct {
+	direct  log.DirectClient
+	fanout  log.FanoutClient
+	pattern log.PatternClient
 }
 
 func NewGreetService() *GreetService {
@@ -18,7 +25,17 @@ func (s *GreetService) Group() string {
 	return domainService.GroupGreet
 }
 
+// Init resolves the log engines from the service context so Greet can exercise every sink.
 func (s *GreetService) Init(sCtx domainService.ServiceContext) error {
+	if engine, ok := sCtx.Engines[log.GroupLog+"."+log.NameDirect]; ok {
+		s.direct, _ = cast.As[log.DirectClient](engine)
+	}
+	if engine, ok := sCtx.Engines[log.GroupLog+"."+log.NameFanout]; ok {
+		s.fanout, _ = cast.As[log.FanoutClient](engine)
+	}
+	if engine, ok := sCtx.Engines[log.GroupLog+"."+log.NamePattern]; ok {
+		s.pattern, _ = cast.As[log.PatternClient](engine)
+	}
 	return nil
 }
 
@@ -26,6 +43,36 @@ func (s *GreetService) Deinit() error {
 	return nil
 }
 
+// Greet writes one record through every log route before answering.
+//
+// Per invocation the expected outcome is: one console record, two records in debug.log (slog default
+// and the named direct logger), one record each in process.log and error.log, two records in
+// network_debug_up.log and one in network_warn_up.log.
 func (s *GreetService) Greet(name string) string {
+	// Direct: the slog default resolves to the first console handler of the direct group.
+	slog.Info("greet via slog default", "name", name)
+
+	if s.direct != nil {
+		if logger, ok := s.direct.Logger("dev.file"); ok {
+			logger.Info("greet via direct", "name", name)
+		}
+	}
+
+	if s.fanout != nil {
+		if logger, ok := s.fanout.Logger("dev.test"); ok {
+			logger.Info("greet via fanout", "name", name)
+		}
+	}
+
+	if s.pattern != nil {
+		// 只向 debug 文件写 log
+		if logger, ok := s.pattern.Logger("network.debug"); ok {
+			logger.Info("greet via pattern debug", "name", name)
+		}
+		if logger, ok := s.pattern.Logger("network.*"); ok {
+			logger.Info("greet via pattern", "name", name)
+		}
+	}
+
 	return "hello " + name
 }

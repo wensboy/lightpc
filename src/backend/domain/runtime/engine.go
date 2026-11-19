@@ -175,7 +175,7 @@ func (er *EngineRuntime) Run() error {
 	er.mu.Unlock()
 
 	if er.eFn != nil {
-		er.eFn(domainEngine.EngineEventContext{Registry: snapshot, Ebus: er.ebus})
+		er.eFn(domainEngine.EngineEventContext{Engines: snapshot, Ebus: er.ebus})
 	}
 
 	for _, engine := range ordered {

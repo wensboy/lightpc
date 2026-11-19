@@ -17,3 +17,8 @@ type PatternServer interface {
 	// An empty pattern or a nil handler is ignored.
 	Register(pattern string, handler slog.Handler)
 }
+
+type PatternLog interface {
+	PatternClient
+	PatternServer
+}

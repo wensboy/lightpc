@@ -61,7 +61,7 @@ func RunGui(appCtx domainContext.AppContext) error {
 			}
 			event := engineEvent{}
 			cast.ToStruct(source, &event, "json")
-			engine, ok := eec.Registry[event.Group+"."+event.Name]
+			engine, ok := eec.Engines[event.Group+"."+event.Name]
 			if !ok {
 				return
 			}
@@ -72,6 +72,7 @@ func RunGui(appCtx domainContext.AppContext) error {
 		storeimpl.NewFS(),
 	)
 	SetupLog(cfg, engineRuntime)
+	SetupSetting(cfg, engineRuntime)
 	serviceRuntime := domainRuntime.NewServiceRuntime().WithAppRuntime(appRuntime)
 
 	opt := ui.RegisterService(serviceRuntime)
