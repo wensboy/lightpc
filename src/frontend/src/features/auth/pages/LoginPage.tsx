@@ -56,6 +56,7 @@ export function LoginPage() {
               type="email"
               placeholder="m@example.com"
               autoComplete="email"
+              className="bg-background"
               {...register('email')}
             />
             <FieldError errors={[formState.errors.email]} />
@@ -71,6 +72,7 @@ export function LoginPage() {
               id="password"
               type="password"
               autoComplete="current-password"
+              className="bg-background"
               {...register('password')}
             />
             <FieldError errors={[formState.errors.password]} />
