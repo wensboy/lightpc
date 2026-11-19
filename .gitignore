@@ -1,8 +1,8 @@
-.vscode/
+.vscode/*
 .codebuddy/
 .claude/
 .codex/
 .agents/
 test/
 *.db
-skills-lock.json
+!skills-lock.json
