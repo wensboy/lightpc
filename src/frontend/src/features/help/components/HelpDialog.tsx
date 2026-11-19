@@ -48,13 +48,13 @@ export function HelpDialog() {
         }
       }}
     >
-      <DialogContent className="overflow-hidden p-0 md:max-h-[500px] md:max-w-[700px] lg:max-w-[800px]">
+      <DialogContent className="overflow-hidden p-0 md:h-[500px] md:max-w-[700px] lg:max-w-[800px]">
         <DialogTitle className="sr-only">{text.help.title}</DialogTitle>
         <DialogDescription className="sr-only">{text.help.description}</DialogDescription>
-        <SidebarProvider className="items-start">
+        <SidebarProvider className="h-full min-h-0 items-stretch">
           <Sidebar
             collapsible="none"
-            className="hidden h-[480px] border-r border-sidebar-border md:flex"
+            className="hidden border-r border-sidebar-border md:flex"
           >
             <SidebarHeader>
               <DocumentationSwitcher versions={text.help.switcher.versions} />
@@ -104,7 +104,7 @@ export function HelpDialog() {
               </SidebarGroup>
             </SidebarContent>
           </Sidebar>
-          <main className="flex h-[480px] flex-1 flex-col overflow-hidden">
+          <main className="flex h-full flex-1 flex-col overflow-hidden">
             <header className="flex h-16 shrink-0 items-center gap-2 px-4">
               <h2 className="text-sm font-medium">{helpDocument || currentSection}</h2>
             </header>

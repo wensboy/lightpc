@@ -6,45 +6,35 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { SettingField } from '@/features/settings/components/setting/SettingField'
-import type { SettingSchema } from '@/features/settings/schema'
-import { useText } from '@/locales'
-import { resolveText } from '@/locales/text'
+import type { SettingField as SettingFieldModel, SettingValue } from '@/features/settings/schema'
 
 type SettingSelectProps = {
-  schema: Extract<SettingSchema, { type: 'select' }>
-  categoryLabel: string
-  value: string
-  onChange: (value: string) => void
+  field: SettingFieldModel
+  onChange: (value: SettingValue) => void
 }
 
-// SettingSelect renders an enumerated setting. Option labels are resolved through the dictionary as
-// well, so values stay stable identifiers while the text remains translatable.
-export function SettingSelect({ schema, categoryLabel, value, onChange }: SettingSelectProps) {
-  const text = useText()
-
+// SettingSelect renders a field constrained by a schema enum. The options are the enum values, so the
+// control always mirrors what the schema allows.
+export function SettingSelect({ field, onChange }: SettingSelectProps) {
   return (
     <SettingField
-      id={schema.id}
-      categoryLabel={categoryLabel}
-      labelKey={schema.labelKey}
-      descriptionKey={schema.descriptionKey}
+      field={field}
       control={
         <Select
-          value={value}
+          value={String(field.value)}
           onValueChange={(next) => {
             if (typeof next === 'string') {
               onChange(next)
             }
           }}
         >
-          <SelectTrigger id={schema.id} className="w-72">
+          <SelectTrigger id={field.path} className="w-72">
             <SelectValue />
           </SelectTrigger>
-          {/* Dropdown style: the popup aligns to the trigger edge instead of overlapping it. */}
           <SelectContent alignItemWithTrigger={false}>
-            {schema.options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {resolveText(text, option.labelKey)}
+            {(field.options ?? []).map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
               </SelectItem>
             ))}
           </SelectContent>

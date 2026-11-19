@@ -1,34 +1,101 @@
-import { useCallback, useState } from 'react'
-import type { SettingDocument, SettingValue } from '@/features/settings/schema'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { buildGroups, setAt, type SettingGroup, type SettingValue } from '@/features/settings/schema'
 import { loadSettings } from '@/mocks'
-
-// initialValues flattens every setting default into a single id keyed map, which is what the renderer
-// reads from.
-function initialValues(document: SettingDocument): Record<string, SettingValue> {
-  const values: Record<string, SettingValue> = {}
-  for (const category of document.categories) {
-    for (const setting of category.settings) {
-      values[setting.id] = setting.defaultValue
-    }
-  }
-  return values
-}
+import { settingService, type SettingDocument } from '@/services/setting'
 
 export type SettingsState = {
-  document: SettingDocument
-  values: Record<string, SettingValue>
-  setValue: (id: string, value: SettingValue) => void
+  groups: SettingGroup[]
+  error: string | null
+  setValue: (path: string, value: SettingValue) => void
 }
 
-// useSettings owns the settings document and the edited values. The document is loaded once; every edit
-// replaces the single entry so React sees a new object.
-export function useSettings(): SettingsState {
-  const [document] = useState<SettingDocument>(loadSettings)
-  const [values, setValues] = useState<Record<string, SettingValue>>(() => initialValues(document))
+// useSettings loads the settings document whenever the dialog opens. The document has to be re-read
+// because the user layer can change outside the UI: a manual file edit, or a flush from another window.
+export function useSettings(active = true): SettingsState {
+  const [document, setDocument] = useState<SettingDocument | null>(null)
+  const [values, setValues] = useState<Record<string, unknown>>({})
+  // Fields the user touched are excluded from the default fallback until the document is reloaded.
+  const edited = useRef(new Set<string>())
+  const [error, setError] = useState<string | null>(null)
 
-  const setValue = useCallback((id: string, value: SettingValue) => {
-    setValues((previous) => ({ ...previous, [id]: value }))
+  useEffect(() => {
+    if (!active) {
+      return
+    }
+    let cancelled = false
+    setError(null)
+    loadSettings()
+      .then((loaded) => {
+        if (cancelled) {
+          return
+        }
+        edited.current = new Set()
+        repaired.current = new Set()
+        setDocument(loaded)
+        setValues(loaded.values)
+      })
+      .catch((cause: unknown) => {
+        if (cancelled) {
+          return
+        }
+        setError(cause instanceof Error ? cause.message : 'settings could not be loaded')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [active])
+
+  const groups = useMemo(
+    () => (document ? buildGroups(document.schema, values, document.defaults, edited.current) : []),
+    [document, values],
+  )
+
+  // A redisplayed value that breaks the schema is pushed into the runtime layer once, so the next flush
+  // rewrites the user file and the view stops disagreeing with it. The stored value itself is untouched
+  // until the user saves, which keeps the mismatch short lived instead of hiding it.
+  const repaired = useRef(new Set<string>())
+  useEffect(() => {
+    for (const group of groups) {
+      for (const field of group.fields) {
+        if (!field.invalid || repaired.current.has(field.path)) {
+          continue
+        }
+        repaired.current.add(field.path)
+        void settingService.save(field.path, field.value)
+      }
+    }
+  }, [groups])
+
+  // Typing fires one change per keystroke, so writes are coalesced: the UI updates immediately while the
+  // backend receives one save per quiet period instead of one per character.
+  const pending = useRef(new Map<string, SettingValue>())
+  const timer = useRef<number | null>(null)
+
+  const flushPending = useCallback(() => {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current)
+      timer.current = null
+    }
+    for (const [path, value] of pending.current) {
+      void settingService.save(path, value)
+    }
+    pending.current.clear()
   }, [])
 
-  return { document, values, setValue }
+  useEffect(() => () => flushPending(), [flushPending])
+
+  const setValue = useCallback(
+    (path: string, value: SettingValue) => {
+      edited.current.add(path)
+      setValues((previous) => setAt(previous, path, value))
+      pending.current.set(path, value)
+      if (timer.current !== null) {
+        window.clearTimeout(timer.current)
+      }
+      timer.current = window.setTimeout(flushPending, 500)
+    },
+    [flushPending],
+  )
+
+  return { groups, error, setValue }
 }

@@ -1,24 +1,25 @@
 import { Switch } from '@/components/ui/switch'
 import { SettingField } from '@/features/settings/components/setting/SettingField'
-import type { SettingSchema } from '@/features/settings/schema'
+import type { SettingField as SettingFieldModel, SettingValue } from '@/features/settings/schema'
 
 type SettingSwitchProps = {
-  schema: Extract<SettingSchema, { type: 'switch' }>
-  categoryLabel: string
-  value: boolean
-  onChange: (value: boolean) => void
+  field: SettingFieldModel
+  onChange: (value: SettingValue) => void
 }
 
-// SettingSwitch renders a boolean setting. It is controlled: the value comes from the caller and every
+// SettingSwitch renders a boolean field. It is controlled: the value comes from the field and every
 // toggle is reported through onChange.
-export function SettingSwitch({ schema, categoryLabel, value, onChange }: SettingSwitchProps) {
+export function SettingSwitch({ field, onChange }: SettingSwitchProps) {
   return (
     <SettingField
-      id={schema.id}
-      categoryLabel={categoryLabel}
-      labelKey={schema.labelKey}
-      descriptionKey={schema.descriptionKey}
-      control={<Switch id={schema.id} checked={value} onCheckedChange={onChange} />}
+      field={field}
+      control={
+        <Switch
+          id={field.path}
+          checked={field.value === true}
+          onCheckedChange={onChange}
+        />
+      }
     />
   )
 }

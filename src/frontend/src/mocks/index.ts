@@ -1,24 +1,20 @@
 import type { ProfileValues } from '@/features/account/schema'
 import type { NotificationEntry } from '@/features/notifications/store/useNotificationStore'
-import type { SettingDocument } from '@/features/settings/schema'
 import { authService, type AuthService } from '@/services/auth'
+import { settingService, type SettingDocument } from '@/services/setting'
 import { accountAvatarMock, accountProfileMock } from './account.mock'
 import { authMock } from './auth.mock'
 import { notificationsMock } from './notifications.mock'
-import { settingsMock } from './settings.mock'
 
 // mocksEnabled is resolved once at startup; the switch never leaks into business components.
 const mocksEnabled = import.meta.env.VITE_ENABLE_MOCK === 'true'
 
 export const auth: AuthService = mocksEnabled ? authMock : authService
 
-// loadSettings returns the settings document. Only the mock source exists today; the real branch throws
-// until the backend exposes the endpoint.
-export function loadSettings(): SettingDocument {
-  if (mocksEnabled) {
-    return settingsMock
-  }
-  throw new Error('Settings are not connected to the backend yet.')
+// loadSettings always asks the backend: the schema and the default document are embedded resources the
+// file store serves, so there is nothing to mock here.
+export function loadSettings(): Promise<SettingDocument> {
+  return settingService.load()
 }
 
 // loadNotifications returns the initial notification list. Without mocks the list starts empty, which is
