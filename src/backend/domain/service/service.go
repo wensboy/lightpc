@@ -14,8 +14,10 @@ type ServiceContext struct {
 }
 
 type ServiceEventContext struct {
-	Registry map[string]Service
+	Services map[string]Service
 	Ebus     domainBus.Bus
+	// Engines mirrors ServiceContext so event handlers can resolve an engine without keeping one alive.
+	Engines map[string]domainEngine.Engine
 }
 
 type Service interface {

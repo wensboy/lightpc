@@ -1,7 +1,10 @@
 package runtime
 
 import (
+	"log/slog"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
+	domainApp "github.com/wensboy/lightpc/backend/domain/app"
 	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	"github.com/wensboy/lightpc/backend/internal/ebus"
@@ -23,6 +26,7 @@ type AppRuntime struct {
 
 	// event bus in app runtime
 	ebus domainBus.Bus
+	eFn  func(domainApp.AppEventContext)
 	// window instance
 	app *application.App
 }
@@ -53,14 +57,26 @@ func (ar *AppRuntime) WithApp(app *application.App) *AppRuntime {
 	return ar
 }
 
+func (ar *AppRuntime) WithEventFn(efn func(domainApp.AppEventContext)) *AppRuntime {
+	ar.eFn = efn
+	return ar
+}
+
+// Run starts the engine and service runtimes and then invokes efn with the event context, so the caller
+// can subscribe to runtime events knowing every layer below it is already alive.
 func (ar *AppRuntime) Run() {
 	if ar.er != nil {
 		ar.er.WithAppBus(ar.ebus)
-		_ = ar.er.Run()
+		if err := ar.er.Run(); err != nil {
+			slog.Default().Warn("engine runtime failed", "err", err)
+		}
 	}
 	if ar.sr != nil {
 		ar.sr.WithAppBus(ar.ebus)
 		ar.sr.Run()
+	}
+	if ar.eFn != nil {
+		ar.eFn(domainApp.AppEventContext{Ebus: ar.ebus, App: ar.app})
 	}
 }
 

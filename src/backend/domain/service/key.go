@@ -1,5 +1,6 @@
 package service
 
 const (
-	GroupGreet = "test::greet"
+	GroupGreet   = "service::test::greet"
+	GroupSetting = "service::setting"
 )

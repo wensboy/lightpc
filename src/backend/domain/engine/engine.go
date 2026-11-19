@@ -24,8 +24,8 @@ type EngineContext struct {
 
 // EngineEventContext 用于外部定义引擎事件处理能力.
 type EngineEventContext struct {
-	Registry map[string]Engine
-	Ebus     domainBus.Bus
+	Engines map[string]Engine
+	Ebus    domainBus.Bus
 }
 
 // Engine 定义引擎实现的接口, 暴露底层能力, 为 service 编排逻辑提供接口.
