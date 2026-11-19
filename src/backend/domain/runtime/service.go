@@ -56,7 +56,7 @@ func (sr *ServiceRuntime) Register(s ...domainService.Service) {
 
 func (sr *ServiceRuntime) Run() {
 	if sr.eFn != nil {
-		sr.eFn(domainService.ServiceEventContext{Registry: sr.registry, Ebus: sr.ebus})
+		sr.eFn(domainService.ServiceEventContext{Services: sr.registry, Ebus: sr.ebus})
 	}
 	engines := make(map[string]domainEngine.Engine)
 	if sr.appRuntime != nil && sr.appRuntime.er != nil {
