@@ -38,7 +38,7 @@ export function NotificationItem({ notification }: { notification: NotificationE
   const expanded = notification.isExpanded
 
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-transparent p-4 transition-colors hover:border-border hover:bg-muted/50">
+    <div className="flex flex-col gap-1 rounded-lg border border-transparent p-4 transition-colors hover:border-border hover:bg-accent/60">
       <div className="flex items-start gap-2">
         <Icon className={cn('mt-0.5 size-4 shrink-0', typeTones[notification.type])} />
         <p className={cn('min-w-0 flex-1 text-sm font-medium', !expanded && 'truncate')}>
