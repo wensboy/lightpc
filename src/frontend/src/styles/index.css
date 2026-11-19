@@ -5,9 +5,40 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
-    --font-heading: var(--font-sans);
+/* Bundled families must be declared before the picker can offer them. */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/Inter-Medium.ttf') format('truetype');
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+@theme {
+    /* Declared outside the inline block so the utilities read the variable instead of baking the value in:
+       that is what lets the settings dialog swap the family at runtime. */
     --font-sans: 'Geist Variable', sans-serif;
+    --font-heading: var(--font-sans);
+
+    /* One value drives every text scale. The utilities read these variables, so a font size change
+       rescales all copy at once while spacing and control sizes keep their rem based dimensions. */
+    --font-size-body: 0.875rem;
+    --text-xs: calc(var(--font-size-body) * 0.857);
+    --text-xs--line-height: calc(var(--font-size-body) * 1.143);
+    --text-sm: var(--font-size-body);
+    --text-sm--line-height: calc(var(--font-size-body) * 1.429);
+    --text-base: calc(var(--font-size-body) * 1.143);
+    --text-base--line-height: calc(var(--font-size-body) * 1.714);
+    --text-lg: calc(var(--font-size-body) * 1.286);
+    --text-lg--line-height: calc(var(--font-size-body) * 1.857);
+    --text-xl: calc(var(--font-size-body) * 1.429);
+    --text-xl--line-height: calc(var(--font-size-body) * 2);
+    --text-2xl: calc(var(--font-size-body) * 1.714);
+    --text-2xl--line-height: calc(var(--font-size-body) * 2.286);
+    --text-3xl: calc(var(--font-size-body) * 2.143);
+    --text-3xl--line-height: calc(var(--font-size-body) * 2.571);
+}
+
+@theme inline {
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -118,6 +149,14 @@
 }
 
 @layer base {
+    body {
+        /* The chosen family is applied by writing --font-sans. */
+        font-family: var(--font-sans);
+        /* Untagged copy follows the same scale as the utilities. */
+        font-size: var(--font-size-body);
+    }
+
+
   * {
     @apply border-border outline-ring/50;
     }

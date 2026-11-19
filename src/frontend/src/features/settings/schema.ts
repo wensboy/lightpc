@@ -17,6 +17,8 @@ export type JsonSchemaNode = {
   'x-drived'?: boolean
   /** Tells the renderer where a select takes its options from. */
   'x-options'?: { from: string; field?: string }
+  /** Swaps the option source while a sibling boolean is enabled. */
+  'x-options-when'?: { key: string; from: string }
 }
 
 // SettingControl is the control a leaf field renders as.
@@ -63,9 +65,21 @@ function resolveRef(node: JsonSchemaNode, root: JsonSchemaNode): JsonSchemaNode 
 
 // optionsOf resolves the options of a select: either the enum declared by the schema or the names pulled
 // from a sibling array through the x-options extension.
-function optionsOf(node: JsonSchemaNode, siblings: Record<string, unknown>): string[] | undefined {
+function optionsOf(
+  node: JsonSchemaNode,
+  siblings: Record<string, unknown>,
+  systemFonts: string[],
+): string[] | undefined {
   if (node.enum && node.enum.length > 0) {
     return node.enum
+  }
+  // A conditional source wins while its sibling boolean is on, so one schema entry covers both modes.
+  const condition = node['x-options-when']
+  if (condition && siblings[condition.key] === true) {
+    if (condition.from === 'systemFonts' && systemFonts.length > 0) {
+      return systemFonts
+    }
+    return undefined
   }
   const source = node['x-options']
   if (!source) {
@@ -183,6 +197,7 @@ export function buildGroups(
   values: Record<string, unknown>,
   defaults: Record<string, unknown> = {},
   edited: ReadonlySet<string> = new Set(),
+  systemFonts: string[] = [],
 ): SettingGroup[] {
   const groups: SettingGroup[] = []
 
@@ -193,7 +208,7 @@ export function buildGroups(
       continue
     }
     const fields: SettingField[] = []
-    collectFields(node, schema, defaults, edited, [key], value as Record<string, unknown>, fields)
+    collectFields(node, schema, defaults, edited, systemFonts, [key], value as Record<string, unknown>, fields)
     if (fields.length === 0) {
       continue
     }
@@ -215,6 +230,7 @@ function collectFields(
   root: JsonSchemaNode,
   defaults: Record<string, unknown>,
   edited: ReadonlySet<string>,
+  systemFonts: string[],
   segments: string[],
   values: Record<string, unknown>,
   out: SettingField[],
@@ -225,7 +241,7 @@ function collectFields(
     const path = [...segments, key]
 
     if (child.properties && typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      collectFields(child, root, defaults, edited, path, value as Record<string, unknown>, out)
+      collectFields(child, root, defaults, edited, systemFonts, path, value as Record<string, unknown>, out)
       continue
     }
     // Arrays (palettes, font lists) are edited by dedicated components later on.
@@ -241,7 +257,7 @@ function collectFields(
       continue
     }
 
-    const options = optionsOf(child, values)
+    const options = optionsOf(child, values, systemFonts)
     const control = controlOf(child, options)
     const dotted = path.join('.')
     const stored = asValue(value, control)

@@ -4,11 +4,22 @@ import type { JsonSchemaNode } from '@/features/settings/schema'
 
 // settingPayloadSchema guards the boundary: the renderer only ever sees a payload that passed this check,
 // so a backend shape change fails loudly instead of rendering an empty page.
+const settingThemeSchema = z.object({
+  name: z.string(),
+  light: z.record(z.string(), z.string()),
+  dark: z.record(z.string(), z.string()),
+})
+
 const settingPayloadSchema = z.object({
   schema: z.record(z.string(), z.unknown()),
   values: z.record(z.string(), z.unknown()),
   defaults: z.record(z.string(), z.unknown()),
+  systemFonts: z.array(z.string()),
+  themes: z.array(settingThemeSchema),
 })
+
+/** SettingTheme is one palette with both modes already keyed as CSS custom properties. */
+export type SettingTheme = z.infer<typeof settingThemeSchema>
 
 // SettingDocument is what the renderer needs: the schema describing every field and the values to show.
 export type SettingDocument = {
@@ -16,6 +27,10 @@ export type SettingDocument = {
   values: Record<string, unknown>
   /** Authored values from the default layer, used when a user value breaks the schema. */
   defaults: Record<string, unknown>
+  /** Families installed on the machine, offered while font.useSystem is on. */
+  systemFonts: string[]
+  /** Selectable palettes, merged on the backend and keyed as custom properties. */
+  themes: SettingTheme[]
 }
 
 // SettingService is the contract the feature depends on, independent of where the document comes from.
@@ -38,6 +53,8 @@ export const settingService: SettingService = {
       schema: parsed.data.schema as JsonSchemaNode,
       values: parsed.data.values,
       defaults: parsed.data.defaults,
+      systemFonts: parsed.data.systemFonts,
+      themes: parsed.data.themes,
     }
   },
 

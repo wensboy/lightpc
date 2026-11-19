@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { applyAllSettingEffects, applySettingEffect } from '@/features/settings/effects'
 import { buildGroups, setAt, type SettingGroup, type SettingValue } from '@/features/settings/schema'
 import { loadSettings } from '@/mocks'
 import { settingService, type SettingDocument } from '@/services/setting'
@@ -33,6 +34,8 @@ export function useSettings(active = true): SettingsState {
         repaired.current = new Set()
         setDocument(loaded)
         setValues(loaded.values)
+        // The view replays every effect, so a stored theme applies before the first paint of the dialog.
+        applyAllSettingEffects(loaded.values, loaded.themes)
       })
       .catch((cause: unknown) => {
         if (cancelled) {
@@ -46,7 +49,10 @@ export function useSettings(active = true): SettingsState {
   }, [active])
 
   const groups = useMemo(
-    () => (document ? buildGroups(document.schema, values, document.defaults, edited.current) : []),
+    () =>
+      document
+        ? buildGroups(document.schema, values, document.defaults, edited.current, document.systemFonts)
+        : [],
     [document, values],
   )
 
@@ -86,6 +92,9 @@ export function useSettings(active = true): SettingsState {
 
   const setValue = useCallback(
     (path: string, value: SettingValue) => {
+      // Frontend effects run first: a themed switch must repaint immediately instead of waiting for the
+      // value to reach the backend and come back. Keys without an effect skip straight to the save.
+      applySettingEffect(path, value)
       edited.current.add(path)
       setValues((previous) => setAt(previous, path, value))
       pending.current.set(path, value)
