@@ -13,6 +13,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as service$0 from "../../domain/service/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as serviceSetting$0 from "../../domain/service/setting/models.js";
 
 /**
  * Deinit implements domainService.Service.
@@ -38,7 +41,7 @@ export function Init(sCtx: service$0.ServiceContext): $CancellablePromise<void> 
 /**
  * Payload returns the schema and the aggregated values the front end renders into setting cards.
  */
-export function Payload(): $CancellablePromise<service$0.SettingPayload> {
+export function Payload(): $CancellablePromise<serviceSetting$0.SettingPayload> {
     return $Call.ByID(1169868084);
 }
 

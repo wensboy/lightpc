@@ -25,7 +25,7 @@ export function Deinit(): $CancellablePromise<void> {
  * 
  * Per invocation the expected outcome is: one console record, two records in debug.log (slog default
  * and the named direct logger), one record each in process.log and error.log, two records in
- * network_debug_up.log and one in network_warn_up.log.
+ * network_debug_up.log and one in network_warn_up.engineLog.
  */
 export function Greet(name: string): $CancellablePromise<string> {
     return $Call.ByID(1912442891, name);

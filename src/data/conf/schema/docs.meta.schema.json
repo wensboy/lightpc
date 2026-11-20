@@ -5,7 +5,12 @@
   "description": "Describes the meta.json every docs directory carries. The reader uses it to list versions and to build the document tree.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "author", "date", "description", "toc"],
+  "required": [
+    "version",
+    "index",
+    "toc",
+    "local"
+  ],
   "properties": {
     "$schema": {
       "type": "string",
@@ -16,29 +21,22 @@
       "minLength": 1,
       "description": "Version shown in the documentation picker."
     },
-    "author": {
+    "index": {
       "type": "string",
-      "minLength": 1,
-      "description": "Who maintains the documentation set."
-    },
-    "date": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Last edit time, written as YYYY/MM/DD HH:mm:ss."
+      "pattern": ".+\\.md$",
+      "description": "Markdown rendered before a document is chosen, relative to the meta.json directory."
     },
     "deprecated": {
       "type": "boolean",
       "description": "Marks a set that is kept for reference only."
     },
-    "description": {
-      "type": "string",
-      "minLength": 1,
-      "description": "One line summary shown in the picker."
-    },
     "tags": {
       "type": "array",
       "description": "Free form labels used for filtering.",
-      "items": { "type": "string", "minLength": 1 }
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "local": {
       "type": "boolean",

@@ -13,6 +13,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as service$0 from "../../domain/service/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as serviceHelp$0 from "../../domain/service/help/models.js";
 
 /**
  * Deinit implements domainService.Service.
@@ -36,14 +39,14 @@ export function Init(sCtx: service$0.ServiceContext): $CancellablePromise<void> 
 }
 
 /**
- * Payload implements domainService.HelpClient: every documentation set, ordered by version.
+ * Payload implements serviceHelp.HelpClient: every documentation set, ordered by version.
  */
-export function Payload(): $CancellablePromise<service$0.DocsPayload> {
+export function Payload(): $CancellablePromise<serviceHelp$0.DocsPayload> {
     return $Call.ByID(2466980019);
 }
 
 /**
- * Read implements domainService.HelpClient: the markdown of one document.
+ * Read implements serviceHelp.HelpClient: the markdown of one document.
  */
 export function Read(version: string, documentPath: string): $CancellablePromise<string> {
     return $Call.ByID(2142193015, version, documentPath);

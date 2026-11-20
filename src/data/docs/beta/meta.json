@@ -1,10 +1,8 @@
 {
     "$schema": "../../conf/schema/docs.meta.schema.json",
     "version": "beta",
-    "author": "wensboy",
-    "date": "2026/11/20 10:00:00",
+    "index": "index.md",
     "deprecated": false,
-    "description": "Pre-release test version documentation.",
     "tags": ["test", "pre-release"],
     "local": true,
     "toc": {

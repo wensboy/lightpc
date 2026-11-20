@@ -11,43 +11,6 @@ import * as context$0 from "../context/models.js";
 // @ts-ignore: Unused imports
 import * as engine$0 from "../engine/models.js";
 
-/**
- * DocsGroup is one section of a documentation set, holding the documents it lists in the order the
- * meta.json declares them.
- */
-export interface DocsGroup {
-    "title": string;
-    "items": DocsItem[] | null;
-}
-
-/**
- * DocsItem is one document of a group. Path is relative to the directory that carries the meta.json.
- */
-export interface DocsItem {
-    "title": string;
-    "path": string;
-}
-
-/**
- * DocsPayload lists every documentation set that ships with the application.
- */
-export interface DocsPayload {
-    "versions": DocsVersion[] | null;
-}
-
-/**
- * DocsVersion is one documentation set as the reader sees it.
- */
-export interface DocsVersion {
-    "version": string;
-    "description": string;
-    "author": string;
-    "date": string;
-    "deprecated": boolean;
-    "tags": string[] | null;
-    "toc": DocsGroup[] | null;
-}
-
 export interface ServiceContext {
     "AppCtx": context$0.AppContext | null;
     "Ebus": bus$0.Bus;
@@ -56,41 +19,4 @@ export interface ServiceContext {
      * 暴露所有有效的 engines
      */
     "Engines": { [_ in string]?: engine$0.Engine } | null;
-}
-
-/**
- * SettingPayload is the settings document handed to the front end: the schema that describes every field
- * together with the values used to render it.
- */
-export interface SettingPayload {
-    "schema": { [_ in string]?: any } | null;
-    "values": { [_ in string]?: any } | null;
-
-    /**
-     * Defaults is the default layer snapshot. The renderer binds it when a user value violates the schema,
-     * because a zero value may itself be invalid (an empty string is not a valid size).
-     */
-    "defaults": { [_ in string]?: any } | null;
-
-    /**
-     * SystemFonts lists the families installed on the machine, so the picker can offer them while
-     * useSystem is on without the renderer knowing how to enumerate fonts.
-     */
-    "systemFonts": string[] | null;
-
-    /**
-     * Themes holds every selectable palette, merged and keyed as CSS custom properties, so the renderer
-     * only has to write them onto the root element.
-     */
-    "themes": SettingTheme[] | null;
-}
-
-/**
- * SettingTheme is one palette with both colour modes resolved. Keys are CSS custom properties such as
- * "--card-foreground" rather than the document's camel case form.
- */
-export interface SettingTheme {
-    "name": string;
-    "light": { [_ in string]?: string } | null;
-    "dark": { [_ in string]?: string } | null;
 }
