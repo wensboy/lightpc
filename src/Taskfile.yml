@@ -27,6 +27,16 @@ tasks:
     cmds:
       - task: "{{.GOOS}}:build"
 
+  build:dev:
+    summary: Builds the application with the development frontend bundle
+    desc: >
+      Same output as build, but the frontend is bundled in development mode so the mock services stay in
+      the binary. Use this while a backing service is still missing; build stays the release path.
+    cmds:
+      - task: "{{.GOOS}}:build"
+        vars:
+          DEV: "true"
+
   package:
     summary: Packages a production build of the application
     cmds:
