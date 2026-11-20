@@ -57,8 +57,24 @@ func SetupApp(cfg domainContext.ConfigContext, opt application.Options) *applica
 			opt.Description = description
 		}
 	}
+	var enableDevTools, disableDefaultCtxMenu bool
+	if value, ok := cfg.Lookup("default.application.enableDevTools"); ok {
+		if v, ok := cast.As[bool](value); ok {
+			enableDevTools = v
+		}
+	}
+	if value, ok := cfg.Lookup("default.application.disableDefaultContextMenu"); ok {
+		if v, ok := cast.As[bool](value); ok {
+			disableDefaultCtxMenu = v
+		}
+	}
 	app := application.New(opt)
-	windowOptions := application.WebviewWindowOptions{Title: opt.Name}
+	windowOptions := application.WebviewWindowOptions{
+		Title: opt.Name,
+		// A release build disables both by default, which leaves no way to inspect the interface.
+		DevToolsEnabled:            enableDevTools,
+		DefaultContextMenuDisabled: disableDefaultCtxMenu,
+	}
 	if value, ok := cfg.Lookup("default.application.window.width"); ok {
 		if width, ok := cast.As[int](value); ok {
 			windowOptions.Width = width

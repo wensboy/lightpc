@@ -49,10 +49,10 @@ export function AccountDialog() {
         }
       }}
     >
-      <DialogContent className="overflow-hidden p-0 md:h-[500px] md:max-w-[700px] lg:max-w-[800px]">
+      <DialogContent className="grid-rows-[1fr] overflow-hidden p-0 md:h-[500px] md:max-h-[500px] md:max-w-[700px] lg:max-w-[800px]">
         <DialogTitle className="sr-only">{text.account.title}</DialogTitle>
         <DialogDescription className="sr-only">{text.account.description}</DialogDescription>
-        <SidebarProvider className="h-full min-h-0 items-stretch">
+        <SidebarProvider className="h-full min-h-0 w-full min-w-0 items-stretch">
           <Sidebar
             collapsible="none"
             className="hidden w-[250px] border-r border-sidebar-border md:flex"
