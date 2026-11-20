@@ -5,7 +5,9 @@
         "window": {
             "width": 800,
             "height": 600
-        }
+        },
+        "enableDevTools": true,
+        "disableDefaultContextMenu": false
     },
     "runtime": {
         "store": {
@@ -64,6 +66,9 @@
                 "mode": "rw"
                 }
             ]
-        }
+        },
+        "docs": [
+            "embed://data/docs/beta"
+        ]
     }
 }

@@ -16,7 +16,9 @@
             "required": [
                 "name",
                 "description",
-                "window"
+                "window",
+                "enableDevTools",
+                "disableDefaultContextMenu"
             ],
             "properties": {
                 "name": {
@@ -43,6 +45,14 @@
                             "minimum": 1
                         }
                     }
+                },
+                "enableDevTools": {
+                    "type": "boolean",
+                    "description": "Keep the developer tools available in a release build."
+                },
+                "disableDefaultContextMenu": {
+                    "type": "boolean",
+                    "description": "Suppress the webview context menu."
                 }
             }
         },
@@ -113,37 +123,62 @@
                     }
                 },
                 "setting": {
-                    "type": "array",
-                    "description": "Ordered setting layers; a higher index wins.",
-                    "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                            "layer",
-                            "path",
-                            "mode"
-                        ],
-                        "properties": {
-                            "layer": {
-                                "type": "string",
-                                "minLength": 1,
-                                "description": "Layer name exposed to callers."
-                            },
-                            "path": {
-                                "type": "string",
-                                "pattern": "^(local|embed)://.+",
-                                "description": "Resource path of the layer document."
-                            },
-                            "mode": {
-                                "type": "string",
-                                "enum": [
-                                    "ro",
-                                    "wo",
-                                    "rw"
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "schema",
+                        "layers"
+                    ],
+                    "description": "Settings engine configuration.",
+                    "properties": {
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^(local|embed)://.+",
+                            "description": "Resource path of the schema every setting document conforms to."
+                        },
+                        "layers": {
+                            "type": "array",
+                            "description": "Ordered layers; a higher index wins. The runtime layer is created by the engine.",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                    "layer",
+                                    "path",
+                                    "mode"
                                 ],
-                                "description": "Access mode of the layer."
+                                "properties": {
+                                    "layer": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "description": "Layer name exposed to callers."
+                                    },
+                                    "path": {
+                                        "type": "string",
+                                        "pattern": "^(local|embed)://.+",
+                                        "description": "Resource path of the layer document."
+                                    },
+                                    "mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "ro",
+                                            "wo",
+                                            "rw"
+                                        ],
+                                        "description": "Access mode of the layer."
+                                    }
+                                }
                             }
                         }
+                    }
+                },
+                "docs": {
+                    "type": "array",
+                    "description": "Directories that hold a documentation set. Each directory carries a meta.json and the markdown its toc points at.",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^(local|embed)://.+",
+                        "description": "Resource path of one documentation directory."
                     }
                 }
             }
