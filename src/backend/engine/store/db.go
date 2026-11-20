@@ -1,4 +1,4 @@
-package storeimpl
+package engineStoreImpl
 
 import (
 	"context"
@@ -9,12 +9,12 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/store"
+	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
 var (
-	_ store.DBStore       = (*SQL)(nil)
+	_ engineStore.DBStore = (*SQL)(nil)
 	_ domainEngine.Engine = (*SQL)(nil)
 )
 
@@ -26,7 +26,7 @@ func WithDB(db *sqlx.DB) SQLOption {
 	return func(s *SQL) { s.db = db }
 }
 
-// SQL implements store.DBStore on top of sqlx.
+// SQL implements engineStore.DBStore on top of sqlx.
 type SQL struct {
 	db           *sqlx.DB
 	queryTimeout time.Duration
@@ -37,7 +37,7 @@ type SQL struct {
 	closed bool
 }
 
-// sqlTx adapts *sqlx.Tx to store.Tx.
+// sqlTx adapts *sqlx.Tx to engineStore.Tx.
 type sqlTx struct {
 	tx *sqlx.Tx
 }
@@ -61,10 +61,10 @@ func (s *SQL) WithQueryTimeout(d time.Duration) *SQL {
 }
 
 // Group implements domainEngine.Engine.
-func (s *SQL) Group() string { return store.GroupStore }
+func (s *SQL) Group() string { return domainEngine.GroupStore }
 
 // Name implements domainEngine.Engine.
-func (s *SQL) Name() string { return store.NameDb }
+func (s *SQL) Name() string { return domainEngine.NameDb }
 
 // Deps implements domainEngine.Engine.
 func (s *SQL) Deps() []string { return []string{} }
@@ -80,7 +80,7 @@ func (s *SQL) State() domainEngine.EngineState {
 // validates the pool and watches signals.
 func (s *SQL) Init(eCtx domainEngine.EngineContext) error {
 	s.setState(domainEngine.EnginePending)
-	interError.RegisterAll(eCtx.AppCtx, store.Errors...)
+	interError.RegisterAll(eCtx.AppCtx, engineStore.Errors...)
 
 	s.mu.Lock()
 	s.ectx = eCtx
@@ -91,7 +91,7 @@ func (s *SQL) Init(eCtx domainEngine.EngineContext) error {
 		return err
 	}
 
-	watchStopSignal(eCtx.Ebus, store.NameDb, s.Close)
+	watchStopSignal(eCtx.Ebus, domainEngine.NameDb, s.Close)
 	s.setState(domainEngine.EngineReady)
 	return nil
 }
@@ -111,7 +111,7 @@ func (s *SQL) Restart() error {
 	return s.Init(eCtx)
 }
 
-// Stop implements domainEngine.Engine by closing the store.
+// Stop implements domainEngine.Engine by closing the engineStore.
 func (s *SQL) Stop() error { return s.Close() }
 
 // Validate checks that the connection pool is configured. It must be called before concurrent use.
@@ -119,13 +119,13 @@ func (s *SQL) Validate() error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.db == nil {
-		return interError.Retrieve(store.ErrKeyInvalid).Wrap(errors.New("db not configured"))
+		return interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(errors.New("db not configured"))
 	}
 	return nil
 }
 
-// Dispatch implements store.Dispatcher.
-func (s *SQL) Dispatch(ctx context.Context, cmd store.Command) (store.Response, error) {
+// Dispatch implements engineStore.Dispatcher.
+func (s *SQL) Dispatch(ctx context.Context, cmd engineStore.Command) (engineStore.Response, error) {
 	db, timeout, err := s.snapshot()
 	if err != nil {
 		return nil, err
@@ -137,25 +137,25 @@ func (s *SQL) Dispatch(ctx context.Context, cmd store.Command) (store.Response, 
 	}
 
 	switch c := cmd.(type) {
-	case store.QueryCommand:
+	case engineStore.QueryCommand:
 		rows, err := db.QueryxContext(ctx, c.SQL, c.Args...)
 		if err != nil {
 			return nil, err
 		}
-		return store.QueryResponse{Rows: rows}, nil
-	case store.ExecCommand:
+		return engineStore.QueryResponse{Rows: rows}, nil
+	case engineStore.ExecCommand:
 		res, err := db.ExecContext(ctx, c.SQL, c.Args...)
 		if err != nil {
 			return nil, err
 		}
-		return store.ExecResponse{Result: res}, nil
+		return engineStore.ExecResponse{Result: res}, nil
 	default:
-		return nil, interError.Retrieve(store.ErrKeyUnsupportedCommand).Wrap(fmt.Errorf("unsupported command %T", cmd))
+		return nil, interError.Retrieve(engineStore.ErrKeyUnsupportedCommand).Wrap(fmt.Errorf("unsupported command %T", cmd))
 	}
 }
 
-// Begin implements store.DBStore.Begin.
-func (s *SQL) Begin(ctx context.Context) (store.Tx, error) {
+// Begin implements engineStore.DBStore.Begin.
+func (s *SQL) Begin(ctx context.Context) (engineStore.Tx, error) {
 	db, _, err := s.snapshot()
 	if err != nil {
 		return nil, err
@@ -167,7 +167,7 @@ func (s *SQL) Begin(ctx context.Context) (store.Tx, error) {
 	return &sqlTx{tx: tx}, nil
 }
 
-// Close implements store.DBStore.Close and is idempotent.
+// Close implements engineStore.DBStore.Close and is idempotent.
 func (s *SQL) Close() error {
 	s.mu.Lock()
 	if s.closed {
@@ -190,30 +190,30 @@ func (s *SQL) Close() error {
 	return nil
 }
 
-// Dispatch implements store.Dispatcher with the same semantics as SQL.Dispatch.
-func (t *sqlTx) Dispatch(ctx context.Context, cmd store.Command) (store.Response, error) {
+// Dispatch implements engineStore.Dispatcher with the same semantics as SQL.Dispatch.
+func (t *sqlTx) Dispatch(ctx context.Context, cmd engineStore.Command) (engineStore.Response, error) {
 	switch c := cmd.(type) {
-	case store.QueryCommand:
+	case engineStore.QueryCommand:
 		rows, err := t.tx.QueryxContext(ctx, c.SQL, c.Args...)
 		if err != nil {
 			return nil, err
 		}
-		return store.QueryResponse{Rows: rows}, nil
-	case store.ExecCommand:
+		return engineStore.QueryResponse{Rows: rows}, nil
+	case engineStore.ExecCommand:
 		res, err := t.tx.ExecContext(ctx, c.SQL, c.Args...)
 		if err != nil {
 			return nil, err
 		}
-		return store.ExecResponse{Result: res}, nil
+		return engineStore.ExecResponse{Result: res}, nil
 	default:
-		return nil, interError.Retrieve(store.ErrKeyUnsupportedCommand).Wrap(fmt.Errorf("unsupported command %T", cmd))
+		return nil, interError.Retrieve(engineStore.ErrKeyUnsupportedCommand).Wrap(fmt.Errorf("unsupported command %T", cmd))
 	}
 }
 
-// Commit implements store.Tx.Commit.
+// Commit implements engineStore.Tx.Commit.
 func (t *sqlTx) Commit() error { return t.tx.Commit() }
 
-// Rollback implements store.Tx.Rollback.
+// Rollback implements engineStore.Tx.Rollback.
 func (t *sqlTx) Rollback() error { return t.tx.Rollback() }
 
 // setState stores the engine state.
@@ -228,10 +228,10 @@ func (s *SQL) snapshot() (*sqlx.DB, time.Duration, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.closed {
-		return nil, 0, interError.Retrieve(store.ErrKeyClosed)
+		return nil, 0, interError.Retrieve(engineStore.ErrKeyClosed)
 	}
 	if s.db == nil {
-		return nil, 0, interError.Retrieve(store.ErrKeyInvalid).Wrap(errors.New("db not configured"))
+		return nil, 0, interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(errors.New("db not configured"))
 	}
 	return s.db, s.queryTimeout, nil
 }

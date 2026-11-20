@@ -1,5 +1,5 @@
 // Package help serves the documentation sets that ship with the application.
-package help
+package serviceHelpImpl
 
 import (
 	"context"
@@ -9,8 +9,9 @@ import (
 	"strings"
 
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/store"
+	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
+	serviceHelp "github.com/wensboy/lightpc/backend/domain/service/help"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 	"github.com/wensboy/lightpc/backend/internal/path"
@@ -24,7 +25,7 @@ const metaName = "meta.json"
 
 // Service reads the documentation that ships with the application.
 type Service struct {
-	fileStore store.FileStore
+	fileStore engineStore.FileStore
 	roots     []string
 }
 
@@ -39,17 +40,17 @@ func (s *Service) Group() string { return domainService.GroupHelp }
 // Init implements domainService.Service: it resolves the file store and the documentation directories.
 func (s *Service) Init(sCtx domainService.ServiceContext) error {
 	if sCtx.AppCtx != nil {
-		interError.RegisterAll(sCtx.AppCtx, Errors...)
+		interError.RegisterAll(sCtx.AppCtx, serviceHelp.Errors...)
 	}
 
-	engineKey := domainEngine.EngineDep(store.GroupStore, store.NameFs)
+	engineKey := domainEngine.EngineDep(domainEngine.GroupStore, domainEngine.NameFs)
 	engine, found := sCtx.Engines[engineKey]
 	if !found {
-		return interError.Retrieve(store.ErrKeyInvalid).Wrap(fmt.Errorf("engine %q is not ready", engineKey))
+		return interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(fmt.Errorf("engine %q is not ready", engineKey))
 	}
-	fileStore, ok := cast.As[store.FileStore](engine)
+	fileStore, ok := cast.As[engineStore.FileStore](engine)
 	if !ok {
-		return interError.Retrieve(store.ErrKeyInvalid).Wrap(fmt.Errorf("engine %q is not a file store", engineKey))
+		return interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(fmt.Errorf("engine %q is not a file store", engineKey))
 	}
 	s.fileStore = fileStore
 
@@ -79,11 +80,11 @@ func (s *Service) Init(sCtx domainService.ServiceContext) error {
 // Deinit implements domainService.Service.
 func (s *Service) Deinit() error { return nil }
 
-// Payload implements domainService.HelpClient: every documentation set, ordered by version.
-func (s *Service) Payload() (domainService.DocsPayload, error) {
-	payload := domainService.DocsPayload{Versions: make([]domainService.DocsVersion, 0, len(s.roots))}
+// Payload implements serviceHelp.HelpClient: every documentation set, ordered by version.
+func (s *Service) Payload() (serviceHelp.DocsPayload, error) {
+	payload := serviceHelp.DocsPayload{Versions: make([]serviceHelp.DocsVersion, 0, len(s.roots))}
 	if s.fileStore == nil {
-		return payload, interError.Retrieve(store.ErrKeyInvalid)
+		return payload, interError.Retrieve(engineStore.ErrKeyInvalid)
 	}
 
 	for _, root := range s.roots {
@@ -97,31 +98,29 @@ func (s *Service) Payload() (domainService.DocsPayload, error) {
 			slog.Default().Warn("help meta invalid", "path", path.Join(root, metaName), "err", err)
 			continue
 		}
-		payload.Versions = append(payload.Versions, domainService.DocsVersion{
-			Version:     parsed.Version,
-			Description: parsed.Description,
-			Author:      parsed.Author,
-			Date:        parsed.Date,
-			Deprecated:  parsed.Deprecated,
-			Tags:        parsed.Tags,
-			Toc:         parsed.Toc,
+		payload.Versions = append(payload.Versions, serviceHelp.DocsVersion{
+			Version:    parsed.Version,
+			Index:      parsed.Index,
+			Deprecated: parsed.Deprecated,
+			Tags:       parsed.Tags,
+			Toc:        parsed.Toc,
 		})
 	}
 	return payload, nil
 }
 
-// Read implements domainService.HelpClient: the markdown of one document.
+// Read implements serviceHelp.HelpClient: the markdown of one document.
 func (s *Service) Read(version, documentPath string) (string, error) {
 	if s.fileStore == nil {
-		return "", interError.Retrieve(store.ErrKeyInvalid)
+		return "", interError.Retrieve(engineStore.ErrKeyInvalid)
 	}
 	root, found := s.rootOf(version)
 	if !found {
-		return "", interError.Retrieve(ErrKeyVersionUnknown)
+		return "", interError.Retrieve(serviceHelp.ErrKeyVersionUnknown)
 	}
 	// The path comes from the toc, but it still has to stay inside the set.
 	if strings.Contains(documentPath, "..") || strings.HasPrefix(documentPath, "/") {
-		return "", interError.Retrieve(ErrKeyPathInvalid)
+		return "", interError.Retrieve(serviceHelp.ErrKeyPathInvalid)
 	}
 	data, err := s.fileStore.Get(context.Background(), path.Join(root, documentPath))
 	if err != nil {
@@ -150,13 +149,11 @@ func (s *Service) rootOf(version string) (string, bool) {
 
 // meta is the shape of one meta.json, with the toc kept in declaration order.
 type meta struct {
-	Version     string    `json:"version"`
-	Author      string    `json:"author"`
-	Date        string    `json:"date"`
-	Deprecated  bool      `json:"deprecated"`
-	Description string    `json:"description"`
-	Tags        []string  `json:"tags"`
-	Toc         tocGroups `json:"toc"`
+	Version    string    `json:"version"`
+	Index      string    `json:"index"`
+	Deprecated bool      `json:"deprecated"`
+	Tags       []string  `json:"tags"`
+	Toc        tocGroups `json:"toc"`
 }
 
 // decodeMeta reads one meta.json.

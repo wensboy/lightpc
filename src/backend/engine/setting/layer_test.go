@@ -1,4 +1,4 @@
-package settingimpl_test
+package engineSettingImpl_test
 
 import (
 	"os"
@@ -6,16 +6,15 @@ import (
 	"testing"
 
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/setting"
-	"github.com/wensboy/lightpc/backend/domain/engine/store"
-	settingimpl "github.com/wensboy/lightpc/backend/engine/setting"
-	storeimpl "github.com/wensboy/lightpc/backend/engine/store"
+	engineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
+	engineSettingImpl "github.com/wensboy/lightpc/backend/engine/setting"
+	engineStoreImpl "github.com/wensboy/lightpc/backend/engine/store"
 )
 
 // newStore builds a ready file store rooted at root.
-func newStore(t *testing.T, root string) *storeimpl.FS {
+func newStore(t *testing.T, root string) *engineStoreImpl.FS {
 	t.Helper()
-	fsStore := storeimpl.NewFS(storeimpl.WithRoot(root)).WithFileMode(0o644).WithDirMode(0o755)
+	fsStore := engineStoreImpl.NewFS(engineStoreImpl.WithRoot(root)).WithFileMode(0o644).WithDirMode(0o755)
 	if err := fsStore.Init(domainEngine.EngineContext{}); err != nil {
 		t.Fatalf("init store: %v", err)
 	}
@@ -26,15 +25,15 @@ func newStore(t *testing.T, root string) *storeimpl.FS {
 func TestInitCreatesMissingLocalLayer(t *testing.T) {
 	root := t.TempDir()
 	fsStore := newStore(t, root)
-	layerPath := filepath.Join(root, "settings", "setting.json")
+	layerPath := filepath.Join(root, "settings", "engineSetting.json")
 
-	instance := settingimpl.NewSetting(settingimpl.WithLayer(setting.Layer{
+	instance := engineSettingImpl.NewSetting(engineSettingImpl.WithLayer(engineSetting.Layer{
 		Name: "user",
-		Mode: setting.ModeReadWrite,
+		Mode: engineSetting.ModeReadWrite,
 		Path: "local://" + layerPath,
 	}))
 	if err := instance.Init(domainEngine.EngineContext{
-		Engines: map[string]domainEngine.Engine{store.StoreFs: fsStore},
+		Engines: map[string]domainEngine.Engine{domainEngine.StoreFs: fsStore},
 	}); err != nil {
 		t.Fatalf("init setting: %v", err)
 	}
@@ -52,18 +51,18 @@ func TestInitCreatesMissingLocalLayer(t *testing.T) {
 func TestInitKeepsExistingLocalLayer(t *testing.T) {
 	root := t.TempDir()
 	fsStore := newStore(t, root)
-	layerPath := filepath.Join(root, "setting.json")
+	layerPath := filepath.Join(root, "engineSetting.json")
 	if err := os.WriteFile(layerPath, []byte(`{"general":{"language":"Chinese"}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	instance := settingimpl.NewSetting(settingimpl.WithLayer(setting.Layer{
+	instance := engineSettingImpl.NewSetting(engineSettingImpl.WithLayer(engineSetting.Layer{
 		Name: "user",
-		Mode: setting.ModeReadWrite,
+		Mode: engineSetting.ModeReadWrite,
 		Path: "local://" + layerPath,
 	}))
 	if err := instance.Init(domainEngine.EngineContext{
-		Engines: map[string]domainEngine.Engine{store.StoreFs: fsStore},
+		Engines: map[string]domainEngine.Engine{domainEngine.StoreFs: fsStore},
 	}); err != nil {
 		t.Fatalf("init setting: %v", err)
 	}
@@ -74,7 +73,7 @@ func TestInitKeepsExistingLocalLayer(t *testing.T) {
 	if !found {
 		t.Fatal("the stored document must be loaded")
 	}
-	entry, ok := raw.(setting.Entry[any])
+	entry, ok := raw.(engineSetting.Entry[any])
 	if !ok {
 		t.Fatalf("entry = %T", raw)
 	}
@@ -87,9 +86,9 @@ func TestInitKeepsExistingLocalLayer(t *testing.T) {
 }
 
 func TestInitSkipsLayerWithoutStore(t *testing.T) {
-	instance := settingimpl.NewSetting(settingimpl.WithLayer(setting.Layer{
+	instance := engineSettingImpl.NewSetting(engineSettingImpl.WithLayer(engineSetting.Layer{
 		Name: "default",
-		Mode: setting.ModeReadOnly,
+		Mode: engineSetting.ModeReadOnly,
 		Path: "embed://data/conf/missing.json",
 	}))
 

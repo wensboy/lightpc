@@ -1,4 +1,4 @@
-package logimpl
+package engineLogImpl
 
 import (
 	"io"
@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
-	"github.com/wensboy/lightpc/backend/domain/engine/log"
+	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 	interLog "github.com/wensboy/lightpc/backend/internal/log"
@@ -80,7 +80,7 @@ func entriesOf(items []domainConfig.LogItem) []logEntry {
 	for _, item := range items {
 		entry, ok := parseEntry(item)
 		if !ok {
-			slog.Default().Warn("log item skipped", "name", item.Name, "err", interError.Retrieve(log.ErrKeyInvalidItem))
+			slog.Default().Warn("log item skipped", "name", item.Name, "err", interError.Retrieve(engineLog.ErrKeyInvalidItem))
 			continue
 		}
 		entries = append(entries, entry)
@@ -98,16 +98,16 @@ func buildHandlers(entry logEntry) []slog.Handler {
 
 		if entry.handler == "file" {
 			if output.Path == "" {
-				slog.Default().Warn("log output skipped", "name", entry.name, "err", interError.Retrieve(log.ErrKeyInvalidItem))
+				slog.Default().Warn("log output skipped", "name", entry.name, "err", interError.Retrieve(engineLog.ErrKeyInvalidItem))
 				continue
 			}
 			target, err := path.Parse(output.Path)
 			if err != nil || target.IsEmbed() {
-				slog.Default().Warn("log output skipped", "path", output.Path, "err", interError.Retrieve(log.ErrKeyHandlerFailed).Wrap(err))
+				slog.Default().Warn("log output skipped", "path", output.Path, "err", interError.Retrieve(engineLog.ErrKeyHandlerFailed).Wrap(err))
 				continue
 			}
 			if err := os.MkdirAll(filepath.Dir(target.Path), 0o755); err != nil {
-				slog.Default().Warn("log output skipped", "path", target.Path, "err", interError.Retrieve(log.ErrKeyHandlerFailed).Wrap(err))
+				slog.Default().Warn("log output skipped", "path", target.Path, "err", interError.Retrieve(engineLog.ErrKeyHandlerFailed).Wrap(err))
 				continue
 			}
 			handlers = append(handlers, interLog.NewFileHandler(interLog.FileOption{

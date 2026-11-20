@@ -7,7 +7,6 @@ import (
 	"github.com/wensboy/lightpc/backend/api/ui"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
-	storeimpl "github.com/wensboy/lightpc/backend/engine/store"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
@@ -46,14 +45,11 @@ func RunGui(appCtx domainContext.AppContext) error {
 	appRuntime := domainRuntime.NewAppRuntime().WithAppContext(appCtx)
 
 	engineRuntime := domainRuntime.NewEngineRuntime().WithAppRuntime(appRuntime)
-	engineRuntime.Register(
-		storeimpl.NewFS(),
-	)
+	SetupStore(cfg, engineRuntime)
 	SetupLog(cfg, engineRuntime)
 	SetupSetting(cfg, engineRuntime)
 
 	serviceRuntime := domainRuntime.NewServiceRuntime().WithAppRuntime(appRuntime)
-	SetupEventHandle(appRuntime, engineRuntime, serviceRuntime)
 
 	opt := ui.RegisterService(serviceRuntime)
 	if dist, ok := appCtx.EmbedContext["/frontend/dist"]; ok && dist != nil {

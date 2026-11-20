@@ -1,4 +1,4 @@
-package settingimpl_test
+package engineSettingImpl_test
 
 import (
 	"encoding/json"
@@ -7,27 +7,26 @@ import (
 	"testing"
 
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/setting"
-	"github.com/wensboy/lightpc/backend/domain/engine/store"
-	settingimpl "github.com/wensboy/lightpc/backend/engine/setting"
-	storeimpl "github.com/wensboy/lightpc/backend/engine/store"
+	engineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
+	engineSettingImpl "github.com/wensboy/lightpc/backend/engine/setting"
+	engineStoreImpl "github.com/wensboy/lightpc/backend/engine/store"
 )
 
 // newLayered builds a settings engine with a writable user layer at dir and an in-memory runtime layer.
-func newLayered(t *testing.T, dir string) *settingimpl.Setting {
+func newLayered(t *testing.T, dir string) *engineSettingImpl.Setting {
 	t.Helper()
-	fsStore := storeimpl.NewFS(storeimpl.WithRoot(dir)).WithDirMode(0o755).WithFileMode(0o644)
+	fsStore := engineStoreImpl.NewFS(engineStoreImpl.WithRoot(dir)).WithDirMode(0o755).WithFileMode(0o644)
 	if err := fsStore.Init(domainEngine.EngineContext{}); err != nil {
 		t.Fatalf("init store: %v", err)
 	}
 	t.Cleanup(func() { _ = fsStore.Close() })
 
-	instance := settingimpl.NewSetting(
-		settingimpl.WithLayer(setting.Layer{Name: "user", Mode: setting.ModeReadWrite, Path: "user.json"}),
-		settingimpl.WithLayer(setting.Layer{Name: "runtime", Mode: setting.ModeReadWrite}),
+	instance := engineSettingImpl.NewSetting(
+		engineSettingImpl.WithLayer(engineSetting.Layer{Name: "user", Mode: engineSetting.ModeReadWrite, Path: "user.json"}),
+		engineSettingImpl.WithLayer(engineSetting.Layer{Name: "runtime", Mode: engineSetting.ModeReadWrite}),
 	)
 	if err := instance.Init(domainEngine.EngineContext{
-		Engines: map[string]domainEngine.Engine{store.StoreFs: fsStore},
+		Engines: map[string]domainEngine.Engine{domainEngine.StoreFs: fsStore},
 	}); err != nil {
 		t.Fatalf("init setting: %v", err)
 	}
@@ -57,7 +56,7 @@ func TestFlushSinksRuntimeIntoUserLayer(t *testing.T) {
 	}
 	if raw, found := instance.Resolve("appearence.mode"); !found {
 		t.Fatal("runtime value must resolve before the flush")
-	} else if entry, ok := raw.(setting.Entry[any]); !ok || entry.Value != "dark" {
+	} else if entry, ok := raw.(engineSetting.Entry[any]); !ok || entry.Value != "dark" {
 		t.Fatalf("entry = %+v", raw)
 	}
 

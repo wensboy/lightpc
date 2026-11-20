@@ -1,16 +1,16 @@
-package help
+package serviceHelpImpl
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 
-	domainService "github.com/wensboy/lightpc/backend/domain/service"
+	serviceHelp "github.com/wensboy/lightpc/backend/domain/service/help"
 )
 
 // tocGroups decodes the toc object while keeping the declaration order, because the tree shows the groups
 // in the order the author wrote them and a map would lose it.
-type tocGroups []domainService.DocsGroup
+type tocGroups []serviceHelp.DocsGroup
 
 // UnmarshalJSON walks the object token by token so the order survives.
 func (t *tocGroups) UnmarshalJSON(data []byte) error {
@@ -34,14 +34,14 @@ func (t *tocGroups) UnmarshalJSON(data []byte) error {
 		if err := decoder.Decode(&items); err != nil {
 			return err
 		}
-		groups = append(groups, domainService.DocsGroup{Title: title, Items: items})
+		groups = append(groups, serviceHelp.DocsGroup{Title: title, Items: items})
 	}
 	*t = groups
 	return nil
 }
 
 // tocItems decodes one group of documents while keeping the declaration order.
-type tocItems []domainService.DocsItem
+type tocItems []serviceHelp.DocsItem
 
 // UnmarshalJSON walks the object token by token so the order survives.
 func (i *tocItems) UnmarshalJSON(data []byte) error {
@@ -61,7 +61,7 @@ func (i *tocItems) UnmarshalJSON(data []byte) error {
 		if err := decoder.Decode(&target); err != nil {
 			return err
 		}
-		items = append(items, domainService.DocsItem{Title: title, Path: target})
+		items = append(items, serviceHelp.DocsItem{Title: title, Path: target})
 	}
 	*i = items
 	return nil

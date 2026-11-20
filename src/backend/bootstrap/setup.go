@@ -10,8 +10,9 @@ import (
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
-	logimpl "github.com/wensboy/lightpc/backend/engine/log"
-	settingimpl "github.com/wensboy/lightpc/backend/engine/setting"
+	engineLogImpl "github.com/wensboy/lightpc/backend/engine/log"
+	engineSettingImpl "github.com/wensboy/lightpc/backend/engine/setting"
+	engineStoreImpl "github.com/wensboy/lightpc/backend/engine/store"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	"github.com/wensboy/lightpc/backend/internal/config"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
@@ -130,43 +131,49 @@ func SetupErrors(cfg domainContext.ConfigContext) domainContext.ErrorContext {
 	return errorContext
 }
 
+func SetupStore(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
+	er.Register(
+		engineStoreImpl.NewFS(),
+	)
+}
+
 func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
 	engines := make([]domainEngine.Engine, 0, 3)
 
-	if items := logimpl.ItemsFor(cfg, "direct"); len(items) > 0 {
-		options := make([]logimpl.DirectOption, 0, len(items))
+	if items := engineLogImpl.ItemsFor(cfg, "direct"); len(items) > 0 {
+		options := make([]engineLogImpl.DirectOption, 0, len(items))
 		for _, item := range items {
-			options = append(options, logimpl.WithDirectItem(item))
+			options = append(options, engineLogImpl.WithDirectItem(item))
 		}
-		engines = append(engines, logimpl.NewDirectLog(options...))
+		engines = append(engines, engineLogImpl.NewDirectLog(options...))
 	}
 
-	if items := logimpl.ItemsFor(cfg, "fanout"); len(items) > 0 {
-		options := make([]logimpl.FanoutOption, 0, len(items))
+	if items := engineLogImpl.ItemsFor(cfg, "fanout"); len(items) > 0 {
+		options := make([]engineLogImpl.FanoutOption, 0, len(items))
 		for _, item := range items {
-			options = append(options, logimpl.WithFanoutItem(item))
+			options = append(options, engineLogImpl.WithFanoutItem(item))
 		}
-		engines = append(engines, logimpl.NewFanoutLog(options...))
+		engines = append(engines, engineLogImpl.NewFanoutLog(options...))
 	}
 
-	if items := logimpl.ItemsFor(cfg, "pattern"); len(items) > 0 {
-		options := make([]logimpl.PatternOption, 0, len(items))
+	if items := engineLogImpl.ItemsFor(cfg, "pattern"); len(items) > 0 {
+		options := make([]engineLogImpl.PatternOption, 0, len(items))
 		for _, item := range items {
-			options = append(options, logimpl.WithPatternItem(item))
+			options = append(options, engineLogImpl.WithPatternItem(item))
 		}
-		engines = append(engines, logimpl.NewPatternLog(options...))
+		engines = append(engines, engineLogImpl.NewPatternLog(options...))
 	}
 
 	er.Register(engines...)
 }
 
 func SetupSetting(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
-	layers := settingimpl.LayersFrom(cfg)
-	options := make([]settingimpl.Option, 0, len(layers))
+	layers := engineSettingImpl.LayersFrom(cfg)
+	options := make([]engineSettingImpl.Option, 0, len(layers))
 	for _, layer := range layers {
-		options = append(options, settingimpl.WithLayer(layer))
+		options = append(options, engineSettingImpl.WithLayer(layer))
 	}
-	er.Register(settingimpl.NewSetting(options...))
+	er.Register(engineSettingImpl.NewSetting(options...))
 }
 
 // SetupEventHandle defines the event wiring of the three runtimes.

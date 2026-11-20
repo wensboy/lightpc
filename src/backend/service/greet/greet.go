@@ -1,9 +1,10 @@
-package greet
+package serviceGreetImpl
 
 import (
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	"log/slog"
 
-	"github.com/wensboy/lightpc/backend/domain/engine/log"
+	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 )
@@ -12,9 +13,9 @@ import (
 // init 阶段从 service context 中获取必须的数据.
 // deinit 阶段释放必须的资源, 通过 ebus 发送必要的事件.
 type GreetService struct {
-	direct  log.DirectClient
-	fanout  log.FanoutClient
-	pattern log.PatternClient
+	direct  engineLog.DirectClient
+	fanout  engineLog.FanoutClient
+	pattern engineLog.PatternClient
 }
 
 func NewGreetService() *GreetService {
@@ -27,14 +28,14 @@ func (s *GreetService) Group() string {
 
 // Init resolves the log engines from the service context so Greet can exercise every sink.
 func (s *GreetService) Init(sCtx domainService.ServiceContext) error {
-	if engine, ok := sCtx.Engines[log.GroupLog+"."+log.NameDirect]; ok {
-		s.direct, _ = cast.As[log.DirectClient](engine)
+	if engine, ok := sCtx.Engines[domainEngine.GroupLog+"."+domainEngine.NameDirect]; ok {
+		s.direct, _ = cast.As[engineLog.DirectClient](engine)
 	}
-	if engine, ok := sCtx.Engines[log.GroupLog+"."+log.NameFanout]; ok {
-		s.fanout, _ = cast.As[log.FanoutClient](engine)
+	if engine, ok := sCtx.Engines[domainEngine.GroupLog+"."+domainEngine.NameFanout]; ok {
+		s.fanout, _ = cast.As[engineLog.FanoutClient](engine)
 	}
-	if engine, ok := sCtx.Engines[log.GroupLog+"."+log.NamePattern]; ok {
-		s.pattern, _ = cast.As[log.PatternClient](engine)
+	if engine, ok := sCtx.Engines[domainEngine.GroupLog+"."+domainEngine.NamePattern]; ok {
+		s.pattern, _ = cast.As[engineLog.PatternClient](engine)
 	}
 	return nil
 }
@@ -47,7 +48,7 @@ func (s *GreetService) Deinit() error {
 //
 // Per invocation the expected outcome is: one console record, two records in debug.log (slog default
 // and the named direct logger), one record each in process.log and error.log, two records in
-// network_debug_up.log and one in network_warn_up.log.
+// network_debug_up.log and one in network_warn_up.engineLog.
 func (s *GreetService) Greet(name string) string {
 	// Direct: the slog default resolves to the first console handler of the direct group.
 	slog.Info("greet via slog default", "name", name)

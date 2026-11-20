@@ -1,4 +1,4 @@
-package log
+package engineLog
 
 import "log/slog"
 

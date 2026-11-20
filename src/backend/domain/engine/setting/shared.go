@@ -1,14 +1,6 @@
-package setting
+package engineSetting
 
 import interError "github.com/wensboy/lightpc/backend/internal/error"
-
-const (
-	// GroupSetting is the engine group of the settings engine.
-	GroupSetting = "setting"
-
-	// NameSetting is the engine name of the settings engine.
-	NameSetting = "setting"
-)
 
 const (
 	// ModeReadOnly allows resolving values from the layer.

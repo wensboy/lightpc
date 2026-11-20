@@ -1,4 +1,4 @@
-package logimpl
+package engineLogImpl
 
 import (
 	domainConfig "github.com/wensboy/lightpc/backend/domain/config"

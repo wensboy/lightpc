@@ -1,10 +1,10 @@
-package setting
+package serviceSettingImpl
 
 import (
+	serviceSetting "github.com/wensboy/lightpc/backend/domain/service/setting"
 	"strings"
 	"unicode"
 
-	domainService "github.com/wensboy/lightpc/backend/domain/service"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 )
 
@@ -25,13 +25,13 @@ func cssProperty(key string) string {
 
 // buildThemes resolves the merged palette list into something the renderer can apply directly: every entry
 // carries both colour modes and keys already converted to custom properties.
-func buildThemes(merged map[string]any) []domainService.SettingTheme {
+func buildThemes(merged map[string]any) []serviceSetting.SettingTheme {
 	list, ok := cast.To[[]any](merged[themePalettesKey])
 	if !ok {
 		return nil
 	}
 
-	themes := make([]domainService.SettingTheme, 0, len(list))
+	themes := make([]serviceSetting.SettingTheme, 0, len(list))
 	for _, entry := range list {
 		item, ok := cast.To[map[string]any](entry)
 		if !ok {
@@ -41,7 +41,7 @@ func buildThemes(merged map[string]any) []domainService.SettingTheme {
 		if !ok || name == "" {
 			continue
 		}
-		themes = append(themes, domainService.SettingTheme{
+		themes = append(themes, serviceSetting.SettingTheme{
 			Name:  name,
 			Light: paletteProperties(item["light"]),
 			Dark:  paletteProperties(item["dark"]),

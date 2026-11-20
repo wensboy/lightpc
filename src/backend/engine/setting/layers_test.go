@@ -1,12 +1,12 @@
-package settingimpl_test
+package engineSettingImpl_test
 
 import (
 	"strings"
 	"testing"
 
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
-	"github.com/wensboy/lightpc/backend/domain/engine/setting"
-	settingimpl "github.com/wensboy/lightpc/backend/engine/setting"
+	engineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
+	engineSettingImpl "github.com/wensboy/lightpc/backend/engine/setting"
 	"github.com/wensboy/lightpc/backend/internal/config"
 )
 
@@ -14,19 +14,19 @@ func TestLayersFromShippedConfig(t *testing.T) {
 	fileSource := config.NewFileSource()
 	fileSource.Parse(domainContext.FsContext{Paths: []string{"../../../data/conf/default.json"}})
 
-	layers := settingimpl.LayersFrom(domainContext.ConfigContext(fileSource))
+	layers := engineSettingImpl.LayersFrom(domainContext.ConfigContext(fileSource))
 	if len(layers) != 2 {
 		t.Fatalf("layers = %d", len(layers))
 	}
 
 	// Ascending priority: the embedded default comes first and the user document overrides it.
-	if layers[0].Name != "default" || layers[0].Mode != setting.ModeReadOnly {
+	if layers[0].Name != "default" || layers[0].Mode != engineSetting.ModeReadOnly {
 		t.Fatalf("first layer = %+v", layers[0])
 	}
 	if !strings.HasPrefix(layers[0].Path, "embed://") {
 		t.Fatalf("first layer path = %q", layers[0].Path)
 	}
-	if layers[1].Name != "user" || layers[1].Mode != setting.ModeReadWrite {
+	if layers[1].Name != "user" || layers[1].Mode != engineSetting.ModeReadWrite {
 		t.Fatalf("second layer = %+v", layers[1])
 	}
 	if !strings.HasPrefix(layers[1].Path, "local://") {
@@ -44,7 +44,7 @@ func TestLayersFromShippedConfig(t *testing.T) {
 func TestLayersFromMissingConfig(t *testing.T) {
 	fileSource := config.NewFileSource()
 
-	if layers := settingimpl.LayersFrom(domainContext.ConfigContext(fileSource)); len(layers) != 0 {
+	if layers := engineSettingImpl.LayersFrom(domainContext.ConfigContext(fileSource)); len(layers) != 0 {
 		t.Fatalf("layers = %d", len(layers))
 	}
 }

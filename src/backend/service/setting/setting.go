@@ -1,5 +1,5 @@
 // Package setting exposes the settings document to the front end.
-package setting
+package serviceSettingImpl
 
 import (
 	"context"
@@ -12,15 +12,16 @@ import (
 
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/setting"
-	"github.com/wensboy/lightpc/backend/domain/engine/store"
+	engineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
+	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
+	serviceSetting "github.com/wensboy/lightpc/backend/domain/service/setting"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
 // defaultSchemaPath is used when the configuration does not name a schema resource.
-const defaultSchemaPath = "embed://data/conf/schema/setting.schema.json"
+const defaultSchemaPath = "embed://data/conf/schema/engineSetting.schema.json"
 
 // schemaKey is the configuration path that names the schema resource.
 const schemaKey = "default.runtime.setting.schema"
@@ -39,8 +40,8 @@ const themePalettesKey = "appearence.theme.palettes"
 
 // SettingService hands the settings schema and its aggregated values to the front end.
 type SettingService struct {
-	fileStore  store.FileStore
-	setting    setting.Setting
+	fileStore  engineStore.FileStore
+	setting    engineSetting.Setting
 	schemaPath string
 	appCtx     *domainContext.AppContext
 }
@@ -55,24 +56,24 @@ func (s *SettingService) Group() string { return domainService.GroupSetting }
 
 // Init implements domainService.Service: it resolves the file store and the settings engine.
 func (s *SettingService) Init(sCtx domainService.ServiceContext) error {
-	storeEngine, found := sCtx.Engines[domainEngine.EngineDep(store.GroupStore, store.NameFs)]
+	storeEngine, found := sCtx.Engines[domainEngine.EngineDep(domainEngine.GroupStore, domainEngine.NameFs)]
 	if !found {
-		return interError.Retrieve(store.ErrKeyInvalid)
+		return interError.Retrieve(engineStore.ErrKeyInvalid)
 	}
-	fileStore, ok := cast.As[store.FileStore](storeEngine)
+	fileStore, ok := cast.As[engineStore.FileStore](storeEngine)
 	if !ok {
-		return interError.Retrieve(store.ErrKeyInvalid)
+		return interError.Retrieve(engineStore.ErrKeyInvalid)
 	}
 	s.fileStore = fileStore
 
-	settingKey := domainEngine.EngineDep(setting.GroupSetting, setting.NameSetting)
+	settingKey := domainEngine.EngineDep(domainEngine.GroupSetting, domainEngine.NameSetting)
 	settingEngine, found := sCtx.Engines[settingKey]
 	if !found {
-		return interError.Retrieve(setting.ErrKeyLayerUnknown).Wrap(fmt.Errorf("engine %q is not ready", settingKey))
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown).Wrap(fmt.Errorf("engine %q is not ready", settingKey))
 	}
-	instance, ok := cast.As[setting.Setting](settingEngine)
+	instance, ok := cast.As[engineSetting.Setting](settingEngine)
 	if !ok {
-		return interError.Retrieve(setting.ErrKeyLayerUnknown).Wrap(fmt.Errorf("engine %q is not a setting engine", settingKey))
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown).Wrap(fmt.Errorf("engine %q is not a setting engine", settingKey))
 	}
 	s.setting = instance
 
@@ -93,18 +94,18 @@ func (s *SettingService) Init(sCtx domainService.ServiceContext) error {
 func (s *SettingService) Deinit() error { return nil }
 
 // Payload returns the schema and the aggregated values the front end renders into setting cards.
-func (s *SettingService) Payload() (domainService.SettingPayload, error) {
+func (s *SettingService) Payload() (serviceSetting.SettingPayload, error) {
 	if s.fileStore == nil || s.setting == nil {
-		return domainService.SettingPayload{}, interError.Retrieve(store.ErrKeyInvalid)
+		return serviceSetting.SettingPayload{}, interError.Retrieve(engineStore.ErrKeyInvalid)
 	}
 
 	data, err := s.fileStore.Get(context.Background(), s.schemaPath)
 	if err != nil {
-		return domainService.SettingPayload{}, err
+		return serviceSetting.SettingPayload{}, err
 	}
 	schema := map[string]any{}
 	if err := json.Unmarshal(data, &schema); err != nil {
-		return domainService.SettingPayload{}, interError.Retrieve(store.ErrKeyInvalid).Wrap(err)
+		return serviceSetting.SettingPayload{}, interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(err)
 	}
 
 	flat := map[string]any{}
@@ -113,7 +114,7 @@ func (s *SettingService) Payload() (domainService.SettingPayload, error) {
 		if !found {
 			continue
 		}
-		entry, ok := cast.As[setting.Entry[any]](raw)
+		entry, ok := cast.As[engineSetting.Entry[any]](raw)
 		if !ok {
 			continue
 		}
@@ -125,7 +126,7 @@ func (s *SettingService) Payload() (domainService.SettingPayload, error) {
 	// The palette list stays in the view because theme.default reads its options from it. It is marked as
 	// derived in the schema, so the renderer uses it for the picker without drawing a card of its own; the
 	// Themes field carries the same data already resolved for painting.
-	return domainService.SettingPayload{
+	return serviceSetting.SettingPayload{
 		Schema:      schema,
 		Values:      nestValues(flat),
 		Defaults:    nestValues(defaults),
@@ -235,7 +236,7 @@ func (s *SettingService) defaults() map[string]any {
 	flat := map[string]any{}
 	for _, key := range s.setting.Keys() {
 		for _, raw := range s.setting.Layered(key) {
-			entry, ok := cast.As[setting.Entry[any]](raw)
+			entry, ok := cast.As[engineSetting.Entry[any]](raw)
 			if !ok || entry.Layer != defaultLayerName {
 				continue
 			}
@@ -268,7 +269,7 @@ func nestValues(flat map[string]any) map[string]any {
 // blocked by disk IO. A failing flush is retried by the engine's periodic flush.
 func (s *SettingService) Save(key string, value any) error {
 	if s.setting == nil {
-		return interError.Retrieve(setting.ErrKeyLayerUnknown)
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown)
 	}
 	if err := s.setting.Set(runtimeLayerName, key, value); err != nil {
 		return err

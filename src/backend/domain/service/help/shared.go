@@ -1,4 +1,4 @@
-package help
+package serviceHelp
 
 import (
 	interError "github.com/wensboy/lightpc/backend/internal/error"

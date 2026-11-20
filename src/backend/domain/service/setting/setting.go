@@ -1,4 +1,4 @@
-package service
+package serviceSetting
 
 // SettingPayload is the settings document handed to the front end: the schema that describes every field
 // together with the values used to render it.

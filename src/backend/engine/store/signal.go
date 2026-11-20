@@ -1,8 +1,8 @@
-package storeimpl
+package engineStoreImpl
 
 import (
 	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
-	"github.com/wensboy/lightpc/backend/domain/engine/store"
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 )
 
@@ -21,7 +21,7 @@ func watchStopSignal(ebus domainBus.Bus, name string, stop func() error) {
 			Name  string `json:"name"`
 		}{}
 		cast.ToStruct(source, &event, "json")
-		if event.Group != store.GroupStore || event.Name != name {
+		if event.Group != domainEngine.GroupStore || event.Name != name {
 			return
 		}
 		_ = stop()

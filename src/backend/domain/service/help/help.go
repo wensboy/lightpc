@@ -1,4 +1,4 @@
-package service
+package serviceHelp
 
 // DocsGroup is one section of a documentation set, holding the documents it lists in the order the
 // meta.json declares them.
@@ -15,13 +15,12 @@ type DocsItem struct {
 
 // DocsVersion is one documentation set as the reader sees it.
 type DocsVersion struct {
-	Version     string      `json:"version"`
-	Description string      `json:"description"`
-	Author      string      `json:"author"`
-	Date        string      `json:"date"`
-	Deprecated  bool        `json:"deprecated"`
-	Tags        []string    `json:"tags"`
-	Toc         []DocsGroup `json:"toc"`
+	Version string `json:"version"`
+	// Index is the markdown shown before a document is chosen, relative to the meta.json directory.
+	Index      string      `json:"index"`
+	Deprecated bool        `json:"deprecated"`
+	Tags       []string    `json:"tags"`
+	Toc        []DocsGroup `json:"toc"`
 }
 
 // DocsPayload lists every documentation set that ships with the application.

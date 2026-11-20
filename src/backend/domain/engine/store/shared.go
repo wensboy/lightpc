@@ -1,15 +1,7 @@
-package store
+package engineStore
 
 import (
-	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
-)
-
-const (
-	GroupStore = "store"
-
-	NameFs = "fs"
-	NameDb = "db"
 )
 
 // Error keys published by the store engines during Init.
@@ -36,8 +28,3 @@ var Errors = []interError.Option{
 	{Key: ErrKeyReadOnly, Code: interError.ErrCodeOpDenied, Msg: "store: read only"},
 	{Key: ErrKeyUnsupportedCommand, Code: interError.ErrCodeInvalidParam, Msg: "store: unsupported command"},
 }
-
-var (
-	StoreFs = domainEngine.EngineDep(GroupStore, NameFs)
-	StoreDb = domainEngine.EngineDep(GroupStore, NameDb)
-)

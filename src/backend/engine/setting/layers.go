@@ -1,10 +1,10 @@
-package settingimpl
+package engineSettingImpl
 
 import (
 	"strings"
 
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
-	"github.com/wensboy/lightpc/backend/domain/engine/setting"
+	engineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 )
 
@@ -16,7 +16,7 @@ const LayersKey = "default.runtime.setting.layers"
 //
 // The runtime layer is deliberately absent from the configuration. It is the top layer that holds unsaved
 // edits, so the engine creates it during Init instead of asking the bootstrap to wire it.
-func LayersFrom(cfg domainContext.ConfigContext) []setting.Layer {
+func LayersFrom(cfg domainContext.ConfigContext) []engineSetting.Layer {
 	value, ok := cfg.Lookup(LayersKey)
 	if !ok {
 		return nil
@@ -26,7 +26,7 @@ func LayersFrom(cfg domainContext.ConfigContext) []setting.Layer {
 		return nil
 	}
 
-	layers := make([]setting.Layer, 0, len(records))
+	layers := make([]engineSetting.Layer, 0, len(records))
 	for _, record := range records {
 		fields, ok := cast.To[map[string]any](record)
 		if !ok {
@@ -38,20 +38,20 @@ func LayersFrom(cfg domainContext.ConfigContext) []setting.Layer {
 		}
 		path, _ := cast.To[string](fields["path"])
 		mode, _ := cast.To[string](fields["mode"])
-		layers = append(layers, setting.Layer{Name: name, Path: path, Mode: parseMode(mode)})
+		layers = append(layers, engineSetting.Layer{Name: name, Path: path, Mode: parseMode(mode)})
 	}
 	return layers
 }
 
-// parseMode maps the configured mode onto setting.Mode; an unknown value falls back to read only so a
+// parseMode maps the configured mode onto engineSetting.Mode; an unknown value falls back to read only so a
 // typo never grants write access.
-func parseMode(text string) setting.Mode {
+func parseMode(text string) engineSetting.Mode {
 	switch strings.ToLower(text) {
 	case "rw":
-		return setting.ModeReadWrite
+		return engineSetting.ModeReadWrite
 	case "wo":
-		return setting.ModeWriteOnly
+		return engineSetting.ModeWriteOnly
 	default:
-		return setting.ModeReadOnly
+		return engineSetting.ModeReadOnly
 	}
 }

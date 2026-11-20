@@ -1,4 +1,4 @@
-package settingimpl
+package engineSettingImpl
 
 import (
 	"errors"
@@ -6,16 +6,16 @@ import (
 
 	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/setting"
+	engineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	"github.com/wensboy/lightpc/backend/internal/ebus"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
 // entryOf casts one untyped contribution back into the shape the engine stores.
-func entryOf(t *testing.T, raw any) setting.Entry[any] {
+func entryOf(t *testing.T, raw any) engineSetting.Entry[any] {
 	t.Helper()
-	entry, ok := cast.As[setting.Entry[any]](raw)
+	entry, ok := cast.As[engineSetting.Entry[any]](raw)
 	if !ok {
 		t.Fatalf("contribution must be a setting entry, got %T", raw)
 	}
@@ -25,8 +25,8 @@ func entryOf(t *testing.T, raw any) setting.Entry[any] {
 func newTestSetting(t *testing.T) *Setting {
 	t.Helper()
 	s := NewSetting(
-		WithLayer(setting.Layer{Name: "base", Mode: setting.ModeReadOnly}),
-		WithLayer(setting.Layer{Name: "user", Mode: setting.ModeReadWrite}),
+		WithLayer(engineSetting.Layer{Name: "base", Mode: engineSetting.ModeReadOnly}),
+		WithLayer(engineSetting.Layer{Name: "user", Mode: engineSetting.ModeReadWrite}),
 	)
 	if err := s.Init(domainEngine.EngineContext{}); err != nil {
 		t.Fatal(err)
@@ -73,7 +73,7 @@ func TestSettingRejectsWritesToReadOnlyLayer(t *testing.T) {
 	s := newTestSetting(t)
 
 	err := s.Set("base", "theme", "light")
-	if !errors.Is(err, interError.Retrieve(setting.ErrKeyLayerReadOnly)) {
+	if !errors.Is(err, interError.Retrieve(engineSetting.ErrKeyLayerReadOnly)) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -81,10 +81,10 @@ func TestSettingRejectsWritesToReadOnlyLayer(t *testing.T) {
 func TestSettingRejectsUnknownLayer(t *testing.T) {
 	s := newTestSetting(t)
 
-	if err := s.Set("ghost", "theme", "light"); !errors.Is(err, interError.Retrieve(setting.ErrKeyLayerUnknown)) {
+	if err := s.Set("ghost", "theme", "light"); !errors.Is(err, interError.Retrieve(engineSetting.ErrKeyLayerUnknown)) {
 		t.Fatalf("set err = %v", err)
 	}
-	if err := s.Load("ghost", map[string]any{"theme": "light"}); !errors.Is(err, interError.Retrieve(setting.ErrKeyLayerUnknown)) {
+	if err := s.Load("ghost", map[string]any{"theme": "light"}); !errors.Is(err, interError.Retrieve(engineSetting.ErrKeyLayerUnknown)) {
 		t.Fatalf("load err = %v", err)
 	}
 }
@@ -116,7 +116,7 @@ func TestSettingNotifiesChanges(t *testing.T) {
 	changed := make(chan any, 4)
 	bus.On(domainBus.EventSettingChanged, func(payload any) { changed <- payload })
 
-	s := NewSetting(WithLayer(setting.Layer{Name: "user", Mode: setting.ModeReadWrite}))
+	s := NewSetting(WithLayer(engineSetting.Layer{Name: "user", Mode: engineSetting.ModeReadWrite}))
 	if err := s.Init(domainEngine.EngineContext{Ebus: bus}); err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestSettingNotifiesChanges(t *testing.T) {
 func TestSettingLifecycle(t *testing.T) {
 	s := newTestSetting(t)
 
-	if s.Group() != setting.GroupSetting || s.Name() != setting.NameSetting {
+	if s.Group() != domainEngine.GroupSetting || s.Name() != domainEngine.NameSetting {
 		t.Fatalf("identity = %s.%s", s.Group(), s.Name())
 	}
 	if s.State() != domainEngine.EngineReady {

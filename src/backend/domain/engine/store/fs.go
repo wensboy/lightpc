@@ -1,5 +1,5 @@
 // Package store defines the storage engine contracts: interfaces and command or response messages.
-package store
+package engineStore
 
 import (
 	"context"

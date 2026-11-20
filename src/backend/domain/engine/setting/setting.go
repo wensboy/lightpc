@@ -1,4 +1,4 @@
-package setting
+package engineSetting
 
 // Layer is one configuration layer. Layers are ordered by priority: a higher index wins and the
 // resolved view reads from the last layer backwards.

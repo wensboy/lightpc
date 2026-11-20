@@ -1,4 +1,4 @@
-package storeimpl
+package engineStoreImpl
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/store"
+	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	"github.com/wensboy/lightpc/backend/internal/config"
 	"github.com/wensboy/lightpc/backend/internal/ebus"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
@@ -31,7 +31,7 @@ func TestFSInitRegistersStoreErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	notFound := interError.Retrieve(store.ErrKeyNotFound)
+	notFound := interError.Retrieve(engineStore.ErrKeyNotFound)
 	if notFound.Code != interError.ErrCodeNotExist || notFound.Kind != "Not Exist" {
 		t.Fatalf("not found = %+v", notFound)
 	}
@@ -46,7 +46,7 @@ func TestFSMissingFileReusesRegisteredError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := fsStore.Get(context.Background(), "missing.txt"); !errors.Is(err, interError.Retrieve(store.ErrKeyNotFound)) {
+	if _, err := fsStore.Get(context.Background(), "missing.txt"); !errors.Is(err, interError.Retrieve(engineStore.ErrKeyNotFound)) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -55,7 +55,7 @@ func TestFSInitWithoutRootReportsInvalid(t *testing.T) {
 	fsStore := NewFS()
 
 	err := fsStore.Init(newEngineContext())
-	if !errors.Is(err, interError.Retrieve(store.ErrKeyInvalid)) {
+	if !errors.Is(err, interError.Retrieve(engineStore.ErrKeyInvalid)) {
 		t.Fatalf("err = %v", err)
 	}
 	if state := fsStore.State(); state != domainEngine.EngineError {
@@ -67,7 +67,7 @@ func TestSQLInitWithoutPoolReportsInvalid(t *testing.T) {
 	sqlStore := NewSQL()
 
 	err := sqlStore.Init(newEngineContext())
-	if !errors.Is(err, interError.Retrieve(store.ErrKeyInvalid)) {
+	if !errors.Is(err, interError.Retrieve(engineStore.ErrKeyInvalid)) {
 		t.Fatalf("err = %v", err)
 	}
 	if state := sqlStore.State(); state != domainEngine.EngineError {
@@ -124,7 +124,7 @@ func TestFSReportsMissingEmbeddedContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	missing := interError.Retrieve(store.ErrKeyNotFound)
+	missing := interError.Retrieve(engineStore.ErrKeyNotFound)
 
 	if _, err := fsStore.Get(ctx, "embed://testdata/hello.txt"); !errors.Is(err, missing) {
 		t.Fatalf("get err = %v", err)
@@ -140,7 +140,7 @@ func TestFSRejectsEmbeddedWrites(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	readOnly := interError.Retrieve(store.ErrKeyReadOnly)
+	readOnly := interError.Retrieve(engineStore.ErrKeyReadOnly)
 
 	if err := fsStore.Put(ctx, "embed://testdata/hello.txt", []byte("x")); !errors.Is(err, readOnly) {
 		t.Fatalf("put err = %v", err)
@@ -180,7 +180,7 @@ func TestFSInitWatchesStopSignal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bus.Emit(domainBus.EventEngineStop, map[string]any{"group": store.GroupStore, "name": store.NameFs})
+	bus.Emit(domainBus.EventEngineStop, map[string]any{"group": domainEngine.GroupStore, "name": domainEngine.NameFs})
 
 	if state := fsStore.State(); state != domainEngine.EngineStopped {
 		t.Fatalf("state = %v", state)

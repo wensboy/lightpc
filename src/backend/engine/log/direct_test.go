@@ -1,4 +1,4 @@
-package logimpl
+package engineLogImpl
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/log"
+	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 )
 
@@ -68,7 +68,7 @@ func TestDirectLogIgnoresInvalidRegistration(t *testing.T) {
 func TestDirectLogLifecycle(t *testing.T) {
 	directLog := NewDirectLog(WithDirectHandler("app", slog.NewTextHandler(io.Discard, nil)))
 
-	if directLog.Group() != log.GroupLog || directLog.Name() != log.NameDirect {
+	if directLog.Group() != domainEngine.GroupLog || directLog.Name() != domainEngine.NameDirect {
 		t.Fatalf("identity = %s.%s", directLog.Group(), directLog.Name())
 	}
 	if directLog.State() != domainEngine.EnginePending {
@@ -97,7 +97,7 @@ func TestDirectLogLifecycle(t *testing.T) {
 func TestDirectLogExposesCapabilitiesThroughCast(t *testing.T) {
 	var engine domainEngine.Engine = NewDirectLog(WithDirectHandler("app", slog.NewTextHandler(io.Discard, nil)))
 
-	client, ok := cast.As[log.DirectClient](engine)
+	client, ok := cast.As[engineLog.DirectClient](engine)
 	if !ok {
 		t.Fatal("the engine must be convertible to DirectClient")
 	}
@@ -105,7 +105,7 @@ func TestDirectLogExposesCapabilitiesThroughCast(t *testing.T) {
 		t.Fatal("app logger must be resolved through the interface")
 	}
 
-	server, ok := cast.As[log.DirectServer](engine)
+	server, ok := cast.As[engineLog.DirectServer](engine)
 	if !ok {
 		t.Fatal("the engine must be convertible to DirectServer")
 	}

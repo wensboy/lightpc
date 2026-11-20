@@ -1,5 +1,5 @@
 // Package settingimpl provides the layered settings engine.
-package settingimpl
+package engineSettingImpl
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 
 	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/setting"
-	"github.com/wensboy/lightpc/backend/domain/engine/store"
+	engineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
+	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 	"github.com/wensboy/lightpc/backend/internal/monitor"
@@ -41,7 +41,7 @@ var _ domainEngine.Engine = (*Setting)(nil)
 type Option func(*Setting)
 
 // WithLayer appends one layer. Layers are ordered by priority: a higher index wins.
-func WithLayer(layer setting.Layer) Option {
+func WithLayer(layer engineSetting.Layer) Option {
 	return func(s *Setting) {
 		if layer.Name == "" {
 			return
@@ -87,9 +87,9 @@ func WithWatchInterval(interval time.Duration) Option {
 }
 
 // Setting stores every layer contribution of a key and exposes the aggregated view. Contributions
-// travel as setting.Entry[any] because values differ per key; the engine never inspects them.
+// travel as engineSetting.Entry[any] because values differ per key; the engine never inspects them.
 type Setting struct {
-	layers   []setting.Layer
+	layers   []engineSetting.Layer
 	values   map[string][]any
 	watches  []*monitor.Monitor
 	stamps   map[int]time.Time
@@ -124,14 +124,14 @@ func NewSetting(opts ...Option) *Setting {
 }
 
 // Group implements domainEngine.Engine.
-func (s *Setting) Group() string { return setting.GroupSetting }
+func (s *Setting) Group() string { return domainEngine.GroupSetting }
 
 // Name implements domainEngine.Engine.
-func (s *Setting) Name() string { return setting.NameSetting }
+func (s *Setting) Name() string { return domainEngine.NameSetting }
 
-// Deps implements domainEngine.Engine: layers live in the store. Diagnostics use slog directly, so the
+// Deps implements domainEngine.Engine: layers live in the engineStore. Diagnostics use slog directly, so the
 // engine must not force a log sink that the configuration may leave disabled.
-func (s *Setting) Deps() []string { return []string{store.StoreFs} }
+func (s *Setting) Deps() []string { return []string{domainEngine.StoreFs} }
 
 // State implements domainEngine.Engine.
 func (s *Setting) State() domainEngine.EngineState {
@@ -143,13 +143,13 @@ func (s *Setting) State() domainEngine.EngineState {
 // Init implements domainEngine.Engine: it publishes the setting errors, loads every file backed layer
 // and starts watching it for changes.
 func (s *Setting) Init(eCtx domainEngine.EngineContext) error {
-	interError.RegisterAll(eCtx.AppCtx, setting.Errors...)
+	interError.RegisterAll(eCtx.AppCtx, engineSetting.Errors...)
 
 	s.mu.Lock()
 	s.ectx = eCtx
 	// The runtime layer is always the top one and is never configured: it only holds unsaved edits.
 	if _, found := s.layerIndex(s.runtime); !found {
-		s.layers = append(s.layers, setting.Layer{Name: s.runtime, Mode: setting.ModeReadWrite})
+		s.layers = append(s.layers, engineSetting.Layer{Name: s.runtime, Mode: engineSetting.ModeReadWrite})
 	}
 	s.state = domainEngine.EngineReady
 	layers := slices.Clone(s.layers)
@@ -208,21 +208,21 @@ func (s *Setting) Stop() error {
 	return nil
 }
 
-// Layers implements setting.Setting.
-func (s *Setting) Layers() []setting.Layer {
+// Layers implements engineSetting.Setting.
+func (s *Setting) Layers() []engineSetting.Layer {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return slices.Clone(s.layers)
 }
 
-// Layered implements setting.Setting.
+// Layered implements engineSetting.Setting.
 func (s *Setting) Layered(key string) []any {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return slices.Clone(s.values[key])
 }
 
-// Keys implements setting.Setting: every key that has at least one contribution, ordered.
+// Keys implements engineSetting.Setting: every key that has at least one contribution, ordered.
 func (s *Setting) Keys() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -234,7 +234,7 @@ func (s *Setting) Keys() []string {
 	return keys
 }
 
-// Resolve implements setting.Setting by returning the highest priority contribution.
+// Resolve implements engineSetting.Setting by returning the highest priority contribution.
 func (s *Setting) Resolve(key string) (any, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -245,17 +245,17 @@ func (s *Setting) Resolve(key string) (any, bool) {
 	return entries[len(entries)-1], true
 }
 
-// Set implements setting.Setting by writing value into the named writable layer.
+// Set implements engineSetting.Setting by writing value into the named writable layer.
 func (s *Setting) Set(layer, key string, value any) error {
 	s.mu.Lock()
 	index, found := s.layerIndex(layer)
 	if !found {
 		s.mu.Unlock()
-		return interError.Retrieve(setting.ErrKeyLayerUnknown)
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown)
 	}
 	if !canWrite(s.layers[index].Mode) {
 		s.mu.Unlock()
-		return interError.Retrieve(setting.ErrKeyLayerReadOnly)
+		return interError.Retrieve(engineSetting.ErrKeyLayerReadOnly)
 	}
 	s.putContribution(index, key, value)
 	if s.layers[index].Name == s.runtime {
@@ -267,17 +267,17 @@ func (s *Setting) Set(layer, key string, value any) error {
 	return nil
 }
 
-// Load implements setting.Setting by replacing the whole content of the named layer.
+// Load implements engineSetting.Setting by replacing the whole content of the named layer.
 func (s *Setting) Load(layer string, values map[string]any) error {
 	s.mu.Lock()
 	index, found := s.layerIndex(layer)
 	if !found {
 		s.mu.Unlock()
-		return interError.Retrieve(setting.ErrKeyLayerUnknown)
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown)
 	}
 	if !canRead(s.layers[index].Mode) {
 		s.mu.Unlock()
-		return interError.Retrieve(setting.ErrKeyLayerReadOnly)
+		return interError.Retrieve(engineSetting.ErrKeyLayerReadOnly)
 	}
 	for key := range s.values {
 		s.dropContribution(index, key)
@@ -293,7 +293,7 @@ func (s *Setting) Load(layer string, values map[string]any) error {
 	return nil
 }
 
-// Flush implements setting.Setting: it sinks every runtime contribution into the flush target and empties
+// Flush implements engineSetting.Setting: it sinks every runtime contribution into the flush target and empties
 // the runtime layer. Only runtime keys move, so a concurrent reload of the user layer merges key by key
 // while the higher layer still wins on collisions.
 func (s *Setting) Flush() error {
@@ -305,12 +305,12 @@ func (s *Setting) Flush() error {
 	runtimeIndex, found := s.layerIndex(s.runtime)
 	if !found {
 		s.mu.Unlock()
-		return interError.Retrieve(setting.ErrKeyLayerUnknown)
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown)
 	}
 	targetIndex, found := s.layerIndex(s.flushTarget)
 	if !found {
 		s.mu.Unlock()
-		return interError.Retrieve(setting.ErrKeyLayerUnknown)
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown)
 	}
 
 	pending := s.contributionsOf(runtimeIndex)
@@ -344,15 +344,15 @@ func (s *Setting) layerIndex(name string) (int, bool) {
 	return 0, false
 }
 
-// putContribution stores one setting.Entry[any] for key, keeping the slice ordered by layer position
+// putContribution stores one engineSetting.Entry[any] for key, keeping the slice ordered by layer position
 // so the last element stays the winner. It must be called with the lock held.
 func (s *Setting) putContribution(index int, key string, value any) {
 	layer := s.layers[index]
-	entry := setting.Entry[any]{Layer: layer.Name, Mode: layer.Mode, Value: value}
+	entry := engineSetting.Entry[any]{Layer: layer.Name, Mode: layer.Mode, Value: value}
 
 	entries := s.values[key]
 	for position := range entries {
-		existing, ok := cast.As[setting.Entry[any]](entries[position])
+		existing, ok := cast.As[engineSetting.Entry[any]](entries[position])
 		if !ok || existing.Layer != layer.Name {
 			continue
 		}
@@ -363,7 +363,7 @@ func (s *Setting) putContribution(index int, key string, value any) {
 
 	position := len(entries)
 	for position > 0 {
-		previous, ok := cast.As[setting.Entry[any]](entries[position-1])
+		previous, ok := cast.As[engineSetting.Entry[any]](entries[position-1])
 		if !ok {
 			break
 		}
@@ -384,7 +384,7 @@ func (s *Setting) dropContribution(index int, key string) {
 	entries := s.values[key]
 	kept := entries[:0]
 	for _, raw := range entries {
-		entry, ok := cast.As[setting.Entry[any]](raw)
+		entry, ok := cast.As[engineSetting.Entry[any]](raw)
 		if ok && entry.Layer == layer {
 			continue
 		}
@@ -401,7 +401,7 @@ func (s *Setting) dropContribution(index int, key string) {
 func (s *Setting) loadLayer(index int) error {
 	fileStore, found := s.fileStore()
 	if !found {
-		return interError.Retrieve(setting.ErrKeyLayerUnknown)
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown)
 	}
 
 	layer := s.layers[index]
@@ -440,7 +440,7 @@ func (s *Setting) loadLayer(index int) error {
 }
 
 // watch re-reads the layer whenever its modification time changes.
-func (s *Setting) watch(index int, layer setting.Layer) {
+func (s *Setting) watch(index int, layer engineSetting.Layer) {
 	watcher := monitor.New(s.interval, func() (any, error) {
 		fileStore, found := s.fileStore()
 		if !found {
@@ -488,14 +488,14 @@ func (s *Setting) stopWatches() {
 }
 
 // fileStore resolves the file store dependency through the engine context.
-func (s *Setting) fileStore() (store.FileStore, bool) {
+func (s *Setting) fileStore() (engineStore.FileStore, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	engine, found := s.ectx.Engines[store.StoreFs]
+	engine, found := s.ectx.Engines[domainEngine.StoreFs]
 	if !found {
 		return nil, false
 	}
-	return cast.As[store.FileStore](engine)
+	return cast.As[engineStore.FileStore](engine)
 }
 
 // notify publishes the change so services can react to it.
@@ -510,17 +510,17 @@ func (s *Setting) notify(key string, value any) {
 }
 
 // canRead reports whether the mode permits reading.
-func canRead(mode setting.Mode) bool {
-	return mode == setting.ModeReadOnly || mode == setting.ModeReadWrite
+func canRead(mode engineSetting.Mode) bool {
+	return mode == engineSetting.ModeReadOnly || mode == engineSetting.ModeReadWrite
 }
 
 // canWrite reports whether the mode permits writing.
-func canWrite(mode setting.Mode) bool {
-	return mode == setting.ModeWriteOnly || mode == setting.ModeReadWrite
+func canWrite(mode engineSetting.Mode) bool {
+	return mode == engineSetting.ModeWriteOnly || mode == engineSetting.ModeReadWrite
 }
 
 // ensureLayer makes sure the resource behind a layer exists and can be read.
-func (s *Setting) ensureLayer(layer setting.Layer) error {
+func (s *Setting) ensureLayer(layer engineSetting.Layer) error {
 	target, err := path.Parse(layer.Path)
 	if err != nil {
 		return err
@@ -528,7 +528,7 @@ func (s *Setting) ensureLayer(layer setting.Layer) error {
 
 	fileStore, found := s.fileStore()
 	if !found {
-		return interError.Retrieve(setting.ErrKeyLayerUnknown)
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown)
 	}
 	ctx := context.Background()
 
@@ -561,7 +561,7 @@ func (s *Setting) contributionsOf(index int) map[string]any {
 	name := s.layers[index].Name
 	for key, entries := range s.values {
 		for _, raw := range entries {
-			entry, ok := cast.As[setting.Entry[any]](raw)
+			entry, ok := cast.As[engineSetting.Entry[any]](raw)
 			if !ok || entry.Layer != name {
 				continue
 			}
@@ -572,14 +572,14 @@ func (s *Setting) contributionsOf(index int) map[string]any {
 }
 
 // writeLayer serialises values into the file behind layer, creating the parent directory when needed.
-func (s *Setting) writeLayer(layer setting.Layer, values map[string]any) error {
+func (s *Setting) writeLayer(layer engineSetting.Layer, values map[string]any) error {
 	fileStore, found := s.fileStore()
 	if !found {
-		return interError.Retrieve(setting.ErrKeyLayerUnknown)
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown)
 	}
 	data, err := json.MarshalIndent(nest(values), "", "  ")
 	if err != nil {
-		return interError.Retrieve(setting.ErrKeyLayerUnknown).Wrap(err)
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown).Wrap(err)
 	}
 	if parent := path.Dir(layer.Path); parent != "" {
 		if err := fileStore.MkdirAll(context.Background(), parent); err != nil {

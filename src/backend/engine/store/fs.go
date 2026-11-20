@@ -1,5 +1,5 @@
 // Package storeimpl provides the concrete store implementations.
-package storeimpl
+package engineStoreImpl
 
 import (
 	"context"
@@ -16,14 +16,14 @@ import (
 
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/store"
+	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 	"github.com/wensboy/lightpc/backend/internal/path"
 )
 
 var (
-	_ store.FileStore     = (*FS)(nil)
-	_ domainEngine.Engine = (*FS)(nil)
+	_ engineStore.FileStore = (*FS)(nil)
+	_ domainEngine.Engine   = (*FS)(nil)
 )
 
 // FSOption is a critical construction parameter for FS.
@@ -34,7 +34,7 @@ func WithRoot(root string) FSOption {
 	return func(f *FS) { f.root = root }
 }
 
-// FS implements store.FileStore and confines every operation below root.
+// FS implements engineStore.FileStore and confines every operation below root.
 type FS struct {
 	root     string
 	fileMode fs.FileMode
@@ -74,10 +74,10 @@ func (f *FS) WithDirMode(m fs.FileMode) *FS {
 }
 
 // Group implements domainEngine.Engine.
-func (f *FS) Group() string { return store.GroupStore }
+func (f *FS) Group() string { return domainEngine.GroupStore }
 
 // Name implements domainEngine.Engine.
-func (f *FS) Name() string { return store.NameFs }
+func (f *FS) Name() string { return domainEngine.NameFs }
 
 // Deps implements domainEngine.Engine.
 func (f *FS) Deps() []string { return []string{} }
@@ -93,7 +93,7 @@ func (f *FS) State() domainEngine.EngineState {
 // applies configuration defaults for fields left at their zero value, ensures root and watches signals.
 func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 	f.setState(domainEngine.EnginePending)
-	interError.RegisterAll(eCtx.AppCtx, store.Errors...)
+	interError.RegisterAll(eCtx.AppCtx, engineStore.Errors...)
 
 	f.mu.Lock()
 	f.ectx = eCtx
@@ -126,7 +126,7 @@ func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 	if root != "" && dirMode != 0 {
 		if err := os.MkdirAll(root, dirMode); err != nil {
 			f.setState(domainEngine.EngineError)
-			return interError.Retrieve(store.ErrKeyInvalid).Wrap(fmt.Errorf("create root: %w", err))
+			return interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(fmt.Errorf("create root: %w", err))
 		}
 	}
 
@@ -135,7 +135,7 @@ func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 		return err
 	}
 
-	watchStopSignal(eCtx.Ebus, store.NameFs, f.Close)
+	watchStopSignal(eCtx.Ebus, domainEngine.NameFs, f.Close)
 	f.setState(domainEngine.EngineReady)
 	return nil
 }
@@ -155,7 +155,7 @@ func (f *FS) Restart() error {
 	return f.Init(eCtx)
 }
 
-// Stop implements domainEngine.Engine by closing the store.
+// Stop implements domainEngine.Engine by closing the engineStore.
 func (f *FS) Stop() error { return f.Close() }
 
 // Validate checks that root exists and is a directory, then normalizes it to a real absolute path.
@@ -164,24 +164,24 @@ func (f *FS) Validate() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.root == "" {
-		return interError.Retrieve(store.ErrKeyInvalid).Wrap(errors.New("root not configured"))
+		return interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(errors.New("root not configured"))
 	}
 	real, err := filepath.EvalSymlinks(f.root)
 	if err != nil {
-		return interError.Retrieve(store.ErrKeyInvalid).Wrap(fmt.Errorf("eval root: %w", err))
+		return interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(fmt.Errorf("eval root: %w", err))
 	}
 	info, err := os.Stat(real)
 	if err != nil {
-		return interError.Retrieve(store.ErrKeyInvalid).Wrap(fmt.Errorf("stat root: %w", err))
+		return interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(fmt.Errorf("stat root: %w", err))
 	}
 	if !info.IsDir() {
-		return interError.Retrieve(store.ErrKeyInvalid).Wrap(fmt.Errorf("root is not a directory: %s", real))
+		return interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(fmt.Errorf("root is not a directory: %s", real))
 	}
 	f.root = real
 	return nil
 }
 
-// Get implements store.FileStore.Get.
+// Get implements engineStore.FileStore.Get.
 func (f *FS) Get(ctx context.Context, p string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -208,13 +208,13 @@ func (f *FS) Get(ctx context.Context, p string) ([]byte, error) {
 	return data, nil
 }
 
-// Put implements store.FileStore.Put.
+// Put implements engineStore.FileStore.Put.
 func (f *FS) Put(ctx context.Context, p string, data []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if _, _, ok := f.embedTarget(p); ok {
-		return interError.Retrieve(store.ErrKeyReadOnly)
+		return interError.Retrieve(engineStore.ErrKeyReadOnly)
 	}
 	root, fileMode, _, err := f.rootAndModes()
 	if err != nil {
@@ -227,13 +227,13 @@ func (f *FS) Put(ctx context.Context, p string, data []byte) error {
 	return mapFSErr(os.WriteFile(abs, data, fileMode))
 }
 
-// Delete implements store.FileStore.Delete.
+// Delete implements engineStore.FileStore.Delete.
 func (f *FS) Delete(ctx context.Context, p string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if _, _, ok := f.embedTarget(p); ok {
-		return interError.Retrieve(store.ErrKeyReadOnly)
+		return interError.Retrieve(engineStore.ErrKeyReadOnly)
 	}
 	root, _, _, err := f.rootAndModes()
 	if err != nil {
@@ -246,17 +246,17 @@ func (f *FS) Delete(ctx context.Context, p string) error {
 	return mapFSErr(os.Remove(abs))
 }
 
-// Stat implements store.FileStore.Stat.
-func (f *FS) Stat(ctx context.Context, p string) (store.FileInfo, error) {
+// Stat implements engineStore.FileStore.Stat.
+func (f *FS) Stat(ctx context.Context, p string) (engineStore.FileInfo, error) {
 	if err := ctx.Err(); err != nil {
-		return store.FileInfo{}, err
+		return engineStore.FileInfo{}, err
 	}
 	if fsys, inner, ok := f.embedTarget(p); ok {
 		info, err := fs.Stat(fsys, inner)
 		if err != nil {
-			return store.FileInfo{}, mapEmbedErr(err)
+			return engineStore.FileInfo{}, mapEmbedErr(err)
 		}
-		return store.FileInfo{
+		return engineStore.FileInfo{
 			Path:    inner,
 			Size:    info.Size(),
 			Mode:    info.Mode(),
@@ -266,18 +266,18 @@ func (f *FS) Stat(ctx context.Context, p string) (store.FileInfo, error) {
 	}
 	root, _, _, err := f.rootAndModes()
 	if err != nil {
-		return store.FileInfo{}, err
+		return engineStore.FileInfo{}, err
 	}
 	abs, err := resolve(root, p)
 	if err != nil {
-		return store.FileInfo{}, err
+		return engineStore.FileInfo{}, err
 	}
 	info, err := os.Stat(abs)
 	if err != nil {
-		return store.FileInfo{}, mapFSErr(err)
+		return engineStore.FileInfo{}, mapFSErr(err)
 	}
 	rel, _ := filepath.Rel(root, abs)
-	return store.FileInfo{
+	return engineStore.FileInfo{
 		Path:    rel,
 		Size:    info.Size(),
 		Mode:    info.Mode(),
@@ -286,13 +286,13 @@ func (f *FS) Stat(ctx context.Context, p string) (store.FileInfo, error) {
 	}, nil
 }
 
-// List implements store.FileStore.List.
-func (f *FS) List(ctx context.Context, prefix string) ([]store.FileInfo, error) {
+// List implements engineStore.FileStore.List.
+func (f *FS) List(ctx context.Context, prefix string) ([]engineStore.FileInfo, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	if fsys, inner, ok := f.embedTarget(prefix); ok {
-		var out []store.FileInfo
+		var out []engineStore.FileInfo
 		walkErr := fs.WalkDir(fsys, inner, func(p string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
@@ -304,7 +304,7 @@ func (f *FS) List(ctx context.Context, prefix string) ([]store.FileInfo, error) 
 			if err != nil {
 				return err
 			}
-			out = append(out, store.FileInfo{
+			out = append(out, engineStore.FileInfo{
 				Path:    p,
 				Size:    info.Size(),
 				Mode:    info.Mode(),
@@ -328,7 +328,7 @@ func (f *FS) List(ctx context.Context, prefix string) ([]store.FileInfo, error) 
 		return nil, err
 	}
 
-	var out []store.FileInfo
+	var out []engineStore.FileInfo
 	walkErr := filepath.WalkDir(base, func(p string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -344,7 +344,7 @@ func (f *FS) List(ctx context.Context, prefix string) ([]store.FileInfo, error) 
 		if err != nil {
 			return err
 		}
-		out = append(out, store.FileInfo{
+		out = append(out, engineStore.FileInfo{
 			Path:    rel,
 			Size:    info.Size(),
 			Mode:    info.Mode(),
@@ -361,13 +361,13 @@ func (f *FS) List(ctx context.Context, prefix string) ([]store.FileInfo, error) 
 	return out, nil
 }
 
-// MkdirAll implements store.FileStore.MkdirAll.
+// MkdirAll implements engineStore.FileStore.MkdirAll.
 func (f *FS) MkdirAll(ctx context.Context, p string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if _, _, ok := f.embedTarget(p); ok {
-		return interError.Retrieve(store.ErrKeyReadOnly)
+		return interError.Retrieve(engineStore.ErrKeyReadOnly)
 	}
 	root, _, dirMode, err := f.rootAndModes()
 	if err != nil {
@@ -380,7 +380,7 @@ func (f *FS) MkdirAll(ctx context.Context, p string) error {
 	return mapFSErr(os.MkdirAll(abs, dirMode))
 }
 
-// Close implements store.FileStore.Close and is idempotent.
+// Close implements engineStore.FileStore.Close and is idempotent.
 func (f *FS) Close() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -394,10 +394,10 @@ func (f *FS) rootAndModes() (string, fs.FileMode, fs.FileMode, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	if f.closed {
-		return "", 0, 0, interError.Retrieve(store.ErrKeyClosed)
+		return "", 0, 0, interError.Retrieve(engineStore.ErrKeyClosed)
 	}
 	if f.root == "" {
-		return "", 0, 0, interError.Retrieve(store.ErrKeyInvalid).Wrap(errors.New("FS not validated, call Validate first"))
+		return "", 0, 0, interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(errors.New("FS not validated, call Validate first"))
 	}
 	return f.root, f.fileMode, f.dirMode, nil
 }
@@ -447,7 +447,7 @@ func mapEmbedErr(err error) error {
 		return nil
 	}
 	if errors.Is(err, fs.ErrNotExist) {
-		return interError.Retrieve(store.ErrKeyNotFound).Wrap(err)
+		return interError.Retrieve(engineStore.ErrKeyNotFound).Wrap(err)
 	}
 	return err
 }
@@ -457,10 +457,10 @@ func mapEmbedErr(err error) error {
 func resolve(root, p string) (string, error) {
 	target, err := path.Parse(p)
 	if err != nil {
-		return "", interError.Retrieve(store.ErrKeyInvalid).Wrap(err)
+		return "", interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(err)
 	}
 	if target.IsEmbed() {
-		return "", interError.Retrieve(store.ErrKeyInvalid)
+		return "", interError.Retrieve(engineStore.ErrKeyInvalid)
 	}
 
 	rel := p
@@ -468,7 +468,7 @@ func resolve(root, p string) (string, error) {
 		var ok bool
 		rel, ok = path.Relative(root, target.Path)
 		if !ok {
-			return "", interError.Retrieve(store.ErrKeyEscape)
+			return "", interError.Retrieve(engineStore.ErrKeyEscape)
 		}
 	}
 
@@ -477,11 +477,11 @@ func resolve(root, p string) (string, error) {
 	abs := filepath.Join(root, rel)
 
 	if !withinRoot(root, abs) {
-		return "", interError.Retrieve(store.ErrKeyEscape)
+		return "", interError.Retrieve(engineStore.ErrKeyEscape)
 	}
 	if real, err := filepath.EvalSymlinks(abs); err == nil {
 		if !withinRoot(root, real) {
-			return "", interError.Retrieve(store.ErrKeyEscape)
+			return "", interError.Retrieve(engineStore.ErrKeyEscape)
 		}
 		return real, nil
 	}
@@ -504,9 +504,9 @@ func mapFSErr(err error) error {
 	}
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		return interError.Retrieve(store.ErrKeyNotFound).Wrap(err)
+		return interError.Retrieve(engineStore.ErrKeyNotFound).Wrap(err)
 	case errors.Is(err, os.ErrExist):
-		return interError.Retrieve(store.ErrKeyExist).Wrap(err)
+		return interError.Retrieve(engineStore.ErrKeyExist).Wrap(err)
 	default:
 		return err
 	}

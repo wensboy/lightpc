@@ -1,4 +1,4 @@
-package logimpl
+package engineLogImpl
 
 import (
 	"log/slog"
@@ -7,15 +7,14 @@ import (
 
 	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/log"
-	"github.com/wensboy/lightpc/backend/domain/engine/store"
+	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
 var (
-	_ domainEngine.Engine = (*PatternLog)(nil)
-	_ log.PatternClient   = (*PatternLog)(nil)
-	_ log.PatternServer   = (*PatternLog)(nil)
+	_ domainEngine.Engine     = (*PatternLog)(nil)
+	_ engineLog.PatternClient = (*PatternLog)(nil)
+	_ engineLog.PatternServer = (*PatternLog)(nil)
 )
 
 // PatternOption is a critical construction parameter for PatternLog.
@@ -65,13 +64,13 @@ func NewPatternLog(opts ...PatternOption) *PatternLog {
 }
 
 // Group implements domainEngine.Engine.
-func (pl *PatternLog) Group() string { return log.GroupLog }
+func (pl *PatternLog) Group() string { return domainEngine.GroupLog }
 
 // Name implements domainEngine.Engine.
-func (pl *PatternLog) Name() string { return log.NamePattern }
+func (pl *PatternLog) Name() string { return domainEngine.NamePattern }
 
 // Deps implements domainEngine.Engine: log files live below the store root.
-func (pl *PatternLog) Deps() []string { return []string{store.StoreFs} }
+func (pl *PatternLog) Deps() []string { return []string{domainEngine.StoreFs} }
 
 // State implements domainEngine.Engine.
 func (pl *PatternLog) State() domainEngine.EngineState {
@@ -83,7 +82,7 @@ func (pl *PatternLog) State() domainEngine.EngineState {
 // Init implements domainEngine.Engine: it keeps the engine context, opens every configured handler
 // and becomes ready.
 func (pl *PatternLog) Init(eCtx domainEngine.EngineContext) error {
-	interError.RegisterAll(eCtx.AppCtx, log.Errors...)
+	interError.RegisterAll(eCtx.AppCtx, engineLog.Errors...)
 
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
@@ -121,7 +120,7 @@ func (pl *PatternLog) Stop() error {
 	return nil
 }
 
-// Logger implements log.PatternClient by broadcasting to every handler whose pattern matches
+// Logger implements engineLog.PatternClient by broadcasting to every handler whose pattern matches
 // name. Matching is attempted in both directions, so a concrete name can be looked up by a wildcard
 // query and a wildcard registry key can still match a concrete name.
 func (pl *PatternLog) Logger(name string) (*slog.Logger, bool) {
@@ -142,7 +141,7 @@ func (pl *PatternLog) Logger(name string) (*slog.Logger, bool) {
 	return slog.New(slog.NewMultiHandler(matched...)), true
 }
 
-// Register implements log.PatternServer by appending handler to the set bound to pattern.
+// Register implements engineLog.PatternServer by appending handler to the set bound to pattern.
 func (pl *PatternLog) Register(pattern string, handler slog.Handler) {
 	if pattern == "" || handler == nil {
 		return

@@ -1,4 +1,4 @@
-package logimpl
+package engineLogImpl
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
-	"github.com/wensboy/lightpc/backend/domain/engine/log"
 )
 
 func TestPatternLogRoutesByGlob(t *testing.T) {
@@ -92,7 +91,7 @@ func TestPatternLogIgnoresInvalidRegistration(t *testing.T) {
 func TestPatternLogLifecycle(t *testing.T) {
 	patternLog := NewPatternLog(WithPatternHandler("app.*", slog.NewTextHandler(io.Discard, nil)))
 
-	if patternLog.Group() != log.GroupLog || patternLog.Name() != log.NamePattern {
+	if patternLog.Group() != domainEngine.GroupLog || patternLog.Name() != domainEngine.NamePattern {
 		t.Fatalf("identity = %s.%s", patternLog.Group(), patternLog.Name())
 	}
 	if patternLog.State() != domainEngine.EnginePending {

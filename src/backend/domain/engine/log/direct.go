@@ -1,5 +1,5 @@
 // Package log defines the logging engine contracts: engine names and the direct log capabilities.
-package log
+package engineLog
 
 import "log/slog"
 
