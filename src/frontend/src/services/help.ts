@@ -16,9 +16,7 @@ const docsGroupSchema = z.object({
 // docsVersionSchema validates one documentation set.
 const docsVersionSchema = z.object({
   version: z.string(),
-  description: z.string(),
-  author: z.string(),
-  date: z.string(),
+  index: z.string(),
   deprecated: z.boolean(),
   tags: z.array(z.string()).default([]),
   toc: z.array(docsGroupSchema),

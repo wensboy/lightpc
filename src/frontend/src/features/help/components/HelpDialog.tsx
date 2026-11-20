@@ -28,7 +28,7 @@ import { HelpMarkdown } from '@/features/help/components/HelpMarkdown'
 import { SearchCombobox, type SearchSection } from '@/features/help/components/SearchCombobox'
 import { useHelp } from '@/features/help/useHelp'
 import { useText } from '@/locales'
-import type { DocsItem, DocsVersion } from '@/services/help'
+import type { DocsItem } from '@/services/help'
 import { useDialogStore } from '@/stores/dialog'
 
 // documentValue is what the picker shows for a document: its path without the markdown suffix, so
@@ -37,15 +37,17 @@ function documentValue(path: string): string {
   return path.replace(/\.md$/i, '')
 }
 
-// HelpDialog is the documentation browser. The version picker, the tree and the reader all read from one
-// hook, so switching a version clears the article and picking a document moves the breadcrumb with it.
+// HelpDialog is the documentation browser. The version picker, the tree, the search field and the reader
+// all read from one hook, so the selected document is the single source of truth: picking it anywhere
+// highlights it in the tree and shows it on the right.
 export function HelpDialog() {
   const text = useText()
   const helpOpen = useDialogStore((state) => state.helpOpen)
   const closeHelp = useDialogStore((state) => state.closeHelp)
-  const { versions, version, content, error, selectVersion, selectDocument } = useHelp(helpOpen)
+  const { versions, version, content, error, selectVersion, selectDocument, clear } = useHelp(helpOpen)
 
   const [active, setActive] = useState<{ group: string; item: DocsItem } | null>(null)
+  const [openGroups, setOpenGroups] = useState<string[]>([])
 
   const current = useMemo(
     () => versions.find((entry) => entry.version === version) ?? null,
@@ -53,14 +55,11 @@ export function HelpDialog() {
   )
   const groups = current?.toc ?? []
 
-  // Each section of the table of contents becomes a group of the picker, so the first level stays visible
-  // while the second level is what gets searched.
   const sections = useMemo<SearchSection[]>(
     () => groups.map((group) => ({ title: group.title, items: group.items.map((item) => item.path) })),
     [groups],
   )
 
-  // labels lets the picker show a title while the primitive filters on the path.
   const labels = useMemo<Record<string, string>>(() => {
     const table: Record<string, string> = {}
     for (const group of groups) {
@@ -71,8 +70,11 @@ export function HelpDialog() {
     return table
   }, [groups])
 
+  // Choosing a document expands its section and leaves the others as they were, so the tree and the reader
+  // always agree about what is selected.
   const open = (group: string, item: DocsItem) => {
     setActive({ group, item })
+    setOpenGroups((previous) => (previous.includes(group) ? previous : [...previous, group]))
     selectDocument(item.path)
   }
 
@@ -85,6 +87,11 @@ export function HelpDialog() {
         }
       }
     }
+  }
+
+  const reset = () => {
+    setActive(null)
+    clear()
   }
 
   return (
@@ -107,6 +114,7 @@ export function HelpDialog() {
                 active={version}
                 onChange={(next) => {
                   setActive(null)
+                  setOpenGroups([])
                   selectVersion(next)
                 }}
               />
@@ -123,17 +131,21 @@ export function HelpDialog() {
               <SidebarGroup>
                 <SidebarGroupContent>
                   <SidebarMenu className="gap-1">
-                    {groups.map((group, index) => (
+                    {groups.map((group) => (
                       <Collapsible
                         key={group.title}
-                        defaultOpen={index === 0}
+                        open={openGroups.includes(group.title)}
+                        onOpenChange={(next) => {
+                          setOpenGroups((previous) =>
+                            next
+                              ? [...new Set([...previous, group.title])]
+                              : previous.filter((title) => title !== group.title),
+                          )
+                        }}
                         className="group/collapsible"
                       >
                         <SidebarMenuItem>
-                          <SidebarMenuButton
-                            tooltip={group.title}
-                            render={<CollapsibleTrigger />}
-                          >
+                          <SidebarMenuButton tooltip={group.title} render={<CollapsibleTrigger />}>
                             <span>{group.title}</span>
                             <PlusIcon className="ml-auto size-4 group-aria-expanded/menu-button:hidden" />
                             <MinusIcon className="ml-auto hidden size-4 group-aria-expanded/menu-button:block" />
@@ -175,7 +187,13 @@ export function HelpDialog() {
                   </BreadcrumbList>
                 </Breadcrumb>
               ) : (
-                <span className="truncate text-sm text-muted-foreground">{version || text.help.title}</span>
+                <button
+                  type="button"
+                  className="truncate text-sm text-muted-foreground hover:text-foreground"
+                  onClick={reset}
+                >
+                  {version || text.help.title}
+                </button>
               )}
             </header>
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-4 pt-2">
@@ -183,8 +201,6 @@ export function HelpDialog() {
                 <p className="text-xs text-destructive">{error}</p>
               ) : content ? (
                 <HelpMarkdown source={content} />
-              ) : current ? (
-                <VersionSummary version={current} />
               ) : (
                 <p className="text-xs text-muted-foreground">{text.help.reader.empty}</p>
               )}
@@ -193,30 +209,5 @@ export function HelpDialog() {
         </SidebarProvider>
       </DialogContent>
     </Dialog>
-  )
-}
-
-// VersionSummary is what the reader shows before a document is opened: the metadata of the active set,
-// so the panel is not blank while the user chooses.
-function VersionSummary({ version }: { version: DocsVersion }) {
-  const text = useText()
-
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm leading-relaxed text-muted-foreground">{version.description}</p>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
-        <dt className="text-muted-foreground">{text.help.reader.author}</dt>
-        <dd>{version.author}</dd>
-        <dt className="text-muted-foreground">{text.help.reader.date}</dt>
-        <dd>{version.date}</dd>
-      </dl>
-      <div className="flex flex-wrap gap-1">
-        {version.tags?.map((tag) => (
-          <span key={tag} className="rounded bg-muted px-1.5 py-0.5 text-[0.7rem] text-muted-foreground">
-            {tag}
-          </span>
-        ))}
-      </div>
-    </div>
   )
 }

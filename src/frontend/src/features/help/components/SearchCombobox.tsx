@@ -20,7 +20,7 @@ export type SearchSection = {
 }
 
 type SearchComboboxProps = {
-  /** value is the display text of the current selection. */
+  /** value is the display text of the current document; empty means nothing is chosen. */
   value: string
   /** sections mirror the first level of the table of contents. */
   sections: readonly SearchSection[]
@@ -31,8 +31,8 @@ type SearchComboboxProps = {
 }
 
 // SearchCombobox is the document picker of the help dialog. It follows the grouped combobox pattern: the
-// list is rendered from a function so the primitive owns filtering and keyboard navigation. Rendering the
-// items ourselves broke both, because the primitive could no longer map its active index to a row.
+// list is rendered from a function so the primitive owns filtering and keyboard navigation. The field only
+// reports a selection; the tree keeps showing every section regardless of what was typed.
 export function SearchCombobox({ value, sections, labels, onSelect }: SearchComboboxProps) {
   const text = useText()
 

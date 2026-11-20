@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { helpService, type DocsVersion } from '@/services/help'
 
 export type DocsState = {
@@ -6,21 +6,27 @@ export type DocsState = {
   versions: DocsVersion[]
   /** version is the set the tree currently shows. */
   version: string
-  /** content is the markdown of the selected document. */
+  /** selected is the chosen document, empty while the reader shows the index page. */
+  selected: string
+  /** content is the markdown of the selection, or of the index page when nothing is selected. */
   content: string
   /** error carries a load failure, empty when everything is fine. */
   error: string
-  /** selectVersion switches the set and clears the document. */
+  /** selectVersion switches the set and returns to its index page. */
   selectVersion: (next: string) => void
   /** selectDocument loads one document of the active set. */
   selectDocument: (path: string) => void
+  /** clear drops the selection, which brings the index page back. */
+  clear: () => void
 }
 
-// useHelp owns the documentation index, the active version and the loaded document. The tree, the picker
-// and the reader all read from here, so the three stay in step without extra state.
+// useHelp owns the documentation index, the active version and the chosen document. The tree, the picker
+// and the reader all read from here. Selection and index are one piece of state: an empty selection means
+// the index page, so the reader never has to guess what to show.
 export function useHelp(active: boolean): DocsState {
   const [versions, setVersions] = useState<DocsVersion[]>([])
   const [version, setVersion] = useState('')
+  const [selected, setSelected] = useState('')
   const [content, setContent] = useState('')
   const [error, setError] = useState('')
 
@@ -49,26 +55,50 @@ export function useHelp(active: boolean): DocsState {
     }
   }, [active, versions.length])
 
+  // The index path is a plain string, so the effect below reruns on a version switch rather than on every
+  // render: the found version object is rebuilt each time.
+  const index = useMemo(
+    () => versions.find((entry) => entry.version === version)?.index ?? '',
+    [versions, version],
+  )
+
+  useEffect(() => {
+    const target = selected !== '' ? selected : index
+    if (version === '' || target === '') {
+      return
+    }
+    let cancelled = false
+    setError('')
+    helpService
+      .read(version, target)
+      .then((loaded) => {
+        if (!cancelled) {
+          setContent(loaded)
+        }
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) {
+          setError(cause instanceof Error ? cause.message : 'document could not be read')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [version, index, selected])
+
   const selectVersion = useCallback((next: string) => {
     setVersion(next)
+    setSelected('')
     setContent('')
   }, [])
 
-  const selectDocument = useCallback(
-    (path: string) => {
-      if (version === '') {
-        return
-      }
-      setError('')
-      helpService
-        .read(version, path)
-        .then(setContent)
-        .catch((cause: unknown) => {
-          setError(cause instanceof Error ? cause.message : 'document could not be read')
-        })
-    },
-    [version],
-  )
+  const selectDocument = useCallback((path: string) => {
+    setSelected(path)
+  }, [])
 
-  return { versions, version, content, error, selectVersion, selectDocument }
+  const clear = useCallback(() => {
+    setSelected('')
+  }, [])
+
+  return { versions, version, selected, content, error, selectVersion, selectDocument, clear }
 }

@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify'
+import { load } from 'js-yaml'
 import { Marked } from 'marked'
 
 // The reader renders markdown, so it needs GitHub flavoured tables, task lists and strikethrough. Parsing,
@@ -41,6 +42,53 @@ export const prose = [
   '[&_kbd]:rounded [&_kbd]:border [&_kbd]:border-border [&_kbd]:bg-muted [&_kbd]:px-1 [&_kbd]:py-0.5 [&_kbd]:text-[0.8em]',
   '[&_input[type=checkbox]]:mr-1 [&_input[type=checkbox]]:align-middle',
 ].join(' ')
+
+// FrontmatterEntry is one row of the metadata block shown above a document.
+export type FrontmatterEntry = { key: string; value: string }
+
+// readFrontmatter splits the optional block at the top of a page from its body. Values are flattened to text
+// because the block is rendered as a key/value table, not as data.
+//
+// The fence is located by hand and only the block is handed to the YAML parser: pulling in a wrapper that
+// accepts the whole document would drag a Node Buffer shim into the browser bundle.
+export function readFrontmatter(source: string): { entries: FrontmatterEntry[]; body: string } {
+  const block = splitFence(source)
+  if (!block) {
+    return { entries: [], body: source }
+  }
+
+  let data: unknown
+  try {
+    data = load(block.raw)
+  } catch {
+    return { entries: [], body: block.body }
+  }
+  if (typeof data !== 'object' || data === null) {
+    return { entries: [], body: block.body }
+  }
+
+  const entries: FrontmatterEntry[] = []
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    const text = Array.isArray(value) ? value.join(', ') : value === null || value === undefined ? '' : String(value)
+    entries.push({ key, value: text.trim() })
+  }
+  return { entries, body: block.body }
+}
+
+// splitFence finds the leading "---" block and returns its YAML plus the remaining body. A page without a
+// closed fence is treated as plain markdown.
+function splitFence(source: string): { raw: string; body: string } | null {
+  if (!source.startsWith('---')) {
+    return null
+  }
+  const close = source.indexOf('\n---', 3)
+  if (close === -1) {
+    return null
+  }
+  const raw = source.slice(3, close)
+  const next = source.indexOf('\n', close + 1)
+  return { raw, body: next === -1 ? '' : source.slice(next + 1) }
+}
 
 // renderMarkdown turns markdown into html. Parsing is synchronous, so the result is a string ready to be
 // sanitised.
