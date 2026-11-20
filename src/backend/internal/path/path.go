@@ -68,6 +68,12 @@ func Parse(value string) (Target, error) {
 	return target, nil
 }
 
+// Join appends a relative path to a resource while preserving the proto separator. path.Join is not used
+// because it cleans the value and would fold "embed://" into "embed:/".
+func Join(resource, relative string) string {
+	return strings.TrimSuffix(resource, "/") + "/" + strings.TrimPrefix(relative, "/")
+}
+
 // Dir returns the parent of a resource value, keeping its proto. It returns an empty string when the
 // value has no parent, so callers can skip the mkdir step.
 func Dir(value string) string {

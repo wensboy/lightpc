@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lightpc.local/schema/docs.meta.schema.json",
+  "title": "LightPC documentation meta",
+  "description": "Describes the meta.json every docs directory carries. The reader uses it to list versions and to build the document tree.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "author", "date", "description", "toc"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Pointer to this schema, resolved against the meta.json location."
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version shown in the documentation picker."
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Who maintains the documentation set."
+    },
+    "date": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Last edit time, written as YYYY/MM/DD HH:mm:ss."
+    },
+    "deprecated": {
+      "type": "boolean",
+      "description": "Marks a set that is kept for reference only."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One line summary shown in the picker."
+    },
+    "tags": {
+      "type": "array",
+      "description": "Free form labels used for filtering.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "local": {
+      "type": "boolean",
+      "description": "True when the documents ship with the application instead of being fetched."
+    },
+    "toc": {
+      "type": "object",
+      "description": "Two level table of contents: a group name maps to the documents it holds.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "description": "Documents of one group, keyed by the title shown in the tree.",
+        "minProperties": 1,
+        "additionalProperties": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Markdown path relative to the meta.json directory."
+        }
+      }
+    },
+    "remote": {
+      "type": "object",
+      "description": "Reserved for sets that are fetched instead of shipped.",
+      "additionalProperties": true
+    }
+  }
+}

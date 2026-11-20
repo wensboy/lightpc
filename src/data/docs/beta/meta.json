@@ -1,0 +1,46 @@
+{
+    "$schema": "../../conf/schema/docs.meta.schema.json",
+    "version": "beta",
+    "author": "wensboy",
+    "date": "2026/11/20 10:00:00",
+    "deprecated": false,
+    "description": "Pre-release test version documentation.",
+    "tags": ["test", "pre-release"],
+    "local": true,
+    "toc": {
+        "Quick Guide": {
+            "Usage": "quick-guide/usage.md",
+            "Develop": "quick-guide/develop.md"
+        },
+        "Architecture": {
+            "Overview": "architecture/overview.md",
+            "Backend": "architecture/backend.md",
+            "Frontend": "architecture/frontend.md",
+            "Ipc": "architecture/ipc.md"
+        },
+        "Manual": {
+            "Engine": "manual/engine.md",
+            "Service": "manual/service.md",
+            "Domain": "manual/domain.md",
+            "Command": "manual/command.md",
+            "Config": "manual/config.md",
+            "Setting": "manual/setting.md", 
+            "UI": "manual/ui.md",
+            "Component": "manual/component.md",
+            "Assets": "manual/assets.md",
+            "Ai Agent": "manual/ai-agent.md" 
+        },
+        "Reference": {
+            "Spec": "reference/spec.md",
+            "Command": "reference/command.md",
+            "Config": "reference/config.md",
+            "Setting": "reference/setting.md",
+            "Directory Structure": "reference/directory-structure.md"
+        },
+        "Project": {
+            "Todo": "project/todo.md",
+            "Q&A": "project/q&a.md"
+        }
+    },
+    "remote": {}
+}
