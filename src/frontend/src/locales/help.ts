@@ -4,42 +4,18 @@ export const help = {
   description: 'Browse the documentation and search for answers.',
   switcher: {
     title: 'Documentation',
-    versions: ['v1.0.1', 'v1.1.0-alpha', 'v2.0.0-beta1'],
   },
   search: {
     label: 'Search documents...',
     empty: 'No documents found.',
     placeholder: 'Select a document',
   },
-  placeholder: {
-    pending: (section: string) => `Open a document in ${section} to read it here.`,
-  },
-  sections: {
-    gettingStarted: {
-      title: 'Getting Started',
-      items: {
-        installation: 'Installation',
-        structure: 'Project Structure',
-        configuration: 'Configuration',
-      },
-    },
-    build: {
-      title: 'Build Your Application',
-      items: {
-        routing: 'Routing',
-        dataFetching: 'Data Fetching',
-        rendering: 'Rendering',
-        styling: 'Styling',
-      },
-    },
-    reference: {
-      title: 'API Reference',
-      items: {
-        components: 'Components',
-        functions: 'Functions',
-        cli: 'CLI',
-      },
-    },
+  reader: {
+    empty: 'Open a document in the tree to read it here.',
+    loading: 'Loading document...',
+    version: 'Version',
+    author: 'Author',
+    date: 'Updated',
   },
   command: {
     title: 'Search',

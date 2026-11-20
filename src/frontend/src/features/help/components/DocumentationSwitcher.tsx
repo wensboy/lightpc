@@ -1,5 +1,4 @@
 import { CheckIcon, ChevronsUpDownIcon, GalleryVerticalEndIcon } from 'lucide-react'
-import { useState } from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,16 +11,18 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { useText } from '@/locales'
+import type { DocsVersion } from '@/services/help'
 
 type DocumentationSwitcherProps = {
-  versions: readonly string[]
+  versions: readonly DocsVersion[]
+  active: string
+  onChange: (version: string) => void
 }
 
-// DocumentationSwitcher mirrors the sidebar-02 header: the brand block is a dropdown trigger and the
-// list offers every documentation version with the active one checked.
-export function DocumentationSwitcher({ versions }: DocumentationSwitcherProps) {
+// DocumentationSwitcher mirrors the sidebar-02 header: the brand block is a dropdown trigger and the list
+// offers every documentation version the backend reported, with the active one checked.
+export function DocumentationSwitcher({ versions, active, onChange }: DocumentationSwitcherProps) {
   const text = useText()
-  const [activeVersion, setActiveVersion] = useState(versions[0])
 
   return (
     <SidebarMenu>
@@ -40,15 +41,15 @@ export function DocumentationSwitcher({ versions }: DocumentationSwitcherProps) 
             </div>
             <div className="flex flex-col gap-0.5 leading-none">
               <span className="font-medium">{text.help.switcher.title}</span>
-              <span className="text-xs">{activeVersion}</span>
+              <span className="text-xs text-muted-foreground">{active}</span>
             </div>
             <ChevronsUpDownIcon className="ml-auto size-4" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
+          <DropdownMenuContent align="start" className="w-56">
             {versions.map((version) => (
-              <DropdownMenuItem key={version} onClick={() => setActiveVersion(version)}>
-                {version}
-                {version === activeVersion ? <CheckIcon className="ml-auto size-4" /> : null}
+              <DropdownMenuItem key={version.version} onClick={() => onChange(version.version)}>
+                <span className="truncate">{version.version}</span>
+                {version.version === active ? <CheckIcon className="ml-auto size-4" /> : null}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

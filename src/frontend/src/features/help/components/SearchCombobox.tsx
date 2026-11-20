@@ -1,28 +1,44 @@
 import {
   Combobox,
+  ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxGroup,
   ComboboxInput,
   ComboboxItem,
+  ComboboxLabel,
   ComboboxList,
+  ComboboxSeparator,
 } from '@/components/ui/combobox'
 import { useText } from '@/locales'
 
-type SearchComboboxProps = {
-  value: string
-  documents: string[]
-  onSelect: (document: string) => void
+// SearchSection is one group of the picker. Items are document paths, because that is what the reader
+// loads; the visible text comes from labels.
+export type SearchSection = {
+  title: string
+  items: string[]
 }
 
-// SearchCombobox is the document picker of the help dialog, built on the shadcn combobox so filtering,
-// keyboard navigation and the clear affordance come from the primitive. It owns no state: the selected
-// document comes from the caller, keeping the trigger, the panel body and the tree highlight identical.
-export function SearchCombobox({ value, documents, onSelect }: SearchComboboxProps) {
+type SearchComboboxProps = {
+  /** value is the display text of the current selection. */
+  value: string
+  /** sections mirror the first level of the table of contents. */
+  sections: readonly SearchSection[]
+  /** labels maps a document path to the title shown in the list. */
+  labels: Readonly<Record<string, string>>
+  /** onSelect receives the path of the picked document. */
+  onSelect: (path: string) => void
+}
+
+// SearchCombobox is the document picker of the help dialog. It follows the grouped combobox pattern: the
+// list is rendered from a function so the primitive owns filtering and keyboard navigation. Rendering the
+// items ourselves broke both, because the primitive could no longer map its active index to a row.
+export function SearchCombobox({ value, sections, labels, onSelect }: SearchComboboxProps) {
   const text = useText()
 
   return (
     <Combobox
-      items={documents}
+      items={sections}
       value={value}
       onValueChange={(next) => {
         if (typeof next === 'string' && next !== '') {
@@ -34,10 +50,20 @@ export function SearchCombobox({ value, documents, onSelect }: SearchComboboxPro
       <ComboboxContent>
         <ComboboxEmpty>{text.help.search.empty}</ComboboxEmpty>
         <ComboboxList>
-          {(item: string) => (
-            <ComboboxItem key={item} value={item}>
-              {item}
-            </ComboboxItem>
+          {(group: SearchSection, index: number) => (
+            <ComboboxGroup key={group.title} items={group.items}>
+              <ComboboxLabel className="px-1.5 py-1 text-xs text-muted-foreground">
+                {group.title}
+              </ComboboxLabel>
+              <ComboboxCollection>
+                {(item: string) => (
+                  <ComboboxItem key={item} value={item}>
+                    <span className="truncate">{labels[item] ?? item}</span>
+                  </ComboboxItem>
+                )}
+              </ComboboxCollection>
+              {index < sections.length - 1 ? <ComboboxSeparator /> : null}
+            </ComboboxGroup>
           )}
         </ComboboxList>
       </ComboboxContent>
