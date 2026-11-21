@@ -1,8 +1,5 @@
 import { GalleryVerticalEndIcon } from 'lucide-react'
-import { NavMain } from '@/components/nav-main'
-import { NavSecondary } from '@/components/nav-secondary'
-import { NavUser } from '@/components/nav-user'
-import { WorkspaceSwitcher } from '@/components/workspace-switcher'
+import { useMemo, useState } from 'react'
 import {
   Sidebar,
   SidebarContent,
@@ -11,6 +8,11 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import { useLogout } from '@/features/auth/useLogout'
+import { NavContextMenu, type NavToggleGroup } from '@/features/dashboard/components/NavContextMenu'
+import { NavMain } from '@/features/dashboard/components/NavMain'
+import { NavSecondary } from '@/features/dashboard/components/NavSecondary'
+import { NavUser } from '@/features/dashboard/components/NavUser'
+import { WorkspaceSwitcher } from '@/features/dashboard/components/WorkspaceSwitcher'
 import { buildPrimaryNav, buildSecondaryNav } from '@/features/dashboard/config/nav'
 import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
 import { useText } from '@/locales'
@@ -18,6 +20,9 @@ import { useDialogStore } from '@/stores/dialog'
 
 // AppSidebar assembles the shell: team switcher on top, the primary and secondary navigation in the
 // middle, and the user menu at the bottom. All labels come from the text dictionary.
+//
+// The body answers a right click with a checkbox per entry. Hiding only removes the entry, so the remaining
+// ones keep their order and the two blocks stay where they are.
 export function AppSidebar() {
   const text = useText()
   const openSettings = useDialogStore((state) => state.openSettings)
@@ -28,6 +33,8 @@ export function AppSidebar() {
   const openNotifications = useNotificationStore((state) => state.openSheet)
   const hasUnreadNotifications = useNotificationStore((state) => state.unread)
   const doNotDisturb = useNotificationStore((state) => state.doNotDisturb)
+
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set())
 
   const workspaces = [
     {
@@ -48,6 +55,33 @@ export function AppSidebar() {
     avatar: '/avatar-moty.png',
   }
 
+  const primary = useMemo(() => buildPrimaryNav(text), [text])
+  const secondary = useMemo(() => buildSecondaryNav(text), [text])
+
+  // The menu lists every entry of both blocks, including the hidden ones, so a hidden entry can come back.
+  const menuGroups = useMemo<NavToggleGroup[]>(
+    () => [
+      { items: primary.map((item) => ({ key: item.key, title: item.title, icon: item.icon })) },
+      { items: secondary.map((item) => ({ key: item.key, title: item.title, icon: item.icon })) },
+    ],
+    [primary, secondary],
+  )
+
+  const visiblePrimary = primary.filter((item) => !hidden.has(item.key))
+  const visibleSecondary = secondary.filter((item) => !hidden.has(item.key))
+
+  const toggle = (key: string) => {
+    setHidden((previous) => {
+      const next = new Set(previous)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -59,26 +93,28 @@ export function AppSidebar() {
           }}
         />
       </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={buildPrimaryNav(text)} />
-        <NavSecondary
-          items={buildSecondaryNav(text)}
-          onSelect={(key) => {
-            switch (key) {
-              case 'settings':
-                openSettings()
-                break
-              case 'help':
-                openHelp()
-                break
-              case 'command':
-                openCommand()
-                break
-            }
-          }}
-          className="mt-auto"
-        />
-      </SidebarContent>
+      <NavContextMenu groups={menuGroups} hidden={hidden} onToggle={toggle}>
+        <SidebarContent className="flex-1">
+          <NavMain items={visiblePrimary} />
+          <NavSecondary
+            items={visibleSecondary}
+            onSelect={(key) => {
+              switch (key) {
+                case 'settings':
+                  openSettings()
+                  break
+                case 'help':
+                  openHelp()
+                  break
+                case 'command':
+                  openCommand()
+                  break
+              }
+            }}
+            className="mt-auto"
+          />
+        </SidebarContent>
+      </NavContextMenu>
       <SidebarFooter>
         <NavUser
           user={user}

@@ -11,6 +11,7 @@ import type { ReactNode } from 'react'
 import type { Dictionary } from '@/locales'
 
 export type NavLink = {
+  key: 'dashboard' | 'analytics' | 'log' | 'performance'
   title: string
   to: '/' | '/analytics' | '/log' | '/performance'
   icon: ReactNode
@@ -26,10 +27,10 @@ export type NavAction = {
 // header titles never drift apart.
 export function buildPrimaryNav(text: Dictionary): NavLink[] {
   return [
-    { title: text.dashboard.nav.dashboard, to: '/', icon: <LayoutDashboardIcon /> },
-    { title: text.dashboard.nav.analytics, to: '/analytics', icon: <ChartBarIcon /> },
-    { title: text.dashboard.nav.log, to: '/log', icon: <ScrollTextIcon /> },
-    { title: text.dashboard.nav.performance, to: '/performance', icon: <GaugeIcon /> },
+    { key: 'dashboard', title: text.dashboard.nav.dashboard, to: '/', icon: <LayoutDashboardIcon /> },
+    { key: 'analytics', title: text.dashboard.nav.analytics, to: '/analytics', icon: <ChartBarIcon /> },
+    { key: 'log', title: text.dashboard.nav.log, to: '/log', icon: <ScrollTextIcon /> },
+    { key: 'performance', title: text.dashboard.nav.performance, to: '/performance', icon: <GaugeIcon /> },
   ]
 }
 

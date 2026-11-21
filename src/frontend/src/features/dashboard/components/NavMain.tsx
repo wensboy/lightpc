@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/sidebar'
 
 export type NavMainItem = {
+  key: string
   title: string
   icon?: ReactNode
   to: '/' | '/analytics' | '/log' | '/performance'
@@ -24,7 +25,7 @@ export function NavMain({ items }: { items: NavMainItem[] }) {
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu className="gap-1">
           {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
+            <SidebarMenuItem key={item.key}>
               <SidebarMenuButton
                 tooltip={item.title}
                 isActive={pathname === item.to}
