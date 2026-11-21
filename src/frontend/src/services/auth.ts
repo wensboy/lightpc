@@ -1,15 +1,19 @@
 import { z } from 'zod'
 import { currentText } from '@/locales'
 
-const messages = currentText().auth.errors
+// loginSchema is the single source of truth for the login form and the payload check. It is built per call
+// so the messages follow the active locale instead of freezing the one that happened to load first.
+export function loginSchema() {
+  const errors = currentText().auth.errors
+  return z.object({
+    email: z.email(errors.invalidEmail),
+    password: z.string().min(8, errors.shortPassword),
+  })
+}
 
-// loginSchema is the single source of truth for the login form and the payload check.
-export const loginSchema = z.object({
-  email: z.email(messages.invalidEmail),
-  password: z.string().min(8, messages.shortPassword),
-})
+export type LoginSchema = ReturnType<typeof loginSchema>
 
-export type LoginInput = z.infer<typeof loginSchema>
+export type LoginInput = z.infer<LoginSchema>
 
 // AuthSession is what the caller keeps after a successful login.
 export type AuthSession = {
@@ -25,6 +29,6 @@ export interface AuthService {
 
 // authService is the real implementation. It stays unimplemented until the Go backend exposes auth.
 export const authService: AuthService = {
-  login: () => Promise.reject(new Error(messages.notConnected)),
+  login: () => Promise.reject(new Error(currentText().auth.errors.notConnected)),
   logout: () => Promise.resolve(),
 }

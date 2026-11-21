@@ -24,7 +24,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [message, setMessage] = useState('')
   const { register, handleSubmit, formState } = useForm<LoginInput>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(loginSchema()),
     defaultValues: { email: '', password: '' },
   })
 

@@ -1,0 +1,40 @@
+// Account holds the labels of the account dialog shell and its sections.
+export const account = {
+  title: '账户',
+  description: '管理账户资料与安全设置.',
+  tabs: {
+    profile: '资料',
+    security: '安全',
+  },
+  editMode: '编辑模式',
+  clear: '清空字段',
+  profile: {
+    groupTitle: '基础资料',
+    uidLabel: 'UID',
+    uidPlaceholder: '不可变标识',
+    nameLabel: '用户名',
+    namePlaceholder: '显示名称',
+    accountLabel: '账号',
+    accountPlaceholder: '账号标识',
+    avatarLabel: '头像',
+    avatarHint: '点击头像上传图片',
+    avatarFallback: 'M',
+  },
+  security: {
+    groupTitle: '密码',
+    oldLabel: '当前密码',
+    oldPlaceholder: '输入当前密码',
+    newLabel: '新密码',
+    newPlaceholder: '至少 8 个字符',
+    checkLabel: '确认密码',
+    checkPlaceholder: '再次输入新密码',
+  },
+  errors: {
+    uidRequired: 'UID 不能为空.',
+    nameRequired: '用户名不能为空.',
+    accountRequired: '账号不能为空.',
+    oldPasswordRequired: '当前密码不能为空.',
+    shortPassword: '密码至少需要 8 个字符.',
+    passwordMismatch: '两次输入的密码不一致.',
+  },
+}

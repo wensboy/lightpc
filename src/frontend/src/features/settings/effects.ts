@@ -1,5 +1,6 @@
 import type { SettingValue } from '@/features/settings/schema'
 import { setColorMode, type ColorMode } from '@/lib/color-mode'
+import { localeOf, setLocale } from '@/locales'
 
 // SettingEffect applies the visible consequence of a value. Registering every key that changes the
 // interface in one place keeps the handling uniform, instead of scattering branches across components.
@@ -20,10 +21,17 @@ let themePalettes: Record<string, SettingTheme> = {}
 // listener. Anything unexpected is treated as the system default rather than as a hard failure.
 const colorModes: Record<string, ColorMode> = { light: 'light', dark: 'dark', system: 'system' }
 
+// applyLocale switches the dictionary. Every component that reads text subscribes to the store, so the
+// whole interface repaints without remounting.
+function applyLocale(value: SettingValue): void {
+  setLocale(localeOf(String(value)))
+}
+
 // settingEffects is the single registry of keys with a frontend effect. A key without an entry only
 // affects the backend, so it is written through without touching the view.
 const settingEffects: Record<string, SettingEffect> = {
   'appearence.mode': applyColorMode,
+  'general.language': applyLocale,
   'appearence.radius': applyRadius,
   'appearence.font.size': applyFontSize,
   'appearence.font.default': applyFontFamily,
