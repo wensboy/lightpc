@@ -15,7 +15,7 @@ const settingPayloadSchema = z.object({
   values: z.record(z.string(), z.unknown()),
   defaults: z.record(z.string(), z.unknown()),
   systemFonts: z.array(z.string()),
-  themes: z.array(settingThemeSchema),
+  themes: z.array(settingThemeSchema).default([]),
 })
 
 /** SettingTheme is one palette with both modes already keyed as CSS custom properties. */

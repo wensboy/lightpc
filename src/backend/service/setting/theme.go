@@ -26,12 +26,13 @@ func cssProperty(key string) string {
 // buildThemes resolves the merged palette list into something the renderer can apply directly: every entry
 // carries both colour modes and keys already converted to custom properties.
 func buildThemes(merged map[string]any) []serviceSetting.SettingTheme {
+	// An empty slice rather than nil: the renderer validates an array, and a null would be rejected even
+	// when there is simply nothing to list.
+	themes := make([]serviceSetting.SettingTheme, 0, 4)
 	list, ok := cast.To[[]any](merged[themePalettesKey])
 	if !ok {
-		return nil
+		return themes
 	}
-
-	themes := make([]serviceSetting.SettingTheme, 0, len(list))
 	for _, entry := range list {
 		item, ok := cast.To[map[string]any](entry)
 		if !ok {
