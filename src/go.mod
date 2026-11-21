@@ -4,7 +4,9 @@ go 1.26.0
 
 require (
 	github.com/go-text/typesetting v0.3.5
+	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/mattn/go-sqlite3 v1.14.53
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/urfave/cli/v3 v3.14.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.34

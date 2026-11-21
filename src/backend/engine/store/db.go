@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -26,10 +27,17 @@ func WithDB(db *sqlx.DB) SQLOption {
 	return func(s *SQL) { s.db = db }
 }
 
-// SQL implements engineStore.DBStore on top of sqlx.
+// SQL implements engineStore.DBStore and engineStore.DBRegistry on top of sqlx.
+//
+// One engine owns several connections: a driver may hold more than one database, so they are keyed by
+// "driver.name". The engine itself answers as the first registered connection, which keeps a single database
+// setup unchanged while adding the lookup for the multi database case.
 type SQL struct {
 	db           *sqlx.DB
 	queryTimeout time.Duration
+
+	pools   map[string]*sqlx.DB
+	drivers map[string]engineStore.Driver
 
 	mu     sync.RWMutex
 	ectx   domainEngine.EngineContext
@@ -44,7 +52,11 @@ type sqlTx struct {
 
 // NewSQL builds a SQL instance. Callers must call Validate before concurrent use.
 func NewSQL(opts ...SQLOption) *SQL {
-	s := &SQL{state: domainEngine.EnginePending}
+	s := &SQL{
+		state:   domainEngine.EnginePending,
+		pools:   make(map[string]*sqlx.DB, 4),
+		drivers: make(map[string]engineStore.Driver, 4),
+	}
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -58,6 +70,67 @@ func (s *SQL) WithQueryTimeout(d time.Duration) *SQL {
 	defer s.mu.Unlock()
 	s.queryTimeout = d
 	return s
+}
+
+// Register adds a connection under key and reports whether it was added. The first registration wins: a
+// duplicate key is ignored so a misconfiguration can never shadow a working connection.
+func (s *SQL) Register(key string, driver engineStore.Driver, db *sqlx.DB) bool {
+	if key == "" || db == nil {
+		return false
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.pools[key]; exists {
+		return false
+	}
+	s.pools[key] = db
+	s.drivers[key] = driver
+	if s.db == nil {
+		// The first connection answers the single database methods.
+		s.db = db
+	}
+	return true
+}
+
+// HasKey reports whether key is already registered. The caller checks it before opening a connection: for a
+// file backed driver, opening is what creates the file, so a duplicate must be rejected earlier than Register.
+func (s *SQL) HasKey(key string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	_, found := s.pools[key]
+	return found
+}
+
+// DB implements engineStore.DBRegistry: it resolves a connection by its key.
+func (s *SQL) DB(key string) (engineStore.DBStore, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	db, found := s.pools[key]
+	if !found {
+		return nil, false
+	}
+	return NewSQL(WithDB(db)), true
+}
+
+// DBKeys implements engineStore.DBRegistry: it lists every registered key.
+func (s *SQL) DBKeys() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	keys := make([]string, 0, len(s.pools))
+	for key := range s.pools {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+// DriverOf returns the driver a key was registered with.
+func (s *SQL) DriverOf(key string) (engineStore.Driver, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	driver, found := s.drivers[key]
+	return driver, found
 }
 
 // Group implements domainEngine.Engine.
@@ -115,6 +188,14 @@ func (s *SQL) Restart() error {
 func (s *SQL) Stop() error { return s.Close() }
 
 // Validate checks that the connection pool is configured. It must be called before concurrent use.
+// HookContext implements the database hook contract: it reports the context a hook needs before the pool is
+// handed to a service.
+func (s *SQL) HookContext() engineStore.DbHookContext {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return engineStore.DbHookContext{EngineContext: s.ectx}
+}
+
 func (s *SQL) Validate() error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

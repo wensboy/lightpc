@@ -15,11 +15,59 @@
             "fs": {
                 "fileMode": "0o644",
                 "dirMode": "0o755"
+            },
+            "db": {
+                "sql": [
+                    {
+                        "name": "dev_sqlite",
+                        "driver": "sqlite3",
+                        "skipped": false,
+                        "dsn": "~/.config/lightpc/db/dev.db",
+                        "options": [
+                            "_journal_mode=WAL",
+                            "_synchronous=NORMAL",
+                            "_busy_timeout=5000",
+                            "_foreign_keys=OFF"
+                        ],
+                        "migrations": [
+                            "embed://data/migrate/sqlite"
+                        ]
+                    },
+                    {
+                        "name": "dev_sqlite",
+                        "driver": "sqlite3",
+                        "skipped": false,
+                        "dsn": "~/.config/lightpc/db/dev_1.db",
+                        "options": [
+                            "_journal_mode=WAL",
+                            "_synchronous=NORMAL",
+                            "_busy_timeout=5000",
+                            "_foreign_keys=OFF"
+                        ],
+                        "migrations": [
+                            "embed://data/migrate/sqlite"
+                        ]
+                    },
+                    {
+                        "name": "dev_maria",
+                        "driver": "mysql",
+                        "skipped": true,
+                        "dsn": "user:password@tcp(127.0.0.1:3306)/lightpc",
+                        "options": [
+                            "charset=utf8mb4",
+                            "parseTime=true",
+                            "loc=Local"
+                        ],
+                        "migrations": [
+                            "embed://data/migrate/maria"
+                        ]
+                    }
+                ]
             }
         },
         "log": {
             "direct": [],
-            "fanout":[
+            "fanout": [
                 {
                     "name": "dev.file",
                     "level": "debug",
@@ -61,9 +109,9 @@
                     "mode": "ro"
                 },
                 {
-                "layer": "user",
-                "path": "local://~/.config/lightpc/setting.json",
-                "mode": "rw"
+                    "layer": "user",
+                    "path": "local://~/.config/lightpc/setting.json",
+                    "mode": "rw"
                 }
             ]
         },

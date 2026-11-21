@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"log/slog"
 	"strings"
 
 	"fmt"
@@ -159,6 +160,61 @@ func SetupStore(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime
 				}
 			}
 			return store.Validate()
+		},
+	})
+
+	// Databases are opened and migrated from the same hook. One engine owns every connection, keyed by
+	// "driver.name", so a caller resolves a database without knowing which driver backs it.
+	sqlStore := engineStoreImpl.NewSQL()
+	type pending struct {
+		dsn        string
+		driver     domainEngineStore.Driver
+		migrations []string
+	}
+	queue := make([]pending, 0, 2)
+
+	for _, config := range engineStoreImpl.DBConfigs(cfg) {
+		key := domainEngineStore.DBKey(config.Driver, config.Name)
+		// Checked before opening: for a file backed driver, opening is what creates the file, so a
+		// duplicate entry must be rejected while it still has no side effect.
+		if sqlStore.HasKey(key) {
+			slog.Default().Warn("db duplicate key skipped", "key", key)
+			continue
+		}
+
+		database, err := engineStoreImpl.OpenDB(config)
+		if err != nil {
+			slog.Default().Warn("db open failed", "name", config.Name, "err", err)
+			continue
+		}
+		if !sqlStore.Register(key, config.Driver, database) {
+			// A concurrent registration would land here; close what was opened so it cannot leak.
+			slog.Default().Warn("db duplicate key skipped", "key", key)
+			_ = database.Close()
+			continue
+		}
+		queue = append(queue, pending{dsn: config.DSNString(), driver: config.Driver, migrations: config.Migrations})
+	}
+
+	er.Register(&domainEngine.EngineHook{
+		Engine: sqlStore,
+		PreStart: func(e domainEngine.Engine) error {
+			store, ok := cast.As[*engineStoreImpl.SQL](e)
+			if !ok {
+				return interError.Retrieve(domainEngineStore.ErrKeyInvalid).
+					Wrap(fmt.Errorf("db hook: unexpected engine %T", e))
+			}
+			assets, found := engineStoreImpl.AssetsFrom(store.HookContext().EngineContext.AppCtx)
+			if !found {
+				slog.Default().Warn("db migrations skipped", "reason", "no embedded tree")
+				return nil
+			}
+			for index, item := range queue {
+				if err := engineStoreImpl.Migrate(item.dsn, item.driver, item.migrations, assets); err != nil {
+					return fmt.Errorf("migrate database %d: %w", index, err)
+				}
+			}
+			return nil
 		},
 	})
 }

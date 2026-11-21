@@ -5,6 +5,8 @@ import (
 	"database/sql"
 
 	"github.com/jmoiron/sqlx"
+
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 )
 
 // Command marks every database command.
@@ -78,3 +80,64 @@ type ExecResponse struct {
 }
 
 func (ExecResponse) response() {}
+
+// DbHookContext is what a database hook may inspect between the engine phases.
+type DbHookContext struct {
+	// EngineContext is the context the engine was initialised with.
+	EngineContext domainEngine.EngineContext
+}
+
+// Driver is the database engine a connection speaks to.
+//
+// The list is wider than the drivers this build links: naming a driver is not the same as importing it, so a
+// configuration may declare a database this binary cannot open. Such an entry is skipped at start up instead
+// of failing the pipeline, which keeps one document usable across builds that ship different drivers.
+type Driver string
+
+const (
+	DriverSQLite3    Driver = "sqlite3"
+	DriverMySQL      Driver = "mysql"
+	DriverPostgres   Driver = "postgres"
+	DriverSQLServer  Driver = "sqlserver"
+	DriverClickHouse Driver = "clickhouse"
+	DriverCockroach  Driver = "cockroach"
+	DriverTiDB       Driver = "tidb"
+)
+
+// drivers lists every name a configuration may use.
+var drivers = map[Driver]struct{}{
+	DriverSQLite3:    {},
+	DriverMySQL:      {},
+	DriverPostgres:   {},
+	DriverSQLServer:  {},
+	DriverClickHouse: {},
+	DriverCockroach:  {},
+	DriverTiDB:       {},
+}
+
+// Valid reports whether the name is a known driver.
+func (d Driver) Valid() bool {
+	_, found := drivers[d]
+	return found
+}
+
+// DriverOf narrows a configured string, reporting false when the name is unknown.
+func DriverOf(value string) (Driver, bool) {
+	driver := Driver(value)
+	return driver, driver.Valid()
+}
+
+// DBKey composes the lookup key of one connection. A driver may hold several databases, so the name is part
+// of the key and "driver.name" is what callers pass to DB.
+func DBKey(driver Driver, name string) string {
+	return string(driver) + "." + name
+}
+
+// DBRegistry is the database group exposed by the store: connections are looked up by DBKey and no caller
+// needs to know which driver a key resolves to.
+type DBRegistry interface {
+	// DB returns the store registered under key.
+	DB(key string) (DBStore, bool)
+	// DBKeys lists every registered key, ordered alphabetically.
+	DBKeys() []string
+}

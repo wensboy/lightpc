@@ -95,6 +95,77 @@
                                     "pattern": "^0o[0-7]{3}$"
                                 }
                             }
+                        },
+                        "db": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Database connections the store opens at start up.",
+                            "properties": {
+                                "sql": {
+                                    "type": "array",
+                                    "description": "One entry per database. Migrations run before the pool is handed to a service.",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "name",
+                                            "driver",
+                                            "dsn"
+                                        ],
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "description": "Engine instance name, unique within the store group."
+                                            },
+                                            "driver": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "sqlite3",
+                                                    "mysql",
+                                                    "postgres",
+                                                    "sqlserver",
+                                                    "clickhouse",
+                                                    "cockroach",
+                                                    "tidb"
+                                                ],
+                                                "description": "Database engine. The list is a subset of the names the code knows: a driver this build does not link is skipped at start up rather than failing the pipeline."
+                                            },
+                                            "skipped": {
+                                                "type": "boolean",
+                                                "description": "Keep the entry in the document without opening it."
+                                            },
+                                            "dsn": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "description": "Driver specific connection string. No proto:// prefix is used: the driver either carries its own scheme or the target is a writable file."
+                                            },
+                                            "options": {
+                                                "type": "array",
+                                                "description": "Driver options appended to the DSN as query parameters, written as \"key=value\". Each driver accepts a different set, so the keys stay free form; the order is kept.",
+                                                "items": {
+                                                    "type": "string",
+                                                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*=.+$",
+                                                    "minLength": 1
+                                                }
+                                            },
+                                            "migrations": {
+                                                "type": "array",
+                                                "description": "Directories holding the migration files. A single file is not accepted: the applied set has to come from the directory listing, not from the entry.",
+                                                "items": {
+                                                    "type": "string",
+                                                    "pattern": "^embed://.+",
+                                                    "not": {
+                                                        "pattern": "\\.sql$"
+                                                    },
+                                                    "minLength": 1
+                                                }
+                                            }
+                                        },
+                                        "description": "One entry per database. Entries are registered under \"driver.name\" and migrations run before the pool is handed to a service."
+                                    }
+                                }
+                            }
                         }
                     }
                 },
