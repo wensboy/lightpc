@@ -152,24 +152,8 @@ func (s *Setting) Init(eCtx domainEngine.EngineContext) error {
 		s.layers = append(s.layers, engineSetting.Layer{Name: s.runtime, Mode: engineSetting.ModeReadWrite})
 	}
 	s.state = domainEngine.EngineReady
-	layers := slices.Clone(s.layers)
 	s.mu.Unlock()
 
-	for index, layer := range layers {
-		if layer.Path == "" {
-			continue
-		}
-		// Every declared resource must exist before the layer is read: embedded content is compiled in
-		// and only verified, while local layers get their directory and an empty document created.
-		if err := s.ensureLayer(layer); err != nil {
-			slog.Default().Warn("setting layer unavailable", "layer", layer.Name, "err", err)
-			continue
-		}
-		if err := s.loadLayer(index); err != nil {
-			slog.Default().Warn("setting layer load failed", "layer", layer.Name, "err", err)
-		}
-		s.watch(index, layer)
-	}
 	return nil
 }
 
@@ -517,6 +501,47 @@ func canRead(mode engineSetting.Mode) bool {
 // canWrite reports whether the mode permits writing.
 func canWrite(mode engineSetting.Mode) bool {
 	return mode == engineSetting.ModeWriteOnly || mode == engineSetting.ModeReadWrite
+}
+
+// Prepare opens every file layer: it creates the missing resources, reads them and starts watching. It is
+// exported for the hook, because whether a layer file should be created is a bootstrap decision rather than
+// something an engine phase decides.
+func (s *Setting) Prepare() error {
+	s.mu.RLock()
+	layers := slices.Clone(s.layers)
+	s.mu.RUnlock()
+
+	for index, layer := range layers {
+		if layer.Path == "" {
+			continue
+		}
+		if err := s.ensureLayer(layer); err != nil {
+			slog.Default().Warn("setting layer unavailable", "layer", layer.Name, "err", err)
+			continue
+		}
+		if err := s.loadLayer(index); err != nil {
+			slog.Default().Warn("setting layer load failed", "layer", layer.Name, "err", err)
+			continue
+		}
+		s.watch(index, layer)
+	}
+	return nil
+}
+
+// HookContext implements the setting hook contract: it reports the declared layers so a hook can prepare
+// them without reaching into the engine.
+func (s *Setting) HookContext() engineSetting.SettingHookContext {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	layers := make([]engineSetting.Layer, 0, len(s.layers))
+	for _, layer := range s.layers {
+		if layer.Name == s.runtime {
+			continue
+		}
+		layers = append(layers, layer)
+	}
+	return engineSetting.SettingHookContext{Layers: layers, EngineContext: s.ectx}
 }
 
 // ensureLayer makes sure the resource behind a layer exists and can be read.

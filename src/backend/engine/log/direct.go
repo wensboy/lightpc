@@ -140,3 +140,14 @@ func (dl *DirectLog) Register(name string, handler slog.Handler) {
 	defer dl.mu.Unlock()
 	dl.handlers[name] = handler
 }
+
+// HookContext implements the log hook contract: it reports the configured entries so a hook can prepare
+// their outputs.
+func (dl *DirectLog) HookContext() engineLog.DirectHookContext {
+	dl.mu.RLock()
+	defer dl.mu.RUnlock()
+	return engineLog.DirectHookContext{
+		Items:         dl.items,
+		EngineContext: dl.ectx,
+	}
+}

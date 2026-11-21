@@ -51,15 +51,18 @@ func TestFSMissingFileReusesRegisteredError(t *testing.T) {
 	}
 }
 
-func TestFSInitWithoutRootReportsInvalid(t *testing.T) {
+func TestFSInitWithoutRootStaysReady(t *testing.T) {
 	fsStore := NewFS()
 
-	err := fsStore.Init(newEngineContext())
-	if !errors.Is(err, interError.Retrieve(engineStore.ErrKeyInvalid)) {
-		t.Fatalf("err = %v", err)
+	// Preparing the root is a hook concern, so Init succeeds and only Validate reports the missing directory.
+	if err := fsStore.Init(newEngineContext()); err != nil {
+		t.Fatalf("init: %v", err)
 	}
-	if state := fsStore.State(); state != domainEngine.EngineError {
+	if state := fsStore.State(); state != domainEngine.EngineReady {
 		t.Fatalf("state = %v", state)
+	}
+	if err := fsStore.Validate(); !errors.Is(err, interError.Retrieve(engineStore.ErrKeyInvalid)) {
+		t.Fatalf("validate err = %v", err)
 	}
 }
 
@@ -153,16 +156,27 @@ func TestFSRejectsEmbeddedWrites(t *testing.T) {
 	}
 }
 
-func TestFSInitCreatesRoot(t *testing.T) {
+func TestFSHookContextReportsThePreparedState(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "nested", "store")
 	fsStore := NewFS(WithRoot(root))
 
 	if err := fsStore.Init(newConfiguredEngineContext(t)); err != nil {
 		t.Fatal(err)
 	}
-	info, err := os.Stat(root)
-	if err != nil || !info.IsDir() {
-		t.Fatalf("root stat = %v, %v", info, err)
+	ctx := fsStore.HookContext()
+	if ctx.Root != root {
+		t.Fatalf("root = %q", ctx.Root)
+	}
+	if ctx.DirMode != 0o755 || ctx.FileMode != 0o644 {
+		t.Fatalf("modes = %v/%v", ctx.DirMode, ctx.FileMode)
+	}
+
+	// Creating the directory and validating it is what the hook does with this context.
+	if err := os.MkdirAll(ctx.Root, ctx.DirMode); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := fsStore.Validate(); err != nil {
+		t.Fatalf("validate: %v", err)
 	}
 }
 

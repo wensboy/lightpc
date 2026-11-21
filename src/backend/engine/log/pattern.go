@@ -150,3 +150,14 @@ func (pl *PatternLog) Register(pattern string, handler slog.Handler) {
 	defer pl.mu.Unlock()
 	pl.handlers[pattern] = append(pl.handlers[pattern], handler)
 }
+
+// HookContext implements the log hook contract: it reports the configured entries so a hook can prepare
+// their outputs.
+func (pl *PatternLog) HookContext() engineLog.PatternHookContext {
+	pl.mu.RLock()
+	defer pl.mu.RUnlock()
+	return engineLog.PatternHookContext{
+		Items:         pl.items,
+		EngineContext: pl.ectx,
+	}
+}

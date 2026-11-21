@@ -186,7 +186,10 @@ func (er *EngineRuntime) Run() error {
 		for _, dependency := range engine.Deps() {
 			group, name, _ := strings.Cut(dependency, ".")
 			for _, dependencyEngine := range er.Engine(group, name) {
-				engineCtx.Engines[domainEngine.EngineDep(dependencyEngine.Group(), dependencyEngine.Name())] = dependencyEngine
+				key := domainEngine.EngineDep(dependencyEngine.Group(), dependencyEngine.Name())
+				// Dependencies are handed over unwrapped: a consumer resolves the concrete type, while the
+				// wrapper only owns the lifecycle of the engine it was registered with.
+				engineCtx.Engines[key] = domainEngine.Unwrap(dependencyEngine)
 			}
 		}
 

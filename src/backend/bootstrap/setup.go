@@ -3,11 +3,17 @@ package bootstrap
 import (
 	"strings"
 
+	"fmt"
+	"os"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
 	domainApp "github.com/wensboy/lightpc/backend/domain/app"
 	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
+	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
+	domainEngineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
+	domainEngineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
 	engineLogImpl "github.com/wensboy/lightpc/backend/engine/log"
@@ -131,13 +137,43 @@ func SetupErrors(cfg domainContext.ConfigContext) domainContext.ErrorContext {
 	return errorContext
 }
 
+// SetupStore registers the file store.
+//
+// Preparing the root directory and checking that it is usable are bootstrap decisions, not engine phases:
+// they run in the pre start hook so the engine only has to report the state it was initialised with.
 func SetupStore(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
-	er.Register(
-		engineStoreImpl.NewFS(),
-	)
+	fsStore := engineStoreImpl.NewFS()
+	er.Register(&domainEngine.EngineHook{
+		Engine: fsStore,
+		PreStart: func(e domainEngine.Engine) error {
+			store, ok := cast.As[*engineStoreImpl.FS](e)
+			if !ok {
+				return interError.Retrieve(domainEngineStore.ErrKeyInvalid).
+					Wrap(fmt.Errorf("store hook: unexpected engine %T", e))
+			}
+			ctx := store.HookContext()
+			if ctx.Root != "" && ctx.DirMode != 0 {
+				if err := os.MkdirAll(ctx.Root, ctx.DirMode); err != nil {
+					return interError.Retrieve(domainEngineStore.ErrKeyInvalid).
+						Wrap(fmt.Errorf("create root: %w", err))
+				}
+			}
+			return store.Validate()
+		},
+	})
 }
 
 func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
+	// hookLog wraps a log engine so its output directories are created before it starts. Where a log file lives
+	// is a bootstrap decision, so it stays here instead of inside the engine phases.
+	hookLog := func(engine domainEngine.Engine, items []domainConfig.LogItem) domainEngine.Engine {
+		return &domainEngine.EngineHook{
+			Engine: engine,
+			PreStart: func(_ domainEngine.Engine) error {
+				return engineLogImpl.PrepareOutputs(items)
+			},
+		}
+	}
 	engines := make([]domainEngine.Engine, 0, 3)
 
 	if items := engineLogImpl.ItemsFor(cfg, "direct"); len(items) > 0 {
@@ -145,7 +181,7 @@ func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) 
 		for _, item := range items {
 			options = append(options, engineLogImpl.WithDirectItem(item))
 		}
-		engines = append(engines, engineLogImpl.NewDirectLog(options...))
+		engines = append(engines, hookLog(engineLogImpl.NewDirectLog(options...), items))
 	}
 
 	if items := engineLogImpl.ItemsFor(cfg, "fanout"); len(items) > 0 {
@@ -153,7 +189,7 @@ func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) 
 		for _, item := range items {
 			options = append(options, engineLogImpl.WithFanoutItem(item))
 		}
-		engines = append(engines, engineLogImpl.NewFanoutLog(options...))
+		engines = append(engines, hookLog(engineLogImpl.NewFanoutLog(options...), items))
 	}
 
 	if items := engineLogImpl.ItemsFor(cfg, "pattern"); len(items) > 0 {
@@ -161,7 +197,7 @@ func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) 
 		for _, item := range items {
 			options = append(options, engineLogImpl.WithPatternItem(item))
 		}
-		engines = append(engines, engineLogImpl.NewPatternLog(options...))
+		engines = append(engines, hookLog(engineLogImpl.NewPatternLog(options...), items))
 	}
 
 	er.Register(engines...)
@@ -173,7 +209,21 @@ func SetupSetting(cfg domainContext.ConfigContext, er *domainRuntime.EngineRunti
 	for _, layer := range layers {
 		options = append(options, engineSettingImpl.WithLayer(layer))
 	}
-	er.Register(engineSettingImpl.NewSetting(options...))
+
+	settingEngine := engineSettingImpl.NewSetting(options...)
+	er.Register(&domainEngine.EngineHook{
+		Engine: settingEngine,
+		PreStart: func(e domainEngine.Engine) error {
+			instance, ok := cast.As[*engineSettingImpl.Setting](e)
+			if !ok {
+				return interError.Retrieve(domainEngineSetting.ErrKeyLayerUnknown).
+					Wrap(fmt.Errorf("setting hook: unexpected engine %T", e))
+			}
+			// Creating a layer file and reading it are bootstrap decisions, so they happen here instead of
+			// inside Init.
+			return instance.Prepare()
+		},
+	})
 }
 
 // SetupEventHandle defines the event wiring of the three runtimes.

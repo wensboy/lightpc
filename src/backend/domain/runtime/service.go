@@ -1,8 +1,6 @@
 package runtime
 
 import (
-	"maps"
-
 	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
@@ -61,7 +59,11 @@ func (sr *ServiceRuntime) Run() {
 	engines := make(map[string]domainEngine.Engine)
 	if sr.appRuntime != nil && sr.appRuntime.er != nil {
 		sr.appRuntime.er.mu.RLock()
-		maps.Copy(engines, sr.appRuntime.er.registry)
+		// Services resolve concrete engines, so the hook wrappers are stripped here: the wrapper only owns
+		// the lifecycle, never the behaviour a service depends on.
+		for key, engine := range sr.appRuntime.er.registry {
+			engines[key] = domainEngine.Unwrap(engine)
+		}
 		sr.appRuntime.er.mu.RUnlock()
 	}
 	serviceCtx := domainService.ServiceContext{Ebus: sr.ebus, Engines: engines}

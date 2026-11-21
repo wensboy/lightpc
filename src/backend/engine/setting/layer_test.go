@@ -37,6 +37,9 @@ func TestInitCreatesMissingLocalLayer(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("init setting: %v", err)
 	}
+	if err := instance.Prepare(); err != nil {
+		t.Fatalf("prepare setting: %v", err)
+	}
 	t.Cleanup(func() { _ = instance.Stop() })
 
 	data, err := os.ReadFile(layerPath)
@@ -65,6 +68,9 @@ func TestInitKeepsExistingLocalLayer(t *testing.T) {
 		Engines: map[string]domainEngine.Engine{domainEngine.StoreFs: fsStore},
 	}); err != nil {
 		t.Fatalf("init setting: %v", err)
+	}
+	if err := instance.Prepare(); err != nil {
+		t.Fatalf("prepare setting: %v", err)
 	}
 	t.Cleanup(func() { _ = instance.Stop() })
 

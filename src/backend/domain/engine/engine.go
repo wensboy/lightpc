@@ -47,38 +47,69 @@ type Engine interface {
 // only provides the hooks it needs.
 type EngineHook struct {
 	Engine
-	PreStart  func(Engine)
-	PostStart func(Engine)
-	PreStop   func(Engine)
-	PostStop  func(Engine)
+	PreStart  func(Engine) error
+	PostStart func(Engine) error
+	PreStop   func(Engine) error
+	PostStop  func(Engine) error
 }
 
 // Start implements Engine: the pre hook runs before the engine starts and the post hook after it
 // succeeded, so a failing start skips the post hook.
 func (eh *EngineHook) Start() error {
-	callHook(eh.PreStart, eh.Engine)
+	if err := callHook(eh.PreStart, eh.Engine); err != nil {
+		return err
+	}
 	if err := eh.Engine.Start(); err != nil {
 		return err
 	}
-	callHook(eh.PostStart, eh.Engine)
+	if err := callHook(eh.PostStart, eh.Engine); err != nil {
+		return err
+	}
 	return nil
 }
 
 // Stop implements Engine and mirrors Start: a failing stop skips the post hook.
 func (eh *EngineHook) Stop() error {
-	callHook(eh.PreStop, eh.Engine)
+	if err := callHook(eh.PreStop, eh.Engine); err != nil {
+		return err
+	}
 	if err := eh.Engine.Stop(); err != nil {
 		return err
 	}
-	callHook(eh.PostStop, eh.Engine)
+	if err := callHook(eh.PostStop, eh.Engine); err != nil {
+		return err
+	}
 	return nil
 }
 
-// callHook runs hook with engine when the hook is set.
-func callHook(hook func(Engine), engine Engine) {
-	if hook != nil {
-		hook(engine)
+// Unwrap exposes the engine a hook wraps, so a consumer that needs the concrete type reaches the engine
+// instead of the wrapper.
+func (eh *EngineHook) Unwrap() Engine {
+	return eh.Engine
+}
+
+// Unwrap strips every hook wrapper from engine. A consumer that resolves the concrete implementation, such
+// as a service casting to a file store, therefore works whether or not the engine is hooked.
+func Unwrap(engine Engine) Engine {
+	for {
+		hook, ok := engine.(interface{ Unwrap() Engine })
+		if !ok {
+			return engine
+		}
+		inner := hook.Unwrap()
+		if inner == nil {
+			return engine
+		}
+		engine = inner
 	}
+}
+
+// callHook runs hook with engine when the hook is set.
+func callHook(hook func(Engine) error, engine Engine) error {
+	if hook != nil {
+		return hook(engine)
+	}
+	return nil
 }
 
 // EngineDep composes the dependency key of an engine with the same algorithm the registry uses.

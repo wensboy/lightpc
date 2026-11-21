@@ -30,6 +30,12 @@ func newLayered(t *testing.T, dir string) *engineSettingImpl.Setting {
 	}); err != nil {
 		t.Fatalf("init setting: %v", err)
 	}
+	if err := instance.Prepare(); err != nil {
+		t.Fatalf("prepare setting: %v", err)
+	}
+	if err := instance.Prepare(); err != nil {
+		t.Fatalf("prepare setting: %v", err)
+	}
 	t.Cleanup(func() { _ = instance.Stop() })
 	return instance
 }

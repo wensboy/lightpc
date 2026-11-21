@@ -1,6 +1,8 @@
 package engineLog
 
 import (
+	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
@@ -24,3 +26,21 @@ type LogClient struct {
 	Fanout  FanoutLog
 	Pattern PatternLog
 }
+
+// LogHookContext is what a log hook may inspect between the engine phases. All three log engines share the
+// same shape: they differ in how a record is routed, not in what they need to prepare.
+type LogHookContext struct {
+	// Items lists the configured entries of the group, in configuration order.
+	Items []domainConfig.LogItem
+	// EngineContext is the context the engine was initialised with.
+	EngineContext domainEngine.EngineContext
+}
+
+// DirectHookContext is the direct log engine's hook context.
+type DirectHookContext = LogHookContext
+
+// FanoutHookContext is the fanout log engine's hook context.
+type FanoutHookContext = LogHookContext
+
+// PatternHookContext is the pattern log engine's hook context.
+type PatternHookContext = LogHookContext

@@ -157,3 +157,14 @@ func (fl *FanoutLog) Register(name string, handler slog.Handler) {
 	defer fl.mu.Unlock()
 	fl.handlers[name] = append(fl.handlers[name], handler)
 }
+
+// HookContext implements the log hook contract: it reports the configured entries so a hook can prepare
+// their outputs.
+func (fl *FanoutLog) HookContext() engineLog.FanoutHookContext {
+	fl.mu.RLock()
+	defer fl.mu.RUnlock()
+	return engineLog.FanoutHookContext{
+		Items:         fl.items,
+		EngineContext: fl.ectx,
+	}
+}

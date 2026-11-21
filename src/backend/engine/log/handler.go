@@ -106,10 +106,6 @@ func buildHandlers(entry logEntry) []slog.Handler {
 				slog.Default().Warn("log output skipped", "path", output.Path, "err", interError.Retrieve(engineLog.ErrKeyHandlerFailed).Wrap(err))
 				continue
 			}
-			if err := os.MkdirAll(filepath.Dir(target.Path), 0o755); err != nil {
-				slog.Default().Warn("log output skipped", "path", target.Path, "err", interError.Retrieve(engineLog.ErrKeyHandlerFailed).Wrap(err))
-				continue
-			}
 			handlers = append(handlers, interLog.NewFileHandler(interLog.FileOption{
 				SerializerOption: serializerOption,
 				Serializer:       output.Serializer.Type,
@@ -130,4 +126,25 @@ func buildHandlers(entry logEntry) []slog.Handler {
 		}).WithLevel(entry.level))
 	}
 	return handlers
+}
+
+// PrepareOutputs creates the directory of every file output. It is exported for the hook that wraps a log
+// engine: deciding where a log file lives and creating the directory are bootstrap concerns, while building
+// the handler stays with the engine.
+func PrepareOutputs(items []domainConfig.LogItem) error {
+	for _, entry := range entriesOf(items) {
+		for _, output := range entry.outputs {
+			if entry.handler != "file" || output.Path == "" {
+				continue
+			}
+			target, err := path.Parse(output.Path)
+			if err != nil || target.IsEmbed() {
+				continue
+			}
+			if err := os.MkdirAll(filepath.Dir(target.Path), 0o755); err != nil {
+				slog.Default().Warn("log output directory skipped", "path", target.Path, "err", err)
+			}
+		}
+	}
+	return nil
 }

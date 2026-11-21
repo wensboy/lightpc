@@ -1,5 +1,9 @@
 package engineSetting
 
+import (
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
+)
+
 // Layer is one configuration layer. Layers are ordered by priority: a higher index wins and the
 // resolved view reads from the last layer backwards.
 type Layer struct {
@@ -38,4 +42,15 @@ type Setting interface {
 	// Flush sinks the runtime layer into the layer that owns persistence and empties the runtime layer.
 	// It is a no-op when nothing was edited since the last flush.
 	Flush() error
+}
+
+// SettingHookContext is what a settings hook may inspect between the engine phases. The engine owns the
+// fields: a hook reads the declared layers to prepare their resources, and calls back into the engine so the
+// state stays in one place.
+type SettingHookContext struct {
+	// Layers lists the declared layers in ascending priority; the runtime layer is absent from the config
+	// and therefore from this list.
+	Layers []Layer
+	// EngineContext is the context the engine was initialised with.
+	EngineContext domainEngine.EngineContext
 }

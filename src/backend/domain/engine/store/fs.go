@@ -5,6 +5,8 @@ import (
 	"context"
 	"io/fs"
 	"time"
+
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 )
 
 // FileInfo describes one entry below root.
@@ -32,4 +34,18 @@ type FileStore interface {
 	MkdirAll(ctx context.Context, path string) error
 	// Close releases resources and is idempotent.
 	Close() error
+}
+
+// FsHookContext is what a store hook may inspect between the engine phases. The engine owns the fields: a
+// hook reads them to decide whether to prepare the root or to run a check, and changes state through the
+// engine's own methods so it stays in one place.
+type FsHookContext struct {
+	// Root is the absolute directory the store is chrooted to.
+	Root string
+	// FileMode is applied to files the store creates.
+	FileMode fs.FileMode
+	// DirMode is applied to directories the store creates.
+	DirMode fs.FileMode
+	// EngineContext is the context the engine was initialised with.
+	EngineContext domainEngine.EngineContext
 }

@@ -120,20 +120,7 @@ func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 			return fs.FileMode(mode), true
 		})
 	}
-	root, dirMode := f.root, f.dirMode
 	f.mu.Unlock()
-
-	if root != "" && dirMode != 0 {
-		if err := os.MkdirAll(root, dirMode); err != nil {
-			f.setState(domainEngine.EngineError)
-			return interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(fmt.Errorf("create root: %w", err))
-		}
-	}
-
-	if err := f.Validate(); err != nil {
-		f.setState(domainEngine.EngineError)
-		return err
-	}
 
 	watchStopSignal(eCtx.Ebus, domainEngine.NameFs, f.Close)
 	f.setState(domainEngine.EngineReady)
@@ -157,6 +144,18 @@ func (f *FS) Restart() error {
 
 // Stop implements domainEngine.Engine by closing the engineStore.
 func (f *FS) Stop() error { return f.Close() }
+
+// HookContext implements the store hook contract: it reports what a hook needs before the store starts.
+func (f *FS) HookContext() engineStore.FsHookContext {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return engineStore.FsHookContext{
+		Root:          f.root,
+		FileMode:      f.fileMode,
+		DirMode:       f.dirMode,
+		EngineContext: f.ectx,
+	}
+}
 
 // Validate checks that root exists and is a directory, then normalizes it to a real absolute path.
 // It must be called before concurrent use.
