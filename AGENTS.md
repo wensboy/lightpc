@@ -80,6 +80,7 @@ task build
 - [Project Structure](./docs/ref/project-structure.md)
 - [Backend Rules](./docs/ref/backend-rules.md)
 - [Frontend Rules](./docs/ref/frontend-rules.md)
+- [Migrations](./docs/ref/migrations.md)
 
 ### Features
 
