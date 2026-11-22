@@ -5,6 +5,7 @@ export const dashboard = {
     analytics: '分析',
     log: '日志',
     performance: '性能',
+    console: '控制台',
     command: '命令',
     help: '帮助',
     settings: '设置',

@@ -28,6 +28,7 @@ export function AppSidebar() {
   const openSettings = useDialogStore((state) => state.openSettings)
   const openHelp = useDialogStore((state) => state.openHelp)
   const openCommand = useDialogStore((state) => state.openCommand)
+  const openConsole = useDialogStore((state) => state.openConsole)
   const logout = useLogout()
   const openAccount = useDialogStore((state) => state.openAccount)
   const openNotifications = useNotificationStore((state) => state.openSheet)
@@ -100,6 +101,9 @@ export function AppSidebar() {
             items={visibleSecondary}
             onSelect={(key) => {
               switch (key) {
+                case 'console':
+                  openConsole()
+                  break
                 case 'settings':
                   openSettings()
                   break

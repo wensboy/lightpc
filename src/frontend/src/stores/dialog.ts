@@ -6,6 +6,7 @@ type DialogStore = {
   settingsOpen: boolean
   helpOpen: boolean
   commandOpen: boolean
+  consoleOpen: boolean
   accountOpen: boolean
   helpDocument: string
   openSettings: () => void
@@ -14,6 +15,8 @@ type DialogStore = {
   closeHelp: () => void
   openCommand: () => void
   closeCommand: () => void
+  openConsole: () => void
+  closeConsole: () => void
   openAccount: () => void
   closeAccount: () => void
   selectHelpDocument: (document: string) => void
@@ -23,6 +26,7 @@ export const useDialogStore = create<DialogStore>((set) => ({
   settingsOpen: false,
   helpOpen: false,
   commandOpen: false,
+  consoleOpen: false,
   accountOpen: false,
   helpDocument: '',
   openSettings: () => set({ settingsOpen: true }),
@@ -31,6 +35,8 @@ export const useDialogStore = create<DialogStore>((set) => ({
   closeHelp: () => set({ helpOpen: false }),
   openCommand: () => set({ commandOpen: true }),
   closeCommand: () => set({ commandOpen: false }),
+  openConsole: () => set({ consoleOpen: true }),
+  closeConsole: () => set({ consoleOpen: false }),
   openAccount: () => set({ accountOpen: true }),
   closeAccount: () => set({ accountOpen: false }),
   selectHelpDocument: (document) => set({ helpDocument: document }),

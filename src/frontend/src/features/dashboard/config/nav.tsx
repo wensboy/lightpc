@@ -2,6 +2,7 @@ import {
   ChartBarIcon,
   CircleHelpIcon,
   CommandIcon,
+  SquareTerminalIcon,
   GaugeIcon,
   LayoutDashboardIcon,
   ScrollTextIcon,
@@ -18,7 +19,7 @@ export type NavLink = {
 }
 
 export type NavAction = {
-  key: 'command' | 'help' | 'settings'
+  key: 'console' | 'command' | 'help' | 'settings'
   title: string
   icon: ReactNode
 }
@@ -38,6 +39,7 @@ export function buildPrimaryNav(text: Dictionary): NavLink[] {
 // carries a key so the shell opens the matching overlay instead of navigating.
 export function buildSecondaryNav(text: Dictionary): NavAction[] {
   return [
+    { key: 'console', title: text.dashboard.nav.console, icon: <SquareTerminalIcon /> },
     { key: 'command', title: text.dashboard.nav.command, icon: <CommandIcon /> },
     { key: 'help', title: text.dashboard.nav.help, icon: <CircleHelpIcon /> },
     { key: 'settings', title: text.dashboard.nav.settings, icon: <Settings2Icon /> },

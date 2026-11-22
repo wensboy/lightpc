@@ -5,6 +5,7 @@ import { AppSidebar } from '@/features/dashboard/layouts/AppSidebar'
 import { AccountDialog } from '@/features/account/components/AccountDialog'
 import { CommandPalette } from '@/features/command/components/CommandPalette'
 import { SiteHeader } from '@/features/dashboard/layouts/SiteHeader'
+import { ConsoleSheet } from '@/features/console/components/ConsoleSheet'
 import { HelpDialog } from '@/features/help/components/HelpDialog'
 import { NotificationsSheet } from '@/features/notifications/components/NotificationsSheet'
 import { SettingsDialog } from '@/features/settings/components/SettingsDialog'
@@ -31,6 +32,7 @@ function AppLayout() {
       </SidebarInset>
       <SettingsDialog />
       <HelpDialog />
+      <ConsoleSheet />
       <CommandPalette />
       <NotificationsSheet />
       <AccountDialog />

@@ -9,6 +9,8 @@ import { settings as settingsEn } from './i18n/en-US/settings'
 import { account as accountZh } from './i18n/zh-CN/account'
 import { auth as authZh } from './i18n/zh-CN/auth'
 import { common as commonZh } from './i18n/zh-CN/common'
+import { consoleText as consoleEn } from './i18n/en-US/console'
+import { consoleText as consoleZh } from './i18n/zh-CN/console'
 import { dashboard as dashboardZh } from './i18n/zh-CN/dashboard'
 import { help as helpZh } from './i18n/zh-CN/help'
 import { notifications as notificationsZh } from './i18n/zh-CN/notifications'
@@ -21,6 +23,7 @@ export const dictionaries = {
     account: accountEn,
     auth: authEn,
     common: commonEn,
+    console: consoleEn,
     dashboard: dashboardEn,
     help: helpEn,
     notifications: notificationsEn,
@@ -30,6 +33,7 @@ export const dictionaries = {
     account: accountZh,
     auth: authZh,
     common: commonZh,
+    console: consoleZh,
     dashboard: dashboardZh,
     help: helpZh,
     notifications: notificationsZh,
