@@ -149,6 +149,13 @@
 }
 
 @layer base {
+    /* The active entry is told apart by its surface alone: the accent is deepened towards the foreground so
+       the block reads as selected in both colour modes. Mixing with the foreground keeps it correct in dark
+       mode too, where a fixed darker value would disappear. */
+    [data-slot="sidebar-menu-button"][data-active="true"] {
+        background-color: color-mix(in oklch, var(--sidebar-accent), var(--sidebar-foreground) 12%) !important;
+    }
+
     body {
         /* The chosen family is applied by writing --font-sans. */
         font-family: var(--font-sans);
@@ -167,3 +174,4 @@
     @apply font-sans;
     }
 }
+
