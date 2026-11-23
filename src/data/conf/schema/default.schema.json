@@ -60,196 +60,236 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-                "store",
-                "log"
+                "engines",
+                "services"
             ],
             "properties": {
-                "store": {
+                "engines": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": [
-                        "root",
-                        "fs"
-                    ],
+                    "description": "Engine configuration. Each key matches an engine group and is read by that engine.",
                     "properties": {
-                        "root": {
-                            "type": "string",
-                            "minLength": 1,
-                            "pattern": "^local://.+",
-                            "description": "Absolute store root expressed as a local:// resource path."
-                        },
-                        "fs": {
+                        "store": {
                             "type": "object",
                             "additionalProperties": false,
                             "required": [
-                                "fileMode",
-                                "dirMode"
+                                "root",
+                                "fs"
                             ],
                             "properties": {
-                                "fileMode": {
+                                "root": {
                                     "type": "string",
-                                    "pattern": "^0o[0-7]{3}$"
+                                    "minLength": 1,
+                                    "pattern": "^local://.+",
+                                    "description": "Absolute store root expressed as a local:// resource path."
                                 },
-                                "dirMode": {
-                                    "type": "string",
-                                    "pattern": "^0o[0-7]{3}$"
+                                "fs": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "fileMode",
+                                        "dirMode"
+                                    ],
+                                    "properties": {
+                                        "fileMode": {
+                                            "type": "string",
+                                            "pattern": "^0o[0-7]{3}$"
+                                        },
+                                        "dirMode": {
+                                            "type": "string",
+                                            "pattern": "^0o[0-7]{3}$"
+                                        }
+                                    }
+                                },
+                                "db": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "description": "Database connections the store opens at start up.",
+                                    "properties": {
+                                        "sql": {
+                                            "type": "array",
+                                            "description": "One entry per database. Migrations run before the pool is handed to a service.",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "required": [
+                                                    "name",
+                                                    "driver",
+                                                    "dsn"
+                                                ],
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "description": "Engine instance name, unique within the store group."
+                                                    },
+                                                    "driver": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "sqlite3",
+                                                            "mysql",
+                                                            "postgres",
+                                                            "sqlserver",
+                                                            "clickhouse",
+                                                            "cockroach",
+                                                            "tidb"
+                                                        ],
+                                                        "description": "Database engine. The list is a subset of the names the code knows: a driver this build does not link is skipped at start up rather than failing the pipeline."
+                                                    },
+                                                    "skipped": {
+                                                        "type": "boolean",
+                                                        "description": "Keep the entry in the document without opening it."
+                                                    },
+                                                    "dsn": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "description": "Driver specific connection string. No proto:// prefix is used: the driver either carries its own scheme or the target is a writable file."
+                                                    },
+                                                    "options": {
+                                                        "type": "array",
+                                                        "description": "Driver options appended to the DSN as query parameters, written as \"key=value\". Each driver accepts a different set, so the keys stay free form; the order is kept.",
+                                                        "items": {
+                                                            "type": "string",
+                                                            "pattern": "^[A-Za-z_][A-Za-z0-9_]*=.+$",
+                                                            "minLength": 1
+                                                        }
+                                                    },
+                                                    "migrations": {
+                                                        "type": "array",
+                                                        "description": "Directories holding the migration files. A single file is not accepted: the applied set has to come from the directory listing, not from the entry.",
+                                                        "items": {
+                                                            "type": "string",
+                                                            "pattern": "^embed://.+",
+                                                            "not": {
+                                                                "pattern": "\\.sql$"
+                                                            },
+                                                            "minLength": 1
+                                                        }
+                                                    }
+                                                },
+                                                "description": "One entry per database. Entries are registered under \"driver.name\" and migrations run before the pool is handed to a service."
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         },
-                        "db": {
+                        "log": {
                             "type": "object",
                             "additionalProperties": false,
-                            "description": "Database connections the store opens at start up.",
                             "properties": {
-                                "sql": {
+                                "direct": {
                                     "type": "array",
-                                    "description": "One entry per database. Migrations run before the pool is handed to a service.",
+                                    "items": {
+                                        "$ref": "#/$defs/logItem"
+                                    }
+                                },
+                                "fanout": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/$defs/logItem"
+                                    }
+                                },
+                                "pattern": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/$defs/logItem"
+                                    }
+                                }
+                            }
+                        },
+                        "setting": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "schema",
+                                "layers"
+                            ],
+                            "description": "Settings engine configuration.",
+                            "properties": {
+                                "schema": {
+                                    "type": "string",
+                                    "pattern": "^(local|embed)://.+",
+                                    "description": "Resource path of the schema every setting document conforms to."
+                                },
+                                "layers": {
+                                    "type": "array",
+                                    "description": "Ordered layers; a higher index wins. The runtime layer is created by the engine.",
                                     "items": {
                                         "type": "object",
                                         "additionalProperties": false,
                                         "required": [
-                                            "name",
-                                            "driver",
-                                            "dsn"
+                                            "layer",
+                                            "path",
+                                            "mode"
                                         ],
                                         "properties": {
-                                            "name": {
+                                            "layer": {
                                                 "type": "string",
                                                 "minLength": 1,
-                                                "description": "Engine instance name, unique within the store group."
+                                                "description": "Layer name exposed to callers."
                                             },
-                                            "driver": {
+                                            "path": {
+                                                "type": "string",
+                                                "pattern": "^(local|embed)://.+",
+                                                "description": "Resource path of the layer document."
+                                            },
+                                            "mode": {
                                                 "type": "string",
                                                 "enum": [
-                                                    "sqlite3",
-                                                    "mysql",
-                                                    "postgres",
-                                                    "sqlserver",
-                                                    "clickhouse",
-                                                    "cockroach",
-                                                    "tidb"
+                                                    "ro",
+                                                    "wo",
+                                                    "rw"
                                                 ],
-                                                "description": "Database engine. The list is a subset of the names the code knows: a driver this build does not link is skipped at start up rather than failing the pipeline."
-                                            },
-                                            "skipped": {
-                                                "type": "boolean",
-                                                "description": "Keep the entry in the document without opening it."
-                                            },
-                                            "dsn": {
-                                                "type": "string",
-                                                "minLength": 1,
-                                                "description": "Driver specific connection string. No proto:// prefix is used: the driver either carries its own scheme or the target is a writable file."
-                                            },
-                                            "options": {
-                                                "type": "array",
-                                                "description": "Driver options appended to the DSN as query parameters, written as \"key=value\". Each driver accepts a different set, so the keys stay free form; the order is kept.",
-                                                "items": {
-                                                    "type": "string",
-                                                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*=.+$",
-                                                    "minLength": 1
-                                                }
-                                            },
-                                            "migrations": {
-                                                "type": "array",
-                                                "description": "Directories holding the migration files. A single file is not accepted: the applied set has to come from the directory listing, not from the entry.",
-                                                "items": {
-                                                    "type": "string",
-                                                    "pattern": "^embed://.+",
-                                                    "not": {
-                                                        "pattern": "\\.sql$"
-                                                    },
-                                                    "minLength": 1
-                                                }
+                                                "description": "Access mode of the layer."
                                             }
-                                        },
-                                        "description": "One entry per database. Entries are registered under \"driver.name\" and migrations run before the pool is handed to a service."
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 },
-                "log": {
+                "services": {
                     "type": "object",
                     "additionalProperties": false,
-                    "properties": {
-                        "direct": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/$defs/logItem"
-                            }
-                        },
-                        "fanout": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/$defs/logItem"
-                            }
-                        },
-                        "pattern": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/$defs/logItem"
-                            }
-                        }
-                    }
-                },
-                "setting": {
-                    "type": "object",
-                    "additionalProperties": false,
+                    "description": "Service configuration. Each key matches a service and is read by that service.",
                     "required": [
-                        "schema",
-                        "layers"
+                        "softDelete"
                     ],
-                    "description": "Settings engine configuration.",
                     "properties": {
-                        "schema": {
-                            "type": "string",
-                            "pattern": "^(local|embed)://.+",
-                            "description": "Resource path of the schema every setting document conforms to."
+                        "softDelete": {
+                            "type": "boolean",
+                            "description": "Keep removed rows and mark them instead of deleting them. Services that own a history table honour this flag so a removal stays auditable."
                         },
-                        "layers": {
+                        "docs": {
                             "type": "array",
-                            "description": "Ordered layers; a higher index wins. The runtime layer is created by the engine.",
+                            "description": "Directories that hold a documentation set. Each directory carries a meta.json and the markdown its toc points at.",
                             "items": {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "required": [
-                                    "layer",
-                                    "path",
-                                    "mode"
-                                ],
-                                "properties": {
-                                    "layer": {
-                                        "type": "string",
-                                        "minLength": 1,
-                                        "description": "Layer name exposed to callers."
-                                    },
-                                    "path": {
-                                        "type": "string",
-                                        "pattern": "^(local|embed)://.+",
-                                        "description": "Resource path of the layer document."
-                                    },
-                                    "mode": {
-                                        "type": "string",
-                                        "enum": [
-                                            "ro",
-                                            "wo",
-                                            "rw"
-                                        ],
-                                        "description": "Access mode of the layer."
-                                    }
+                                "type": "string",
+                                "pattern": "^(local|embed)://.+",
+                                "description": "Resource path of one documentation directory."
+                            }
+                        },
+                        "session": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Session service configuration.",
+                            "required": [
+                                "expiration"
+                            ],
+                            "properties": {
+                                "expiration": {
+                                    "type": "string",
+                                    "pattern": "^\\s*[0-9]+(\\.[0-9]+)?\\s*[a-zA-Zµ]*\\s*$",
+                                    "description": "How long an issued token stays valid, written as \"<number> <unit>\" such as \"7200 s\". The separator between the number and the unit may be empty or whitespace; a bare number reads as seconds."
+                                },
+                                "database": {
+                                    "type": "string",
+                                    "description": "Key of the database entry the session tables live in, for example sqlite3.dev_sqlite."
                                 }
                             }
                         }
-                    }
-                },
-                "docs": {
-                    "type": "array",
-                    "description": "Directories that hold a documentation set. Each directory carries a meta.json and the markdown its toc points at.",
-                    "items": {
-                        "type": "string",
-                        "pattern": "^(local|embed)://.+",
-                        "description": "Resource path of one documentation directory."
                     }
                 }
             }

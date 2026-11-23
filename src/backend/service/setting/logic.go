@@ -20,24 +20,6 @@ import (
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
-// defaultSchemaPath is used when the configuration does not name a schema resource.
-const defaultSchemaPath = "embed://data/conf/schema/engineSetting.schema.json"
-
-// schemaKey is the configuration path that names the schema resource.
-const schemaKey = "default.runtime.setting.schema"
-
-// runtimeLayerName is the in-memory layer UI edits land in before they are flushed to the user layer.
-const runtimeLayerName = "runtime"
-
-// defaultLayerName is the read only layer shipped with the application.
-const defaultLayerName = "default"
-
-// builtinFontKey addresses the bundled font list, which is filtered against the shipped files.
-const builtinFontKey = "appearence.font.builtin"
-
-// themePalettesKey addresses the palette list shared by every theme picker.
-const themePalettesKey = "appearence.theme.palettes"
-
 // SettingService hands the settings schema and its aggregated values to the front end.
 type SettingService struct {
 	fileStore  engineStore.FileStore
@@ -81,7 +63,7 @@ func (s *SettingService) Init(sCtx domainService.ServiceContext) error {
 
 	// The schema is a plain document, so its location comes from the configuration rather than a literal.
 	if sCtx.AppCtx != nil && sCtx.AppCtx.ConfigContext != nil {
-		if value, found := sCtx.AppCtx.ConfigContext.Lookup(schemaKey); found {
+		if value, found := sCtx.AppCtx.ConfigContext.Lookup("default.runtime.engines.setting.schema"); found {
 			if configured, ok := cast.To[string](value); ok && configured != "" {
 				s.schemaPath = configured
 			}
@@ -94,18 +76,18 @@ func (s *SettingService) Init(sCtx domainService.ServiceContext) error {
 func (s *SettingService) Deinit() error { return nil }
 
 // Payload returns the schema and the aggregated values the front end renders into setting cards.
-func (s *SettingService) Payload() (serviceSetting.SettingPayload, error) {
+func (s *SettingService) Payload() (serviceSetting.SettingPayloadDto, error) {
 	if s.fileStore == nil || s.setting == nil {
-		return serviceSetting.SettingPayload{}, interError.Retrieve(engineStore.ErrKeyInvalid)
+		return serviceSetting.SettingPayloadDto{}, interError.Retrieve(engineStore.ErrKeyInvalid)
 	}
 
 	data, err := s.fileStore.Get(context.Background(), s.schemaPath)
 	if err != nil {
-		return serviceSetting.SettingPayload{}, err
+		return serviceSetting.SettingPayloadDto{}, err
 	}
 	schema := map[string]any{}
 	if err := json.Unmarshal(data, &schema); err != nil {
-		return serviceSetting.SettingPayload{}, interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(err)
+		return serviceSetting.SettingPayloadDto{}, interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(err)
 	}
 
 	flat := map[string]any{}
@@ -126,7 +108,7 @@ func (s *SettingService) Payload() (serviceSetting.SettingPayload, error) {
 	// The palette list stays in the view because theme.default reads its options from it. It is marked as
 	// derived in the schema, so the renderer uses it for the picker without drawing a card of its own; the
 	// Themes field carries the same data already resolved for painting.
-	return serviceSetting.SettingPayload{
+	return serviceSetting.SettingPayloadDto{
 		Schema:      schema,
 		Values:      nestValues(flat),
 		Defaults:    nestValues(defaults),

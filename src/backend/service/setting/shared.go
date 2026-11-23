@@ -11,7 +11,24 @@ import (
 
 	gotextfont "github.com/go-text/typesetting/font"
 	ot "github.com/go-text/typesetting/font/opentype"
+	serviceSetting "github.com/wensboy/lightpc/backend/domain/service/setting"
+	"github.com/wensboy/lightpc/backend/internal/cast"
 )
+
+// defaultSchemaPath is used when the configuration does not name a schema resource.
+const defaultSchemaPath = "embed://data/conf/schema/engineSetting.schema.json"
+
+// runtimeLayerName is the in-memory layer UI edits land in before they are flushed to the user layer.
+const runtimeLayerName = "runtime"
+
+// defaultLayerName is the read only layer shipped with the application.
+const defaultLayerName = "default"
+
+// builtinFontKey addresses the bundled font list, which is filtered against the shipped files.
+const builtinFontKey = "appearence.font.builtin"
+
+// themePalettesKey addresses the palette list shared by every theme picker.
+const themePalettesKey = "appearence.theme.palettes"
 
 // fontExtensions lists the file extensions a usable font can carry. Collections are included because the
 // CJK families ship as a single .ttc holding several faces.
@@ -203,4 +220,62 @@ func (s *SettingService) bundledFamilies() map[string]struct{} {
 // normaliseFamily folds a family name for comparison.
 func normaliseFamily(name string) string {
 	return strings.ToLower(strings.Join(strings.Fields(name), ""))
+}
+
+// cssProperty turns a storage key into the custom property the stylesheet expects: cardForeground becomes
+// --card-foreground.
+func cssProperty(key string) string {
+	var builder strings.Builder
+	builder.WriteString("--")
+	for _, letter := range key {
+		if unicode.IsUpper(letter) {
+			builder.WriteByte('-')
+			letter = unicode.ToLower(letter)
+		}
+		builder.WriteRune(letter)
+	}
+	return builder.String()
+}
+
+// buildThemes resolves the merged palette list into something the renderer can apply directly: every entry
+// carries both colour modes and keys already converted to custom properties.
+func buildThemes(merged map[string]any) []serviceSetting.SettingThemeDto {
+	// An empty slice rather than nil: the renderer validates an array, and a null would be rejected even
+	// when there is simply nothing to list.
+	themes := make([]serviceSetting.SettingThemeDto, 0, 4)
+	list, ok := cast.To[[]any](merged[themePalettesKey])
+	if !ok {
+		return themes
+	}
+	for _, entry := range list {
+		item, ok := cast.To[map[string]any](entry)
+		if !ok {
+			continue
+		}
+		name, ok := cast.To[string](item["name"])
+		if !ok || name == "" {
+			continue
+		}
+		themes = append(themes, serviceSetting.SettingThemeDto{
+			Name:  name,
+			Light: paletteProperties(item["light"]),
+			Dark:  paletteProperties(item["dark"]),
+		})
+	}
+	return themes
+}
+
+// paletteProperties converts one palette into custom property names, skipping entries that are not text.
+func paletteProperties(raw any) map[string]string {
+	source, ok := cast.To[map[string]any](raw)
+	if !ok {
+		return nil
+	}
+	properties := make(map[string]string, len(source))
+	for key, value := range source {
+		if text, ok := cast.To[string](value); ok {
+			properties[cssProperty(key)] = text
+		}
+	}
+	return properties
 }

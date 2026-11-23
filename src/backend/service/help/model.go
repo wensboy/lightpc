@@ -8,9 +8,22 @@ import (
 	serviceHelp "github.com/wensboy/lightpc/backend/domain/service/help"
 )
 
-// tocGroups decodes the toc object while keeping the declaration order, because the tree shows the groups
-// in the order the author wrote them and a map would lose it.
-type tocGroups []serviceHelp.DocsGroup
+// meta is the entity one meta.json decodes into.
+//
+// It is separate from the contract type on purpose: the document is an entity the service reads, while
+// DocsVersionDto is the dto the binding hands to the front end. Keeping the both apart means a change to the file
+// format does not ripple into the transport.
+type meta struct {
+	Version    string    `json:"version"`
+	Index      string    `json:"index"`
+	Deprecated bool      `json:"deprecated"`
+	Tags       []string  `json:"tags"`
+	Toc        tocGroups `json:"toc"`
+}
+
+// tocGroups decodes the toc object while keeping the declaration order, because the tree shows the groups in
+// the order the author wrote them and a map would lose it.
+type tocGroups []serviceHelp.DocsGroupDto
 
 // UnmarshalJSON walks the object token by token so the order survives.
 func (t *tocGroups) UnmarshalJSON(data []byte) error {
@@ -34,14 +47,14 @@ func (t *tocGroups) UnmarshalJSON(data []byte) error {
 		if err := decoder.Decode(&items); err != nil {
 			return err
 		}
-		groups = append(groups, serviceHelp.DocsGroup{Title: title, Items: items})
+		groups = append(groups, serviceHelp.DocsGroupDto{Title: title, Items: items})
 	}
 	*t = groups
 	return nil
 }
 
 // tocItems decodes one group of documents while keeping the declaration order.
-type tocItems []serviceHelp.DocsItem
+type tocItems []serviceHelp.DocsItemDto
 
 // UnmarshalJSON walks the object token by token so the order survives.
 func (i *tocItems) UnmarshalJSON(data []byte) error {
@@ -61,7 +74,7 @@ func (i *tocItems) UnmarshalJSON(data []byte) error {
 		if err := decoder.Decode(&target); err != nil {
 			return err
 		}
-		items = append(items, serviceHelp.DocsItem{Title: title, Path: target})
+		items = append(items, serviceHelp.DocsItemDto{Title: title, Path: target})
 	}
 	*i = items
 	return nil
