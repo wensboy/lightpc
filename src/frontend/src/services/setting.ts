@@ -18,8 +18,8 @@ const settingPayloadSchema = z.object({
   themes: z.array(settingThemeSchema).default([]),
 })
 
-/** SettingTheme is one palette with both modes already keyed as CSS custom properties. */
-export type SettingTheme = z.infer<typeof settingThemeSchema>
+/** SettingThemeDto is one palette with both modes already keyed as CSS custom properties. */
+export type SettingThemeDto = z.infer<typeof settingThemeSchema>
 
 // SettingDocument is what the renderer needs: the schema describing every field and the values to show.
 export type SettingDocument = {
@@ -30,7 +30,7 @@ export type SettingDocument = {
   /** Families installed on the machine, offered while font.useSystem is on. */
   systemFonts: string[]
   /** Selectable palettes, merged on the backend and keyed as custom properties. */
-  themes: SettingTheme[]
+  themes: SettingThemeDto[]
 }
 
 // SettingService is the contract the feature depends on, independent of where the document comes from.

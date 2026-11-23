@@ -13,9 +13,9 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { AuthLayout } from '@/features/auth/layouts/AuthLayout'
-import { setToken } from '@/features/auth/session'
+import { writeAuth } from '@/features/auth/session'
 import { useText } from '@/locales'
-import { auth } from '@/mocks'
+import { sessionService } from '@/services/session'
 import { loginSchema, type LoginInput } from '@/services/auth'
 
 // LoginPage validates with Zod through React Hook Form and hands the payload to the auth service.
@@ -31,8 +31,8 @@ export function LoginPage() {
   const onSubmit = handleSubmit(async (values) => {
     setMessage('')
     try {
-      const session = await auth.login(values)
-      setToken(session.token)
+      const session = await sessionService.login({ account: values.email, password: values.password })
+      writeAuth({ uid: session.uid, account: session.account })
       await navigate({ to: '/' })
     } catch (error) {
       setMessage(error instanceof Error ? error.message : text.auth.errors.loginFailed)
@@ -50,11 +50,11 @@ export function LoginPage() {
             </p>
           </div>
           <Field>
-            <FieldLabel htmlFor="email">{text.auth.login.emailLabel}</FieldLabel>
+            <FieldLabel htmlFor="email">{text.auth.login.accountLabel}</FieldLabel>
             <Input
               id="email"
               type="email"
-              placeholder="m@example.com"
+              placeholder={text.auth.login.accountPlaceholder}
               autoComplete="email"
               className="bg-background"
               {...register('email')}

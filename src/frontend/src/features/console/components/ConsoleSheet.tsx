@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Sidebar, SidebarContent, SidebarProvider } from '@/components/ui/sidebar'
+import { ConsoleHeader } from '@/features/console/components/ConsoleHeader'
 import { ConsoleNav } from '@/features/console/components/ConsoleNav'
 import { buildConsoleNav, type ConsoleSectionKey } from '@/features/console/config/nav'
 import { useText } from '@/locales'
@@ -10,10 +11,11 @@ import { useDialogStore } from '@/stores/dialog'
 // content area.
 //
 // The rail keeps the collapsed width and never expands, so the label lives in a tooltip. That tooltip only
-// shows while the provider reports the collapsed state, which is why the provider opens collapsed.
+// shows while the provider reports the collapsed state, which is why the provider opens collapsed. The active
+// entry is marked by the same surface treatment the main sidebar uses.
 //
-// The views differ a lot, so each one currently renders an empty state; the rail already carries the selection
-// so a view can be filled in without touching this layout.
+// The views differ a lot, so each one currently renders an empty state under a shared header; the rail already
+// carries the selection so a view can be filled in without touching this layout.
 export function ConsoleSheet() {
   const text = useText()
   const consoleOpen = useDialogStore((state) => state.consoleOpen)
@@ -21,6 +23,7 @@ export function ConsoleSheet() {
   const [active, setActive] = useState<ConsoleSectionKey>('inbox')
 
   const items = useMemo(() => buildConsoleNav(text), [text])
+  const current = items.find((item) => item.key === active) ?? items[0]
 
   return (
     <Sheet
@@ -42,6 +45,7 @@ export function ConsoleSheet() {
             </SidebarContent>
           </Sidebar>
           <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+            <ConsoleHeader leading={<span className="truncate text-sm font-medium">{current?.title}</span>} />
             <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-1 p-4 text-center">
               <p className="text-sm font-medium text-foreground">{text.console.empty.title}</p>
               <p className="max-w-sm text-xs text-muted-foreground">{text.console.empty.description}</p>

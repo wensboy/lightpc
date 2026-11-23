@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Service as HelpBinding } from '../../bindings/github.com/wensboy/lightpc/backend/service/help'
+import { HelpService as HelpBinding } from '../../bindings/github.com/wensboy/lightpc/backend/service/help'
 
 // docsItemSchema validates one document entry of the table of contents.
 const docsItemSchema = z.object({
@@ -26,19 +26,19 @@ const docsPayloadSchema = z.object({
   versions: z.array(docsVersionSchema),
 })
 
-/** DocsItem is one document listed in a group. */
-export type DocsItem = z.infer<typeof docsItemSchema>
+/** DocsItemDto is one document listed in a group. */
+export type DocsItemDto = z.infer<typeof docsItemSchema>
 
-/** DocsGroup is one section of a documentation set. */
-export type DocsGroup = z.infer<typeof docsGroupSchema>
+/** DocsGroupDto is one section of a documentation set. */
+export type DocsGroupDto = z.infer<typeof docsGroupSchema>
 
-/** DocsVersion is one documentation set as the reader shows it. */
-export type DocsVersion = z.infer<typeof docsVersionSchema>
+/** DocsVersionDto is one documentation set as the reader shows it. */
+export type DocsVersionDto = z.infer<typeof docsVersionSchema>
 
 /** HelpService is the contract the reader depends on. */
 export interface HelpService {
   /** payload returns every documentation set the backend ships. */
-  payload(): Promise<DocsVersion[]>
+  payload(): Promise<DocsVersionDto[]>
   /** read returns the markdown of one document. */
   read(version: string, path: string): Promise<string>
 }
