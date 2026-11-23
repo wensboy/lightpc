@@ -55,7 +55,10 @@ func RunGui(appCtx domainContext.AppContext) error {
 	opt := ui.RegisterService(serviceRuntime)
 	if dist, ok := appCtx.EmbedContext["/frontend/dist"]; ok && dist != nil {
 		if assets, err := fs.Sub(dist, "frontend/dist"); err == nil {
-			opt.Assets = application.AssetOptions{Handler: spaHandler(assets)}
+			opt.Assets = application.AssetOptions{
+				Handler:    application.AssetFileServerFS(assets),
+				Middleware: spaFallback(assets),
+			}
 		}
 	}
 	app := SetupApp(cfg, opt)
@@ -70,30 +73,33 @@ func RunGui(appCtx domainContext.AppContext) error {
 	return app.Run()
 }
 
-// spaHandler serves the embedded bundle and answers index.html for a path that is not a file.
+// spaFallback answers index.html for a path the asset server could not resolve.
 //
 // The asset server maps a request onto a file name, so a reload on a client route asks for a document that does
-// not exist. Returning the shell instead lets the router resolve the path after the page has loaded, which is
+// not exist. Returning the shell instead lets the router resolve the path once the page has loaded, which is
 // what makes a deep link or a reload survive.
-func spaHandler(fsys fs.FS) http.Handler {
-	files := application.AssetFileServerFS(fsys)
+//
+// This runs as an asset server middleware rather than a hand wrapped handler: Wails places it in front of its
+// own chain and hands it the default handler, so the fallback only has to inspect what that handler returned.
+func spaFallback(fsys fs.FS) application.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+			next.ServeHTTP(recorder, r)
+			if recorder.status != http.StatusNotFound {
+				return
+			}
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-		files.ServeHTTP(recorder, r)
-		if recorder.status != http.StatusNotFound {
-			return
-		}
-
-		index, err := fs.ReadFile(fsys, "index.html")
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(index)
-	})
+			index, err := fs.ReadFile(fsys, "index.html")
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(index)
+		})
+	}
 }
 
 // statusRecorder remembers the status the wrapped handler wrote, so the fallback can tell a missing file from a
