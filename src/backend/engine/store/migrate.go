@@ -20,9 +20,6 @@ import (
 	"github.com/wensboy/lightpc/backend/internal/cast"
 )
 
-// DBConfigsKey is the configuration path that holds the database entries.
-const DBConfigsKey = "default.runtime.store.db.sql"
-
 // dbConfig is one entry of runtime.store.db.sql. Options are appended to the DSN as query parameters, which
 // is how the sqlite driver receives its pragmas.
 type dbConfig struct {
@@ -39,7 +36,7 @@ type dbConfig struct {
 // Skipped keeps an entry in the document without opening it: the name stays visible to the settings view
 // while no connection is made and no migration runs.
 func DBConfigs(cfg domainContext.ConfigContext) []dbConfig {
-	value, found := cfg.Lookup(DBConfigsKey)
+	value, found := cfg.Lookup("default.runtime.engines.store.db.sql")
 	if !found {
 		return nil
 	}

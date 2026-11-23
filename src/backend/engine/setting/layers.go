@@ -9,7 +9,7 @@ import (
 )
 
 // LayersKey is the configuration path that holds the layer list.
-const LayersKey = "default.runtime.setting.layers"
+const LayersKey = "default.runtime.engines.setting.layers"
 
 // LayersFrom reads the configured layers in ascending priority: the first entry has the lowest priority
 // and every following entry overrides the ones before it.

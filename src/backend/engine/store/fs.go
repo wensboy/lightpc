@@ -98,21 +98,21 @@ func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 	f.mu.Lock()
 	f.ectx = eCtx
 	if eCtx.AppCtx != nil && eCtx.AppCtx.ConfigContext != nil {
-		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.store.root", &f.root, "", func(text string) (string, bool) {
+		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.engines.store.root", &f.root, "", func(text string) (string, bool) {
 			target, err := path.Parse(text)
 			if err != nil || target.IsEmbed() {
 				return "", false
 			}
 			return target.Path, true
 		})
-		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.store.fs.fileMode", &f.fileMode, 0, func(text string) (fs.FileMode, bool) {
+		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.engines.store.fs.fileMode", &f.fileMode, 0, func(text string) (fs.FileMode, bool) {
 			mode, err := strconv.ParseUint(text, 0, 32)
 			if err != nil {
 				return 0, false
 			}
 			return fs.FileMode(mode), true
 		})
-		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.store.fs.dirMode", &f.dirMode, 0, func(text string) (fs.FileMode, bool) {
+		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.engines.store.fs.dirMode", &f.dirMode, 0, func(text string) (fs.FileMode, bool) {
 			mode, err := strconv.ParseUint(text, 0, 32)
 			if err != nil {
 				return 0, false

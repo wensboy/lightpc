@@ -21,7 +21,7 @@ func (s sharedSource) Lookup(key string) (any, bool) {
 
 func TestItemsForReadsConfiguredGroup(t *testing.T) {
 	cfg := domainContext.ConfigContext(sharedSource{values: map[string]any{
-		"default.runtime.log": map[string]any{
+		"default.runtime.engines.log": map[string]any{
 			"direct": []any{
 				map[string]any{"name": "dev.console", "level": "debug", "handler": ""},
 				map[string]any{"level": "info"},
@@ -49,7 +49,7 @@ func TestItemsForMissingGroup(t *testing.T) {
 
 func TestItemsForEmptyGroup(t *testing.T) {
 	cfg := domainContext.ConfigContext(sharedSource{values: map[string]any{
-		"default.runtime.log": map[string]any{"direct": []any{}},
+		"default.runtime.engines.log": map[string]any{"direct": []any{}},
 	}})
 
 	if items := ItemsFor(cfg, "direct"); len(items) != 0 {

@@ -6,15 +6,12 @@ import (
 	"github.com/wensboy/lightpc/backend/internal/cast"
 )
 
-// logGroupKey is the configuration path that holds every log group.
-const logGroupKey = "default.runtime.log"
-
 // ItemsFor reads the configured items of one log group.
 //
 // Parsing lives here so the bootstrap only decides which groups to start, never how a configuration
 // record is shaped. A missing group and an empty group both yield no items.
 func ItemsFor(cfg domainContext.ConfigContext, group string) []domainConfig.LogItem {
-	value, ok := cfg.Lookup(logGroupKey)
+	value, ok := cfg.Lookup("default.runtime.engines.log")
 	if !ok {
 		return nil
 	}
