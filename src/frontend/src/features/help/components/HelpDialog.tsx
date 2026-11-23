@@ -28,7 +28,7 @@ import { HelpMarkdown } from '@/features/help/components/HelpMarkdown'
 import { SearchCombobox, type SearchSection } from '@/features/help/components/SearchCombobox'
 import { useHelp } from '@/features/help/useHelp'
 import { useText } from '@/locales'
-import type { DocsItem } from '@/services/help'
+import type { DocsItemDto } from '@/services/help'
 import { useDialogStore } from '@/stores/dialog'
 
 // documentValue is what the picker shows for a document: its path without the markdown suffix, so
@@ -46,7 +46,7 @@ export function HelpDialog() {
   const closeHelp = useDialogStore((state) => state.closeHelp)
   const { versions, version, content, error, selectVersion, selectDocument, clear } = useHelp(helpOpen)
 
-  const [active, setActive] = useState<{ group: string; item: DocsItem } | null>(null)
+  const [active, setActive] = useState<{ group: string; item: DocsItemDto } | null>(null)
   const [openGroups, setOpenGroups] = useState<string[]>([])
 
   const current = useMemo(
@@ -72,7 +72,7 @@ export function HelpDialog() {
 
   // Choosing a document expands its section and leaves the others as they were, so the tree and the reader
   // always agree about what is selected.
-  const open = (group: string, item: DocsItem) => {
+  const open = (group: string, item: DocsItemDto) => {
     setActive({ group, item })
     setOpenGroups((previous) => (previous.includes(group) ? previous : [...previous, group]))
     selectDocument(item.path)

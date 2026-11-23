@@ -1,9 +1,10 @@
 // Auth holds every string shown by the login and signup pages, including validation messages.
 export const auth = {
   login: {
-    title: '登录账户',
-    description: '在下方输入邮箱以登录账户',
-    emailLabel: '邮箱',
+    title: '登录',
+    description: '在下方表单中登录账户.',
+    accountLabel: '账号',
+    accountPlaceholder: '邮箱或手机号',
     passwordLabel: '密码',
     forgotPassword: '忘记密码?',
     submit: '登录',
@@ -13,12 +14,13 @@ export const auth = {
     signupLink: '注册',
   },
   signup: {
-    title: '创建账户',
+    title: '注册',
     description: '填写下方表单以创建账户',
-    nameLabel: '姓名',
+    nameLabel: '用户名',
     namePlaceholder: '张三',
-    emailLabel: '邮箱',
-    emailHint: '我们会用它联系你, 不会与任何第三方共享.',
+    accountLabel: '账号',
+    accountPlaceholder: '邮箱或手机号',
+    accountHint: '请确保符合邮箱或手机号格式.',
     passwordLabel: '密码',
     passwordHint: '至少需要 8 个字符.',
     confirmLabel: '确认密码',
@@ -30,7 +32,7 @@ export const auth = {
     loginLink: '登录',
   },
   errors: {
-    invalidEmail: '请输入有效的邮箱地址.',
+    invalidAccount: '请输入有效的邮箱地址.',
     shortPassword: '密码至少需要 8 个字符.',
     invalidCredentials: '邮箱或密码错误.',
     notConnected: '认证服务尚未接入后端.',

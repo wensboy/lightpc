@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { helpService, type DocsVersion } from '@/services/help'
+import { helpService, type DocsVersionDto } from '@/services/help'
 
 export type DocsState = {
   /** versions lists every documentation set, ordered by the backend. */
-  versions: DocsVersion[]
+  versions: DocsVersionDto[]
   /** version is the set the tree currently shows. */
   version: string
   /** selected is the chosen document, empty while the reader shows the index page. */
@@ -24,7 +24,7 @@ export type DocsState = {
 // and the reader all read from here. Selection and index are one piece of state: an empty selection means
 // the index page, so the reader never has to guess what to show.
 export function useHelp(active: boolean): DocsState {
-  const [versions, setVersions] = useState<DocsVersion[]>([])
+  const [versions, setVersions] = useState<DocsVersionDto[]>([])
   const [version, setVersion] = useState('')
   const [selected, setSelected] = useState('')
   const [content, setContent] = useState('')

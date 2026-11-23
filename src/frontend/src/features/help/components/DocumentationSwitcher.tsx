@@ -11,10 +11,10 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { useText } from '@/locales'
-import type { DocsVersion } from '@/services/help'
+import type { DocsVersionDto } from '@/services/help'
 
 type DocumentationSwitcherProps = {
-  versions: readonly DocsVersion[]
+  versions: readonly DocsVersionDto[]
   active: string
   onChange: (version: string) => void
 }

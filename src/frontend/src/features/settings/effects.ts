@@ -6,8 +6,8 @@ import { localeOf, setLocale } from '@/locales'
 // interface in one place keeps the handling uniform, instead of scattering branches across components.
 type SettingEffect = (value: SettingValue) => void
 
-// SettingTheme is one palette the backend already merged and keyed as custom properties.
-type SettingTheme = {
+// SettingThemeDto is one palette the backend already merged and keyed as custom properties.
+type SettingThemeDto = {
   name: string
   light: Record<string, string>
   dark: Record<string, string>
@@ -15,7 +15,7 @@ type SettingTheme = {
 
 // themePalettes caches the palettes the backend resolved, so picking a name can paint it without the
 // effect having to reach back into the document.
-let themePalettes: Record<string, SettingTheme> = {}
+let themePalettes: Record<string, SettingThemeDto> = {}
 
 // colorModes maps the stored value onto the colour mode helper, which owns the class and the system
 // listener. Anything unexpected is treated as the system default rather than as a hard failure.
@@ -124,8 +124,8 @@ function readPath(document: Record<string, unknown>, path: string): unknown {
 
 // setThemes records the palettes the backend resolved. The conversion from the document shape already
 // happened on the backend, so this is only a lookup table for the active theme.
-export function setThemes(themes: readonly SettingTheme[]): void {
-  const table: Record<string, SettingTheme> = {}
+export function setThemes(themes: readonly SettingThemeDto[]): void {
+  const table: Record<string, SettingThemeDto> = {}
   for (const theme of themes) {
     table[theme.name] = theme
   }
@@ -142,7 +142,7 @@ export function applySettingEffect(path: string, value: SettingValue): void {
 
 // applyAllSettingEffects replays every effect for a freshly loaded document, so the view reflects the
 // stored values right after a load or a reload from the user layer.
-export function applyAllSettingEffects(values: Record<string, unknown>, themes: readonly SettingTheme[]): void {
+export function applyAllSettingEffects(values: Record<string, unknown>, themes: readonly SettingThemeDto[]): void {
   setThemes(themes)
   for (const [path, effect] of Object.entries(settingEffects)) {
     const value = readPath(values, path)

@@ -41,7 +41,7 @@ export function Init(sCtx: service$0.ServiceContext): $CancellablePromise<void> 
 /**
  * Payload returns the schema and the aggregated values the front end renders into setting cards.
  */
-export function Payload(): $CancellablePromise<serviceSetting$0.SettingPayload> {
+export function Payload(): $CancellablePromise<serviceSetting$0.SettingPayloadDto> {
     return $Call.ByID(1169868084);
 }
 

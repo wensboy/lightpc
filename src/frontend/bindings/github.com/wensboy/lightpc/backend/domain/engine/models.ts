@@ -5,3 +5,35 @@
  * Engine 定义引擎实现的接口, 暴露底层能力, 为 service 编排逻辑提供接口.
  */
 export type Engine = any;
+
+export enum EngineState {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    /**
+     * 等待
+     */
+    EnginePending = "pending",
+
+    /**
+     * 就绪
+     */
+    EngineReady = "ready",
+
+    /**
+     * 运行
+     */
+    EngineRunning = "running",
+
+    /**
+     * 停止
+     */
+    EngineStopped = "stopped",
+
+    /**
+     * 错误
+     */
+    EngineError = "error",
+};
