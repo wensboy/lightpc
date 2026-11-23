@@ -54,7 +54,13 @@ func (sr *ServiceRuntime) Register(s ...domainService.Service) {
 
 func (sr *ServiceRuntime) Run() {
 	if sr.eFn != nil {
-		sr.eFn(domainService.ServiceEventContext{Services: sr.registry, Ebus: sr.ebus})
+		// AppEbus is what lets a service event reach the interface: the two runtimes own separate buses, so a
+		// handler that has to republish upward needs the other end.
+		ctx := domainService.ServiceEventContext{Services: sr.registry, Ebus: sr.ebus}
+		if sr.appRuntime != nil {
+			ctx.AppEbus = sr.appRuntime.ebus
+		}
+		sr.eFn(ctx)
 	}
 	engines := make(map[string]domainEngine.Engine)
 	if sr.appRuntime != nil && sr.appRuntime.er != nil {

@@ -320,8 +320,15 @@ func SetupEventHandle(ar *domainRuntime.AppRuntime, er *domainRuntime.EngineRunt
 		})
 	})
 
-	sr.WithEventFn(func(_ domainService.ServiceEventContext) {
-		// Services already act on their own events. Anything else is shared through the common bus, so no
-		// forwarding is needed; the hook stays as the single entry point for service level reactions.
+	sr.WithEventFn(func(sec domainService.ServiceEventContext) {
+		// Services already act on their own events, but an expiry has to reach the interface. The service bus
+		// is a different bus from the app one, so the event is re-published there; the app runtime forwards
+		// every name in UiEvents to the webview, which is where the layout listens.
+		sec.Ebus.On(domainBus.EventSessionExpired, func(payload any) {
+			if sec.AppEbus == nil {
+				return
+			}
+			sec.AppEbus.Emit(domainBus.EventSessionExpired, payload)
+		})
 	})
 }
