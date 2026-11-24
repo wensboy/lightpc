@@ -39,7 +39,9 @@
         },
         "radius": {
           "$ref": "#/$defs/size",
-          "description": "Corner radius applied to surfaces."
+          "description": "Corner radius applied to surfaces.",
+          "x-units": "length",
+          "x-number": "^\\d+(\\.\\d+)?"
         },
         "theme": {
           "type": "object",
@@ -128,7 +130,9 @@
             },
             "size": {
               "$ref": "#/$defs/size",
-              "description": "Base font size."
+              "description": "Base font size.",
+              "x-units": "length",
+              "x-number": "^\\d+(\\.\\d+)?"
             },
             "useSystem": {
               "type": "boolean",
@@ -218,5 +222,34 @@
       "type": "object",
       "description": "An open section whose keys are defined once the feature lands."
     }
+  },
+  "x-units": {
+    "length": [
+      "px",
+      "rem",
+      "em",
+      "%"
+    ],
+    "time": [
+      "ns",
+      "us",
+      "µs",
+      "ms",
+      "s",
+      "m",
+      "h",
+      "d"
+    ],
+    "size": [
+      "b",
+      "kb",
+      "mb",
+      "gb",
+      "tb",
+      "kib",
+      "mib",
+      "gib",
+      "tib"
+    ]
   }
 }

@@ -57,6 +57,42 @@
           "description": "Alternative source, for example systemFonts."
         }
       }
+    },
+    "x-units": {
+      "description": "Units a value may carry, in one of three shapes: a field naming a set declared on the document root, a field listing its own units, or the root holding the sets as a name to list map. The list is a rendering reference, not a setting, so it never shows up as a field.",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Name of a set declared on the document root, for example \"time\".",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "description": "Sets declared once on the root, so a field only has to name one.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          }
+        },
+        {
+          "type": "array",
+          "description": "Units declared inline for this field alone. Use it when a value needs a set no shared group covers, so the root map does not grow a one-off entry.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "x-number": {
+      "type": "string",
+      "description": "Regular expression the number half of a value must match before it is committed, for example \"^\\\\d+(\\\\.\\\\d+)?\". It constrains the value at the control, while pattern constrains the whole document string.",
+      "minLength": 1
     }
   }
 }
