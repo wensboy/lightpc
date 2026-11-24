@@ -20,7 +20,7 @@ export function ConsoleSheet() {
   const text = useText()
   const consoleOpen = useDialogStore((state) => state.consoleOpen)
   const closeConsole = useDialogStore((state) => state.closeConsole)
-  const [active, setActive] = useState<ConsoleSectionKey>('inbox')
+  const [active, setActive] = useState<ConsoleSectionKey>('log')
 
   const items = useMemo(() => buildConsoleNav(text), [text])
   const current = items.find((item) => item.key === active) ?? items[0]

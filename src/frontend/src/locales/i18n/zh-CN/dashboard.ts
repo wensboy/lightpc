@@ -3,8 +3,6 @@ export const dashboard = {
   nav: {
     dashboard: '总览',
     analytics: '分析',
-    log: '日志',
-    performance: '性能',
     console: '控制台',
     command: '命令',
     help: '帮助',

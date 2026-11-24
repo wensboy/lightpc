@@ -7,8 +7,6 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 const routeTitles = {
   '/': 'dashboard',
   '/analytics': 'analytics',
-  '/log': 'log',
-  '/performance': 'performance',
 } as const
 
 type RouteTitle = keyof typeof routeTitles

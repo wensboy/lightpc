@@ -3,8 +3,6 @@ export const dashboard = {
   nav: {
     dashboard: 'Dashboard',
     analytics: 'Analytics',
-    log: 'Log',
-    performance: 'Performance',
     console: 'Console',
     command: 'Command',
     help: 'Get Help',

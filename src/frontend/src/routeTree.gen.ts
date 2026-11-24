@@ -14,8 +14,6 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
-import { Route as AppLogRouteImport } from './routes/_app/log'
-import { Route as AppPerformanceRouteImport } from './routes/_app/performance'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -41,31 +39,17 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
-const AppLogRoute = AppLogRouteImport.update({
-  id: '/log',
-  path: '/log',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPerformanceRoute = AppPerformanceRouteImport.update({
-  id: '/performance',
-  path: '/performance',
-  getParentRoute: () => AppRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/analytics': typeof AppAnalyticsRoute
-  '/log': typeof AppLogRoute
-  '/performance': typeof AppPerformanceRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/analytics': typeof AppAnalyticsRoute
-  '/log': typeof AppLogRoute
-  '/performance': typeof AppPerformanceRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -74,24 +58,14 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/_app/analytics': typeof AppAnalyticsRoute
-  '/_app/log': typeof AppLogRoute
-  '/_app/performance': typeof AppPerformanceRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup' | '/analytics' | '/log' | '/performance'
+  fullPaths: '/' | '/login' | '/signup' | '/analytics'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/signup' | '/analytics' | '/log' | '/performance' | '/'
-  id:
-    | '__root__'
-    | '/_app'
-    | '/login'
-    | '/signup'
-    | '/_app/analytics'
-    | '/_app/log'
-    | '/_app/performance'
-    | '/_app/'
+  to: '/login' | '/signup' | '/analytics' | '/'
+  id: '__root__' | '/_app' | '/login' | '/signup' | '/_app/analytics' | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -137,34 +111,16 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/log': {
-      id: '/_app/log'
-      path: '/log'
-      fullPath: '/log'
-      preLoaderRoute: typeof AppLogRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/performance': {
-      id: '/_app/performance'
-      path: '/performance'
-      fullPath: '/performance'
-      preLoaderRoute: typeof AppPerformanceRouteImport
-      parentRoute: typeof AppRoute
-    }
   }
 }
 
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
-  AppLogRoute: typeof AppLogRoute
-  AppPerformanceRoute: typeof AppPerformanceRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
-  AppLogRoute: AppLogRoute,
-  AppPerformanceRoute: AppPerformanceRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
