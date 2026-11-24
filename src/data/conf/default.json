@@ -23,7 +23,7 @@
                             "name": "dev_sqlite",
                             "driver": "sqlite3",
                             "skipped": false,
-                            "dsn": "~/.config/lightpc/db/dev.db",
+                            "dsn": "sqlite://~/.config/lightpc/db/dev.db",
                             "options": [
                                 "_journal_mode=WAL",
                                 "_synchronous=NORMAL",
@@ -38,7 +38,7 @@
                             "name": "dev_sqlite",
                             "driver": "sqlite3",
                             "skipped": false,
-                            "dsn": "~/.config/lightpc/db/dev_1.db",
+                            "dsn": "sqlite://~/.config/lightpc/db/dev_1.db",
                             "options": [
                                 "_journal_mode=WAL",
                                 "_synchronous=NORMAL",
@@ -53,7 +53,7 @@
                             "name": "dev_maria",
                             "driver": "mysql",
                             "skipped": true,
-                            "dsn": "user:password@tcp(127.0.0.1:3306)/lightpc",
+                            "dsn": "mysql://user:password@tcp(127.0.0.1:3306)/lightpc",
                             "options": [
                                 "charset=utf8mb4",
                                 "parseTime=true",
@@ -94,7 +94,7 @@
                                     "type": "text",
                                     "enableSource": true
                                 },
-                                "out": "stdout"
+                                "path": "stdout"
                             }
                         ]
                     }

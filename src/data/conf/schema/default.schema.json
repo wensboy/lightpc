@@ -143,14 +143,14 @@
                                                     "dsn": {
                                                         "type": "string",
                                                         "minLength": 1,
-                                                        "description": "Driver specific connection string. No proto:// prefix is used: the driver either carries its own scheme or the target is a writable file."
+                                                        "description": "Connection string, written as \"<scheme>://<body>\". The scheme decides what the body means: sqlite names a file, which is expanded and made absolute, while mysql is handed to the driver as written. The options are appended as query parameters, so the body must not carry a query of its own.",
+                                                        "pattern": "^\\s*(sqlite|mysql)://\\S+\\s*$"
                                                     },
                                                     "options": {
                                                         "type": "array",
-                                                        "description": "Driver options appended to the DSN as query parameters, written as \"key=value\". Each driver accepts a different set, so the keys stay free form; the order is kept.",
+                                                        "description": "Query parameters appended to the DSN, for example \"_journal_mode=WAL\". They are joined with \"&\" and given no scheme of their own, so every driver receives the same shape.",
                                                         "items": {
                                                             "type": "string",
-                                                            "pattern": "^[A-Za-z_][A-Za-z0-9_]*=.+$",
                                                             "minLength": 1
                                                         }
                                                     },
@@ -327,7 +327,7 @@
                         "file",
                         "console"
                     ],
-                    "description": "Output kind: file opens the path, console writes to out."
+                    "description": "Output kind: file resolves every path as a resource and opens it, console writes to the stream path names."
                 },
                 "output": {
                     "oneOf": [
@@ -341,7 +341,8 @@
                                 "$ref": "#/$defs/logOutput"
                             }
                         }
-                    ]
+                    ],
+                    "description": "Destinations of this entry. A direct entry declares one object, fanout and pattern declare a non empty array."
                 }
             }
         },
@@ -349,39 +350,42 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-                "serializer"
+                "serializer",
+                "path"
             ],
+            "description": "One destination of an entry. A file handler opens path and applies mode; a console handler reads the same path as the stream name, where \"stderr\" selects the error stream and anything else is treated as the standard one.",
             "properties": {
                 "serializer": {
                     "type": "object",
                     "additionalProperties": false,
+                    "required": [
+                        "type"
+                    ],
+                    "description": "How a record is encoded before it reaches the destination.",
                     "properties": {
                         "type": {
                             "type": "string",
                             "enum": [
                                 "text",
                                 "json"
-                            ]
+                            ],
+                            "description": "Encoding of one record."
                         },
                         "enableSource": {
-                            "type": "boolean"
+                            "type": "boolean",
+                            "description": "Include the file and line that produced the record."
                         }
                     }
                 },
-                "out": {
-                    "type": "string",
-                    "enum": [
-                        "stdout",
-                        "stderr"
-                    ]
-                },
                 "path": {
                     "type": "string",
-                    "pattern": "^(local|embed)://.+"
+                    "minLength": 1,
+                    "description": "Destination. A file handler resolves it as a resource, for example \"local://~/.config/lightpc/logs/debug.log\"; a console handler uses \"stdout\" or \"stderr\"."
                 },
                 "mode": {
                     "type": "string",
-                    "pattern": "^0o[0-7]{3}$"
+                    "pattern": "^\\s*0o[0-7]+\\s*$|^\\s*[0-7]+\\s*$",
+                    "description": "File mode written as an octal literal, for example \"0o644\". Ignored by a console handler."
                 }
             }
         }
