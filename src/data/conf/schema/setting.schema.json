@@ -157,7 +157,8 @@
       "additionalProperties": false,
       "required": [
         "language",
-        "availableLanguages"
+        "availableLanguages",
+        "log"
       ],
       "properties": {
         "language": {
@@ -191,6 +192,53 @@
                 "description": "Name shown in the picker.",
                 "minLength": 1
               }
+            }
+          }
+        },
+        "log": {
+          "type": "object",
+          "description": "Console log panel preferences.",
+          "additionalProperties": false,
+          "required": [
+            "level",
+            "availableLevels",
+            "refreshInterval",
+            "autoScroll"
+          ],
+          "properties": {
+            "level": {
+              "type": "string",
+              "description": "Lowest level the panel keeps. Every level at or above it is included, so \"warn\" shows warnings and errors.",
+              "minLength": 1,
+              "x-options": {
+                "from": "availableLevels"
+              }
+            },
+            "availableLevels": {
+              "type": "array",
+              "description": "Levels the console may show. Derived data: it backs log.level, so the options are configuration rather than a constant in the code.",
+              "x-drived": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "refreshInterval": {
+              "type": "string",
+              "description": "How often the rendered log is refreshed, written as \"<number> <unit>\" such as \"1 s\". The unit is chosen from the time set.",
+              "pattern": "^\\s*[0-9]+(\\.[0-9]+)?\\s*[a-zA-Z]*\\s*$",
+              "x-units": [
+                "ms",
+                "s",
+                "m",
+                "h",
+                "d"
+              ],
+              "x-number": "^\\d+(\\.\\d+)?"
+            },
+            "autoScroll": {
+              "type": "boolean",
+              "description": "Keep the view anchored to the newest record as it arrives."
             }
           }
         }

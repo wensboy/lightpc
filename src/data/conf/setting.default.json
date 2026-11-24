@@ -166,7 +166,13 @@
                 "id": "zh-CN",
                 "name": "简体中文"
             }
-        ]
+        ],
+        "log": {
+            "level": "debug",
+            "availableLevels": ["debug", "info", "warn", "error"],
+            "refreshInterval": "1 s",
+            "autoScroll": true
+        }
     },
     "account": {},
     "advanced": {}
