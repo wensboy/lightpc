@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"sync"
 
-	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
@@ -29,14 +28,14 @@ func WithDirectHandler(name string, handler slog.Handler) DirectOption {
 	}
 }
 
-// WithDirectItem records one configured logger. Its handlers are opened during Init, after the store
+// WithDirectEntry records one configured entry. Its handlers are opened during Init, after the store
 // engine has created the root directory the log files live in.
-func WithDirectItem(item domainConfig.LogItem) DirectOption {
+func WithDirectEntry(entry engineLog.LogEntry) DirectOption {
 	return func(dl *DirectLog) {
-		if item.Name == "" {
+		if entry.Name == "" {
 			return
 		}
-		dl.items = append(dl.items, item)
+		dl.entries = append(dl.entries, entry)
 	}
 }
 
@@ -44,7 +43,7 @@ func WithDirectItem(item domainConfig.LogItem) DirectOption {
 // record written through one logger is consumed by exactly one handler.
 type DirectLog struct {
 	handlers map[string]slog.Handler
-	items    []domainConfig.LogItem
+	entries  []engineLog.LogEntry
 
 	mu     sync.RWMutex
 	ectx   domainEngine.EngineContext
@@ -85,8 +84,8 @@ func (dl *DirectLog) Init(eCtx domainEngine.EngineContext) error {
 	dl.mu.Lock()
 	defer dl.mu.Unlock()
 	dl.ectx = eCtx
-	for _, entry := range entriesOf(dl.items) {
-		for _, handler := range buildHandlers(entry) {
+	for _, entry := range entriesOf(dl.entries) {
+		for _, handler := range handlersFor(entry) {
 			dl.handlers[entry.name] = handler
 		}
 	}
@@ -147,7 +146,7 @@ func (dl *DirectLog) HookContext() engineLog.DirectHookContext {
 	dl.mu.RLock()
 	defer dl.mu.RUnlock()
 	return engineLog.DirectHookContext{
-		Items:         dl.items,
+		LogEntries:    dl.entries,
 		EngineContext: dl.ectx,
 	}
 }

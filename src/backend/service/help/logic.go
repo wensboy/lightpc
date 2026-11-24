@@ -12,8 +12,8 @@ import (
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
 	serviceHelp "github.com/wensboy/lightpc/backend/domain/service/help"
 	"github.com/wensboy/lightpc/backend/internal/cast"
+	"github.com/wensboy/lightpc/backend/internal/config"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
-	"github.com/wensboy/lightpc/backend/internal/path"
 )
 
 // HelpService reads the documentation that ships with the application.
@@ -94,7 +94,7 @@ func (s *HelpService) index() {
 	s.byVersion = make(map[string]string, len(s.roots))
 
 	for _, root := range s.roots {
-		location := path.Join(root, metaName)
+		location := config.MustResource(root).Join(metaName).String()
 
 		data, err := s.fileStore.Get(context.Background(), location)
 		if err != nil {
@@ -145,7 +145,7 @@ func (s *HelpService) Read(version, documentPath string) (string, error) {
 		return "", interError.Retrieve(serviceHelp.ErrKeyPathInvalid)
 	}
 
-	data, err := s.fileStore.Get(context.Background(), path.Join(root, documentPath))
+	data, err := s.fileStore.Get(context.Background(), config.MustResource(root).Join(documentPath).String())
 	if err != nil {
 		return "", err
 	}

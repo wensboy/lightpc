@@ -5,7 +5,6 @@ import (
 	"slices"
 	"sync"
 
-	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
@@ -31,21 +30,21 @@ func WithFanoutHandler(name string, handler slog.Handler) FanoutOption {
 	}
 }
 
-// WithFanoutItem records one configured logger. Its handlers are opened during Init, after the store
+// WithFanoutEntry records one configured entry. Its handlers are opened during Init, after the store
 // engine has created the root directory the log files live in.
-func WithFanoutItem(item domainConfig.LogItem) FanoutOption {
+func WithFanoutEntry(entry engineLog.LogEntry) FanoutOption {
 	return func(fl *FanoutLog) {
-		if item.Name == "" {
+		if entry.Name == "" {
 			return
 		}
-		fl.items = append(fl.items, item)
+		fl.entries = append(fl.entries, entry)
 	}
 }
 
 // FanoutLog implements the fanout log engine: one record is delivered to every handler bound to a name.
 type FanoutLog struct {
 	handlers map[string][]slog.Handler
-	items    []domainConfig.LogItem
+	entries  []engineLog.LogEntry
 
 	mu     sync.RWMutex
 	ectx   domainEngine.EngineContext
@@ -85,8 +84,8 @@ func (fl *FanoutLog) Init(eCtx domainEngine.EngineContext) error {
 
 	fl.mu.Lock()
 	fl.ectx = eCtx
-	for _, entry := range entriesOf(fl.items) {
-		fl.handlers[entry.name] = append(fl.handlers[entry.name], buildHandlers(entry)...)
+	for _, entry := range entriesOf(fl.entries) {
+		fl.handlers[entry.name] = append(fl.handlers[entry.name], handlersFor(entry)...)
 	}
 	fl.state = domainEngine.EngineReady
 	fl.mu.Unlock()
@@ -164,7 +163,7 @@ func (fl *FanoutLog) HookContext() engineLog.FanoutHookContext {
 	fl.mu.RLock()
 	defer fl.mu.RUnlock()
 	return engineLog.FanoutHookContext{
-		Items:         fl.items,
+		LogEntries:    fl.entries,
 		EngineContext: fl.ectx,
 	}
 }

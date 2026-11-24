@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,14 +14,14 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 
-	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	"github.com/wensboy/lightpc/backend/internal/cast"
+	"github.com/wensboy/lightpc/backend/internal/config"
 )
 
 // dbConfig is one entry of runtime.store.db.sql. Options are appended to the DSN as query parameters, which
 // is how the sqlite driver receives its pragmas.
-type dbConfig struct {
+type DBConfig struct {
 	Name       string             `json:"name"`
 	Driver     engineStore.Driver `json:"driver"`
 	Skipped    bool               `json:"skipped"`
@@ -31,86 +30,77 @@ type dbConfig struct {
 	Migrations []string           `json:"migrations"`
 }
 
-// DBConfigs reads every database entry the configuration declares.
+// DBConfigs turns the configured entries into the shape the runner works with, dropping the ones it cannot serve.
 //
-// Skipped keeps an entry in the document without opening it: the name stays visible to the settings view
-// while no connection is made and no migration runs.
-func DBConfigs(cfg domainContext.ConfigContext) []dbConfig {
-	value, found := cfg.Lookup("default.runtime.engines.store.db.sql")
-	if !found {
-		return nil
-	}
-	records, ok := cast.To[[]any](value)
-	if !ok {
-		return nil
-	}
-
-	configs := make([]dbConfig, 0, len(records))
-	for _, record := range records {
-		fields, ok := cast.To[map[string]any](record)
-		if !ok {
+// The document is read by the contract package, so this file only decides what a usable entry looks like: a name,
+// a driver this build links, and a DSN the adapter can resolve.
+func DBConfigs(entries []engineStore.DbConfig) []DBConfig {
+	configs := make([]DBConfig, 0, len(entries))
+	for _, entry := range entries {
+		driver, known := engineStore.DriverOf(entry.Driver)
+		if !known || entry.Skipped {
 			continue
 		}
-		driver, known := engineStore.DriverOf(stringField(fields, "driver"))
-		if !known {
-			// Naming a driver this build does not link is a configuration mistake, not a fatal one.
-			slog.Default().Warn("db driver skipped", "name", stringField(fields, "name"), "driver", stringField(fields, "driver"))
-			continue
-		}
-		config := dbConfig{
-			Name:    stringField(fields, "name"),
-			Driver:  driver,
-			Skipped: boolField(fields, "skipped"),
-			DSN:     stringField(fields, "dsn"),
-			Options: optionList(fields["options"]),
-		}
-		if list, ok := cast.To[[]any](fields["migrations"]); ok {
-			for _, entry := range list {
-				if text, ok := cast.To[string](entry); ok && text != "" {
-					config.Migrations = append(config.Migrations, text)
-				}
-			}
-		}
-		if config.Skipped || config.Name == "" || config.DSN == "" {
-			continue
-		}
-		configs = append(configs, config)
+		configs = append(configs, DBConfig{
+			Name:       entry.Name,
+			Driver:     driver,
+			Skipped:    entry.Skipped,
+			DSN:        entry.Dsn,
+			Options:    entry.Options,
+			Migrations: entry.Migrations,
+		})
 	}
 	return configs
 }
 
-// DSNString expands the home directory and appends the options as query parameters.
-func (c dbConfig) DSNString() string {
-	file := expandHome(c.DSN)
+// DSNString turns the configured resource into the text the driver expects and appends the options.
+//
+// What the value means is the scheme's business, not this file's: the adapter resolves "sqlite://~/db" to a file
+// and hands a mysql value on as written. This function only joins the options, which is the one step every driver
+// shares.
+func (c DBConfig) DSNString() (string, error) {
+	resource, err := config.NewResource(c.DSN)
+	if err != nil {
+		return "", err
+	}
+	dsn, err := resource.DSN()
+	if err != nil {
+		return "", err
+	}
 	if len(c.Options) == 0 {
-		return file
+		return dsn, nil
 	}
 
 	separator := "?"
-	if strings.Contains(file, "?") {
+	if strings.Contains(dsn, "?") {
 		separator = "&"
 	}
-	return file + separator + strings.Join(c.Options, "&")
+	return dsn + separator + strings.Join(c.Options, "&"), nil
 }
 
-// filePath is the database file the DSN points at, without the query part.
-func (c dbConfig) filePath() string {
-	file := expandHome(c.DSN)
-	if before, _, ok := strings.Cut(file, "?"); ok {
-		return before
+// DatabaseFile reports the file the database lives at, and whether there is one at all.
+func (c DBConfig) DatabaseFile() (string, bool) {
+	resource, err := config.NewResource(c.DSN)
+	if err != nil {
+		return "", false
 	}
-	return file
+	return resource.DatabaseFile()
 }
 
 // OpenDB opens the pool for one entry. The parent directory is created because a sqlite database is a file
 // the first launch has to be able to write.
-func OpenDB(cfg dbConfig) (*sqlx.DB, error) {
-	file := cfg.filePath()
-	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
-		return nil, fmt.Errorf("create db directory: %w", err)
+func OpenDB(cfg DBConfig) (*sqlx.DB, error) {
+	if file, found := cfg.DatabaseFile(); found {
+		if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+			return nil, fmt.Errorf("create db directory: %w", err)
+		}
 	}
 
-	db, err := sqlx.Connect(string(cfg.Driver), cfg.DSNString())
+	dsn, err := cfg.DSNString()
+	if err != nil {
+		return nil, err
+	}
+	db, err := sqlx.Connect(string(cfg.Driver), dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", cfg.Name, err)
 	}
@@ -203,19 +193,6 @@ func migrationRoot(assets fs.FS, relative string) (fs.FS, error) {
 // DSN the connection already uses, so the runner needs no driver specific introspection.
 func databaseURL(dsn string, driver engineStore.Driver) string {
 	return string(driver) + "://" + dsn
-}
-
-// AssetsFrom returns the embedded tree the migrations live under. The entry point mounts the data directory,
-// so every migration resource is a path below it.
-func AssetsFrom(appCtx *domainContext.AppContext) (fs.FS, bool) {
-	if appCtx == nil {
-		return nil, false
-	}
-	tree, found := appCtx.EmbedContext["/data"]
-	if !found || tree == nil {
-		return nil, false
-	}
-	return tree, true
 }
 
 // embeddedRelative turns an embedded resource into a path inside the embedded tree.

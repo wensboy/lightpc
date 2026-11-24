@@ -5,7 +5,6 @@ import (
 	"path"
 	"sync"
 
-	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
@@ -31,14 +30,14 @@ func WithPatternHandler(pattern string, handler slog.Handler) PatternOption {
 	}
 }
 
-// WithPatternItem records one configured logger. Its handlers are opened during Init, after the store
+// WithPatternEntry records one configured entry. Its handlers are opened during Init, after the store
 // engine has created the root directory the log files live in.
-func WithPatternItem(item domainConfig.LogItem) PatternOption {
+func WithPatternEntry(entry engineLog.LogEntry) PatternOption {
 	return func(pl *PatternLog) {
-		if item.Name == "" {
+		if entry.Name == "" {
 			return
 		}
-		pl.items = append(pl.items, item)
+		pl.entries = append(pl.entries, entry)
 	}
 }
 
@@ -46,7 +45,7 @@ func WithPatternItem(item domainConfig.LogItem) PatternOption {
 // pattern matches the resolved name.
 type PatternLog struct {
 	handlers map[string][]slog.Handler
-	items    []domainConfig.LogItem
+	entries  []engineLog.LogEntry
 
 	mu     sync.RWMutex
 	ectx   domainEngine.EngineContext
@@ -87,8 +86,8 @@ func (pl *PatternLog) Init(eCtx domainEngine.EngineContext) error {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	pl.ectx = eCtx
-	for _, entry := range entriesOf(pl.items) {
-		pl.handlers[entry.name] = append(pl.handlers[entry.name], buildHandlers(entry)...)
+	for _, entry := range entriesOf(pl.entries) {
+		pl.handlers[entry.name] = append(pl.handlers[entry.name], handlersFor(entry)...)
 	}
 	pl.state = domainEngine.EngineReady
 	return nil
@@ -157,7 +156,7 @@ func (pl *PatternLog) HookContext() engineLog.PatternHookContext {
 	pl.mu.RLock()
 	defer pl.mu.RUnlock()
 	return engineLog.PatternHookContext{
-		Items:         pl.items,
+		LogEntries:    pl.entries,
 		EngineContext: pl.ectx,
 	}
 }

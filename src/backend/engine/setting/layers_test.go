@@ -14,7 +14,7 @@ func TestLayersFromShippedConfig(t *testing.T) {
 	fileSource := config.NewFileSource()
 	fileSource.Parse(domainContext.FsContext{Paths: []string{"../../../data/conf/default.json"}})
 
-	layers := engineSettingImpl.LayersFrom(domainContext.ConfigContext(fileSource))
+	layers := engineSettingImpl.LayersFrom(engineSetting.LayersFor(domainContext.ConfigContext(fileSource)))
 	if len(layers) != 2 {
 		t.Fatalf("layers = %d", len(layers))
 	}
@@ -44,7 +44,7 @@ func TestLayersFromShippedConfig(t *testing.T) {
 func TestLayersFromMissingConfig(t *testing.T) {
 	fileSource := config.NewFileSource()
 
-	if layers := engineSettingImpl.LayersFrom(domainContext.ConfigContext(fileSource)); len(layers) != 0 {
+	if layers := engineSettingImpl.LayersFrom(engineSetting.LayersFor(domainContext.ConfigContext(fileSource))); len(layers) != 0 {
 		t.Fatalf("layers = %d", len(layers))
 	}
 }

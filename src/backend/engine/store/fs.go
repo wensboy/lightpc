@@ -14,11 +14,10 @@ import (
 	"strings"
 	"sync"
 
-	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
+	"github.com/wensboy/lightpc/backend/internal/config"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
-	"github.com/wensboy/lightpc/backend/internal/path"
 )
 
 var (
@@ -98,27 +97,20 @@ func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 	f.mu.Lock()
 	f.ectx = eCtx
 	if eCtx.AppCtx != nil && eCtx.AppCtx.ConfigContext != nil {
-		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.engines.store.root", &f.root, "", func(text string) (string, bool) {
-			target, err := path.Parse(text)
-			if err != nil || target.IsEmbed() {
-				return "", false
+		settings := engineStore.FsConfigFor(eCtx.AppCtx.ConfigContext)
+		if f.root == "" && !strings.HasPrefix(settings.Root, "embed://") {
+			if resource, err := config.NewResource(settings.Root); err == nil && settings.Root != "" {
+				if resolved, err := resource.Path(); err == nil {
+					f.root = resolved
+				}
 			}
-			return target.Path, true
-		})
-		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.engines.store.fs.fileMode", &f.fileMode, 0, func(text string) (fs.FileMode, bool) {
-			mode, err := strconv.ParseUint(text, 0, 32)
-			if err != nil {
-				return 0, false
-			}
-			return fs.FileMode(mode), true
-		})
-		domainContext.AssignIfZero(eCtx.AppCtx.ConfigContext, "default.runtime.engines.store.fs.dirMode", &f.dirMode, 0, func(text string) (fs.FileMode, bool) {
-			mode, err := strconv.ParseUint(text, 0, 32)
-			if err != nil {
-				return 0, false
-			}
-			return fs.FileMode(mode), true
-		})
+		}
+		if f.fileMode == 0 {
+			f.fileMode = parseMode(settings.FileMode)
+		}
+		if f.dirMode == 0 {
+			f.dirMode = parseMode(settings.DirMode)
+		}
 	}
 	f.mu.Unlock()
 
@@ -405,8 +397,12 @@ func (f *FS) rootAndModes() (string, fs.FileMode, fs.FileMode, error) {
 // EmbedContext key wins, so "/frontend/dist" is preferred over "/frontend". Reads use the returned
 // pair, writes must be rejected because embedded content is immutable.
 func (f *FS) embedTarget(p string) (*embed.FS, string, bool) {
-	target, err := path.Parse(p)
-	if err != nil || !target.IsEmbed() {
+	resource, err := config.NewResource(p)
+	if err != nil || !resource.IsEmbed() {
+		return nil, "", false
+	}
+	inside, err := resource.Path()
+	if err != nil {
 		return nil, "", false
 	}
 
@@ -417,7 +413,7 @@ func (f *FS) embedTarget(p string) (*embed.FS, string, bool) {
 		return nil, "", false
 	}
 
-	rest := target.Path
+	rest := inside
 	var (
 		found   *embed.FS
 		inner   string
@@ -454,18 +450,18 @@ func mapEmbedErr(err error) error {
 // resolve maps the virtual path p to an absolute path below root. A p that carries an explicit proto
 // is anchored at root first, so configured local:// values and plain store paths share one entry point.
 func resolve(root, p string) (string, error) {
-	target, err := path.Parse(p)
+	resource, err := config.NewResource(p)
 	if err != nil {
 		return "", interError.Retrieve(engineStore.ErrKeyInvalid).Wrap(err)
 	}
-	if target.IsEmbed() {
+	if resource.IsEmbed() {
 		return "", interError.Retrieve(engineStore.ErrKeyInvalid)
 	}
 
 	rel := p
-	if target.Explicit {
+	if resource.HasScheme() {
 		var ok bool
-		rel, ok = path.Relative(root, target.Path)
+		rel, ok = resource.Relative(root)
 		if !ok {
 			return "", interError.Retrieve(engineStore.ErrKeyEscape)
 		}
@@ -516,4 +512,16 @@ func (f *FS) setState(state domainEngine.EngineState) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.state = state
+}
+
+// parseMode reads a mode written either as an octal literal ("0o644") or as the bare octal digits ("644").
+func parseMode(text string) fs.FileMode {
+	if text == "" {
+		return 0
+	}
+	mode, err := strconv.ParseUint(strings.TrimPrefix(text, "0o"), 8, 32)
+	if err != nil {
+		return 0
+	}
+	return fs.FileMode(mode)
 }

@@ -10,9 +10,9 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	domainApp "github.com/wensboy/lightpc/backend/domain/app"
 	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
-	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
+	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
 	domainEngineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
 	domainEngineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
@@ -173,7 +173,7 @@ func SetupStore(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime
 	}
 	queue := make([]pending, 0, 2)
 
-	for _, config := range engineStoreImpl.DBConfigs(cfg) {
+	for _, config := range engineStoreImpl.DBConfigs(domainEngineStore.DbConfigsFor(cfg)) {
 		key := domainEngineStore.DBKey(config.Driver, config.Name)
 		// Checked before opening: for a file backed driver, opening is what creates the file, so a
 		// duplicate entry must be rejected while it still has no side effect.
@@ -193,7 +193,12 @@ func SetupStore(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime
 			_ = database.Close()
 			continue
 		}
-		queue = append(queue, pending{dsn: config.DSNString(), driver: config.Driver, migrations: config.Migrations})
+		dsn, err := config.DSNString()
+		if err != nil {
+			slog.Default().Warn("db migrations skipped", "name", config.Name, "err", err)
+			continue
+		}
+		queue = append(queue, pending{dsn: dsn, driver: config.Driver, migrations: config.Migrations})
 	}
 
 	er.Register(&domainEngine.EngineHook{
@@ -204,11 +209,13 @@ func SetupStore(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime
 				return interError.Retrieve(domainEngineStore.ErrKeyInvalid).
 					Wrap(fmt.Errorf("db hook: unexpected engine %T", e))
 			}
-			assets, found := engineStoreImpl.AssetsFrom(store.HookContext().EngineContext.AppCtx)
-			if !found {
+			// The entry point mounts the data directory, so every migration resource is a path below it.
+			appCtx := store.HookContext().EngineContext.AppCtx
+			if appCtx == nil || appCtx.EmbedContext["/data"] == nil {
 				slog.Default().Warn("db migrations skipped", "reason", "no embedded tree")
 				return nil
 			}
+			assets := appCtx.EmbedContext["/data"]
 			for index, item := range queue {
 				if err := engineStoreImpl.Migrate(item.dsn, item.driver, item.migrations, assets); err != nil {
 					return fmt.Errorf("migrate database %d: %w", index, err)
@@ -222,45 +229,47 @@ func SetupStore(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime
 func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
 	// hookLog wraps a log engine so its output directories are created before it starts. Where a log file lives
 	// is a bootstrap decision, so it stays here instead of inside the engine phases.
-	hookLog := func(engine domainEngine.Engine, items []domainConfig.LogItem) domainEngine.Engine {
+	hookLog := func(engine domainEngine.Engine, entries []engineLog.LogEntry) domainEngine.Engine {
 		return &domainEngine.EngineHook{
 			Engine: engine,
 			PreStart: func(_ domainEngine.Engine) error {
-				return engineLogImpl.PrepareOutputs(items)
+				return engineLogImpl.PrepareOutputs(entries)
 			},
 		}
 	}
 	engines := make([]domainEngine.Engine, 0, 3)
 
-	if items := engineLogImpl.ItemsFor(cfg, "direct"); len(items) > 0 {
-		options := make([]engineLogImpl.DirectOption, 0, len(items))
-		for _, item := range items {
-			options = append(options, engineLogImpl.WithDirectItem(item))
+	// Each sub-group names one engine. The contract package reads the records, so this function only decides which
+	// groups to start and hands the entries over.
+	if entries := engineLog.EntriesFor(cfg, engineLog.SubDirect); len(entries) > 0 {
+		options := make([]engineLogImpl.DirectOption, 0, len(entries))
+		for _, entry := range entries {
+			options = append(options, engineLogImpl.WithDirectEntry(entry))
 		}
-		engines = append(engines, hookLog(engineLogImpl.NewDirectLog(options...), items))
+		engines = append(engines, hookLog(engineLogImpl.NewDirectLog(options...), entries))
 	}
 
-	if items := engineLogImpl.ItemsFor(cfg, "fanout"); len(items) > 0 {
-		options := make([]engineLogImpl.FanoutOption, 0, len(items))
-		for _, item := range items {
-			options = append(options, engineLogImpl.WithFanoutItem(item))
+	if entries := engineLog.EntriesFor(cfg, engineLog.SubFanout); len(entries) > 0 {
+		options := make([]engineLogImpl.FanoutOption, 0, len(entries))
+		for _, entry := range entries {
+			options = append(options, engineLogImpl.WithFanoutEntry(entry))
 		}
-		engines = append(engines, hookLog(engineLogImpl.NewFanoutLog(options...), items))
+		engines = append(engines, hookLog(engineLogImpl.NewFanoutLog(options...), entries))
 	}
 
-	if items := engineLogImpl.ItemsFor(cfg, "pattern"); len(items) > 0 {
-		options := make([]engineLogImpl.PatternOption, 0, len(items))
-		for _, item := range items {
-			options = append(options, engineLogImpl.WithPatternItem(item))
+	if entries := engineLog.EntriesFor(cfg, engineLog.SubPattern); len(entries) > 0 {
+		options := make([]engineLogImpl.PatternOption, 0, len(entries))
+		for _, entry := range entries {
+			options = append(options, engineLogImpl.WithPatternEntry(entry))
 		}
-		engines = append(engines, hookLog(engineLogImpl.NewPatternLog(options...), items))
+		engines = append(engines, hookLog(engineLogImpl.NewPatternLog(options...), entries))
 	}
 
 	er.Register(engines...)
 }
 
 func SetupSetting(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
-	layers := engineSettingImpl.LayersFrom(cfg)
+	layers := engineSettingImpl.LayersFrom(domainEngineSetting.LayersFor(cfg))
 	options := make([]engineSettingImpl.Option, 0, len(layers))
 	for _, layer := range layers {
 		options = append(options, engineSettingImpl.WithLayer(layer))

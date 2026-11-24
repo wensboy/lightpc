@@ -16,9 +16,9 @@ import (
 	engineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
 	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	"github.com/wensboy/lightpc/backend/internal/cast"
+	"github.com/wensboy/lightpc/backend/internal/config"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 	"github.com/wensboy/lightpc/backend/internal/monitor"
-	"github.com/wensboy/lightpc/backend/internal/path"
 )
 
 // defaultWatchInterval is used when no explicit interval is configured.
@@ -546,7 +546,7 @@ func (s *Setting) HookContext() engineSetting.SettingHookContext {
 
 // ensureLayer makes sure the resource behind a layer exists and can be read.
 func (s *Setting) ensureLayer(layer engineSetting.Layer) error {
-	target, err := path.Parse(layer.Path)
+	resource, err := config.NewResource(layer.Path)
 	if err != nil {
 		return err
 	}
@@ -557,7 +557,7 @@ func (s *Setting) ensureLayer(layer engineSetting.Layer) error {
 	}
 	ctx := context.Background()
 
-	if target.IsEmbed() {
+	if resource.IsEmbed() {
 		// Embedded content is immutable and shipped with the binary, so only its presence is checked.
 		_, err := fileStore.Stat(ctx, layer.Path)
 		return err
@@ -566,8 +566,8 @@ func (s *Setting) ensureLayer(layer engineSetting.Layer) error {
 	if _, err := fileStore.Stat(ctx, layer.Path); err == nil {
 		return nil
 	}
-	if parent := path.Dir(layer.Path); parent != "" {
-		if err := fileStore.MkdirAll(ctx, parent); err != nil {
+	if parent, found := resource.Dir(); found {
+		if err := fileStore.MkdirAll(ctx, parent.String()); err != nil {
 			return err
 		}
 	}
@@ -606,9 +606,11 @@ func (s *Setting) writeLayer(layer engineSetting.Layer, values map[string]any) e
 	if err != nil {
 		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown).Wrap(err)
 	}
-	if parent := path.Dir(layer.Path); parent != "" {
-		if err := fileStore.MkdirAll(context.Background(), parent); err != nil {
-			return err
+	if resource, err := config.NewResource(layer.Path); err == nil {
+		if parent, found := resource.Dir(); found {
+			if err := fileStore.MkdirAll(context.Background(), parent.String()); err != nil {
+				return err
+			}
 		}
 	}
 	return fileStore.Put(context.Background(), layer.Path, append(data, '\n'))

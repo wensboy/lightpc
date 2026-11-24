@@ -37,24 +37,3 @@ type Cli struct {
 	Description string  `json:"description"`
 	Command     Command `json:"command"`
 }
-
-type LogSerializer struct {
-	Type         string `json:"type"`
-	EnableSource bool   `json:"enableSource"`
-}
-
-type LogOutput struct {
-	Serializer LogSerializer `json:"serializer"`
-	Out        string        `json:"out"`
-	Path       string        `json:"path"`
-	Mode       string        `json:"mode"`
-}
-
-// LogItem is one entry of runtime.log.<group>. Output is an object for the direct group and an array
-// for the fanout and pattern groups, so it stays untyped until the log engine narrows it.
-type LogItem struct {
-	Name    string `json:"name"`
-	Level   string `json:"level"`
-	Handler string `json:"handler"`
-	Output  any    `json:"output"`
-}
