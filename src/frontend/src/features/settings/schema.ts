@@ -17,12 +17,20 @@ export type JsonSchemaNode = {
   'x-drived'?: boolean
   /** Tells the renderer where a select takes its options from. */
   'x-options'?: { from: string; field?: string }
+  /**
+   * Units this value may carry: either the name of a set declared on the document root, or a list written inline
+   * for this field alone.
+   */
+  'x-units'?: string | string[]
+  /** Grammar the number half of a quantity must satisfy, for example "^\d+(\.\d+)?". */
+  'x-number'?: string
+
   /** Swaps the option source while a sibling boolean is enabled. */
   'x-options-when'?: { key: string; from: string }
 }
 
 // SettingControl is the control a leaf field renders as.
-export type SettingControl = 'switch' | 'select' | 'input'
+export type SettingControl = 'switch' | 'select' | 'input' | 'quantity'
 
 // SettingValue is the runtime payload a control can bind to.
 export type SettingValue = boolean | string | number
@@ -37,6 +45,10 @@ export type SettingField = {
   control: SettingControl
   value: SettingValue
   options?: string[]
+  /** Units a quantity field may carry, resolved from the document wide sets. */
+  units?: string[]
+  /** Grammar the number half must satisfy before it is committed. */
+  number?: string
   pattern?: string
   /** True when the stored value violated the schema and the shown value is a fallback. */
   invalid: boolean
@@ -60,7 +72,17 @@ function resolveRef(node: JsonSchemaNode, root: JsonSchemaNode): JsonSchemaNode 
   if (!target) {
     return node
   }
-  return { ...target, description: node.description ?? target.description }
+  const merged: JsonSchemaNode = { ...target }
+  for (const [key, value] of Object.entries(node)) {
+    if (key === '$ref') {
+      continue
+    }
+    // Extensions and the labels are what the use site adds; everything else belongs to the referenced shape.
+    if (key.startsWith('x-') || key === 'description' || key === 'title') {
+      ;(merged as Record<string, unknown>)[key] = value
+    }
+  }
+  return merged
 }
 
 // optionsOf resolves the options of a select: either the enum declared by the schema or the names pulled
@@ -104,9 +126,12 @@ function optionsOf(
   return options.length > 0 ? options : undefined
 }
 
-// controlOf picks the control for a leaf node: options become a select, a boolean a switch, anything else
-// an input.
+// controlOf picks the control for a leaf node: a unit set becomes a quantity, options a select, a boolean a
+// switch, anything else an input.
 function controlOf(node: JsonSchemaNode, options: string[] | undefined): SettingControl {
+  if (node['x-units']) {
+    return 'quantity'
+  }
   if (options && options.length > 0) {
     return 'select'
   }
@@ -114,6 +139,23 @@ function controlOf(node: JsonSchemaNode, options: string[] | undefined): Setting
     return 'switch'
   }
   return 'input'
+}
+
+// unitsOf resolves the units a node may carry. A field either names a set declared on the document root, so one
+// definition serves every field, or lists its own units inline when no shared set fits.
+function unitsOf(node: JsonSchemaNode, root: JsonSchemaNode): string[] | undefined {
+  const declared = node['x-units']
+  if (!declared) {
+    return undefined
+  }
+
+  if (Array.isArray(declared)) {
+    return declared.length > 0 ? declared : undefined
+  }
+
+  const sets = (root as JsonSchemaNode & { 'x-units'?: Record<string, string[]> })['x-units']
+  const units = sets?.[declared]
+  return Array.isArray(units) && units.length > 0 ? units : undefined
 }
 
 // titleOf drops the group segment and returns the rest as segments, so appearence.theme.default renders
@@ -259,6 +301,7 @@ function collectFields(
 
     const options = optionsOf(child, values, systemFonts)
     const control = controlOf(child, options)
+    const units = unitsOf(child, root)
     const dotted = path.join('.')
     const stored = asValue(value, control)
     const authored = atPath(defaults, dotted)
@@ -275,6 +318,8 @@ function collectFields(
       control,
       value: accepted,
       options,
+      units,
+      number: child['x-number'],
       pattern: child.pattern,
       invalid,
     })

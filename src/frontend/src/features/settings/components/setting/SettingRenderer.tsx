@@ -1,4 +1,5 @@
 import { SettingInput } from '@/features/settings/components/setting/SettingInput'
+import { SettingQuantity } from '@/features/settings/components/setting/SettingQuantity'
 import { SettingSelect } from '@/features/settings/components/setting/SettingSelect'
 import { SettingSwitch } from '@/features/settings/components/setting/SettingSwitch'
 import type { SettingField, SettingValue } from '@/features/settings/schema'
@@ -16,6 +17,8 @@ export function SettingRenderer({ field, onChange }: SettingRendererProps) {
       return <SettingSwitch field={field} onChange={onChange} />
     case 'select':
       return <SettingSelect field={field} onChange={onChange} />
+    case 'quantity':
+      return <SettingQuantity field={field} onChange={onChange} />
     case 'input':
       return <SettingInput field={field} onChange={onChange} />
   }
