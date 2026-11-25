@@ -167,7 +167,14 @@ func (s *SessionService) Register(input serviceSession.RegisterInputDto) (servic
 		return serviceSession.StatusDto{}, err
 	}
 
-	return s.signIn(uid, input.Account, input.Uname)
+	// Registration creates the account and records it, but it does not sign in: the person asked for an account, not
+	// for a session, so the interface sends them to the sign in form and they enter the password themselves.
+	return serviceSession.StatusDto{
+		Authenticated: false,
+		UID:           uid,
+		Account:       input.Account,
+		Uname:         input.Uname,
+	}, nil
 }
 
 // Login verifies the credentials, records the action and marks the pair as live.

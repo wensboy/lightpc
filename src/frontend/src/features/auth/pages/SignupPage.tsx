@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { AuthLayout } from '@/features/auth/layouts/AuthLayout'
-import { writeAuth } from '@/features/auth/session'
 import { useText } from '@/locales'
 import { sessionService } from '@/services/session'
 
@@ -40,13 +39,14 @@ export function SignupPage() {
       return
     }
     try {
-      const session = await sessionService.register({
+      // Registration only creates the account. The person is sent to the sign in form and enters the password there,
+      // so nothing is written locally and the shell stays locked until a real sign in succeeds.
+      await sessionService.register({
         uname: values.name,
         account: values.email,
         password: values.password,
       })
-      writeAuth({ uid: session.uid, account: session.account })
-      await navigate({ to: '/' })
+      await navigate({ to: '/login' })
     } catch (error) {
       setMessage(error instanceof Error ? error.message : text.auth.errors.loginFailed)
     }
