@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Sidebar, SidebarContent, SidebarProvider } from '@/components/ui/sidebar'
 import { ConsoleHeader } from '@/features/console/components/ConsoleHeader'
+import { ConsoleLogView } from '@/features/console/components/ConsoleLogView'
 import { ConsoleNav } from '@/features/console/components/ConsoleNav'
 import { buildConsoleNav, type ConsoleSectionKey } from '@/features/console/config/nav'
 import { useText } from '@/locales'
@@ -45,11 +46,17 @@ export function ConsoleSheet() {
             </SidebarContent>
           </Sidebar>
           <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-            <ConsoleHeader leading={<span className="truncate text-sm font-medium">{current?.title}</span>} />
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-1 p-4 text-center">
-              <p className="text-sm font-medium text-foreground">{text.console.empty.title}</p>
-              <p className="max-w-sm text-xs text-muted-foreground">{text.console.empty.description}</p>
-            </div>
+            {active === 'log' ? (
+              <ConsoleLogView />
+            ) : (
+              <>
+                <ConsoleHeader leading={<span className="truncate text-sm font-medium">{current?.title}</span>} />
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-1 p-4 text-center">
+                  <p className="text-sm font-medium text-foreground">{text.console.empty.title}</p>
+                  <p className="max-w-sm text-xs text-muted-foreground">{text.console.empty.description}</p>
+                </div>
+              </>
+            )}
           </main>
         </SidebarProvider>
       </SheetContent>

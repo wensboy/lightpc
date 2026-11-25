@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { greet } from '../../services/greet'
+import { greetService } from '../../services/greet'
 
 // toastDuration is how long the greeting stays visible, matching the stylesheet transition.
 const toastDuration = 4000
@@ -21,7 +21,7 @@ export function useGreet(): GreetState {
 
   const submit = useCallback(async (value: string) => {
     try {
-      setResult(await greet(value))
+      setResult(await greetService.greet(value))
       setVisible(true)
       clearTimeout(timer.current)
       timer.current = setTimeout(() => setVisible(false), toastDuration)
