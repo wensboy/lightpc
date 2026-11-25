@@ -7,20 +7,46 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
+
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
+	"github.com/wensboy/lightpc/backend/internal/cast"
 	"github.com/wensboy/lightpc/backend/internal/config"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 	interLog "github.com/wensboy/lightpc/backend/internal/log"
 )
 
+// poolSource is the one capability the database handler needs from the store: the pool behind a key. Declaring it
+// here keeps this file free of the concrete store type.
+type poolSource interface {
+	RawDB(key string) (*sqlx.DB, bool)
+}
+
 // handlersFor opens every output of one entry and returns the bound handlers.
 //
 // It runs during Init rather than at construction, because the store engine has created the root directory by
 // then. Level filtering belongs to the outer handler, so the serializer keeps its own default.
-func handlersFor(entry logEntry) []slog.Handler {
+func handlersFor(entry logEntry, pools poolSource) []slog.Handler {
 	handlers := make([]slog.Handler, 0, len(entry.outputs))
 	for _, output := range entry.outputs {
 		serializer := interLog.SerializerOption{AddSource: output.serializer.EnableSource}
+
+		if entry.handler == handlerDatabase {
+			// The path names the pool, not a file: the store registry keys its connections that way.
+			if pool, ok := pools.RawDB(output.path); ok {
+				handlers = append(handlers, interLog.NewDatabaseHandler(interLog.DatabaseOption{
+					SerializerOption: serializer,
+					Serializer:       output.serializer.Type,
+					Db:               pool,
+					Statement:        logInsertStatement,
+					Listener:         entry.name,
+				}).WithLevel(entry.level))
+			} else {
+				slog.Default().Warn("log output skipped", "path", output.path, "err", interError.Retrieve(engineLog.ErrKeyHandlerFailed))
+			}
+			continue
+		}
 
 		if entry.handler == handlerFile {
 			if filePath, ok := fileTarget(output.path, entry.name); ok {
@@ -91,4 +117,18 @@ func PrepareOutputs(items []engineLog.LogEntry) error {
 		}
 	}
 	return nil
+}
+
+// poolSourceOf returns the pool accessor of the store engine, or nil when this build has no database.
+//
+// A log group that only writes to a file never asks for it, so a missing database is not an error here: the handler
+// loop simply finds nothing to insert into and the entry falls back to its other outputs.
+func poolSourceOf(engines map[string]domainEngine.Engine) poolSource {
+	key := domainEngine.EngineDep(domainEngine.GroupStore, domainEngine.NameDb)
+	engine, found := engines[key]
+	if !found {
+		return nil
+	}
+	source, _ := cast.As[poolSource](engine)
+	return source
 }

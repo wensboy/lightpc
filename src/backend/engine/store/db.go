@@ -113,6 +113,17 @@ func (s *SQL) DB(key string) (engineStore.DBStore, bool) {
 	return NewSQL(WithDB(db)), true
 }
 
+// RawDB returns the pool behind key.
+//
+// It exists for a consumer that has to speak sqlx directly, such as a log handler that inserts into its own table.
+// The store contract stays the normal path: this accessor is the exception, not a second interface.
+func (s *SQL) RawDB(key string) (*sqlx.DB, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	db, found := s.pools[key]
+	return db, found
+}
+
 // DBKeys implements engineStore.DBRegistry: it lists every registered key.
 func (s *SQL) DBKeys() []string {
 	s.mu.RLock()

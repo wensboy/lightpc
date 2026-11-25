@@ -67,7 +67,7 @@ func (dl *DirectLog) Group() string { return domainEngine.GroupLog }
 func (dl *DirectLog) Name() string { return domainEngine.NameDirect }
 
 // Deps implements domainEngine.Engine: log files live below the store root.
-func (dl *DirectLog) Deps() []string { return []string{domainEngine.StoreFs} }
+func (dl *DirectLog) Deps() []string { return []string{domainEngine.GroupStore} }
 
 // State implements domainEngine.Engine.
 func (dl *DirectLog) State() domainEngine.EngineState {
@@ -84,8 +84,9 @@ func (dl *DirectLog) Init(eCtx domainEngine.EngineContext) error {
 	dl.mu.Lock()
 	defer dl.mu.Unlock()
 	dl.ectx = eCtx
+	pools := poolSourceOf(eCtx.Engines)
 	for _, entry := range entriesOf(dl.entries) {
-		for _, handler := range handlersFor(entry) {
+		for _, handler := range handlersFor(entry, pools) {
 			dl.handlers[entry.name] = handler
 		}
 	}

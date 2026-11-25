@@ -11,9 +11,15 @@ import (
 
 // Handler names a configured entry may declare.
 const (
-	handlerFile    = "file"
-	handlerConsole = "console"
+	handlerFile     = "file"
+	handlerConsole  = "console"
+	handlerDatabase = "database"
 )
+
+// logInsertStatement is the statement the database handler runs. Its placeholders are the keys of the map the
+// handler builds, so a table with extra columns only needs this line changed.
+const logInsertStatement = `INSERT INTO log (listener, level, msg, detail, created_at)
+	VALUES (:listener, :level, :msg, :detail, :time)`
 
 // logEntry is what the engine actually works with: the configured entry with its level parsed and its outputs
 // unfolded into one list.

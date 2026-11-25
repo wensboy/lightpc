@@ -2,11 +2,19 @@ package log
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"runtime"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/jmoiron/sqlx"
 )
 
 // FileHandler wraps the built in text serializer and writes records into a file.
@@ -182,5 +190,173 @@ func (ch *ConsoleHandler) WithGroup(name string) slog.Handler {
 		serializer: ch.serializer.WithGroup(name),
 		out:        ch.out,
 		level:      ch.level,
+	}
+}
+
+// DatabaseHandler writes records into a table through the caller's own statement.
+//
+// It talks to *sqlx.DB rather than to an engine interface: the handler only needs a pool and a statement, and
+// depending on the store engine would make the logging layer depend on the storage layer it may be describing.
+//
+// The statement is supplied by the caller and receives a map, so a table with extra columns needs no change here.
+// The three fields every record has are named level, msg and time; everything else the record carries is folded
+// into detail, which is the one column whose shape is deliberately open.
+type DatabaseHandler struct {
+	db         *sqlx.DB
+	statement  string
+	serializer string
+	listener   string
+	source     bool
+	attrs      []slog.Attr
+	group      string
+
+	mu     sync.Mutex
+	level  slog.Level
+	closed atomic.Bool
+}
+
+// DatabaseOption configures a DatabaseHandler.
+type DatabaseOption struct {
+	SerializerOption
+	// Serializer selects how the extra attributes are folded into detail: "json" or "text".
+	Serializer string
+	// Db is the pool the handler inserts through. The handler never opens or closes it.
+	Db *sqlx.DB
+	// Statement is the insert to run. It is named, so its parameters are the keys of the map the handler builds.
+	Statement string
+	// Listener names the source a record belongs to. It travels in the map, so the statement can fill the column.
+	Listener string
+}
+
+// NewDatabaseHandler builds a handler on top of opt.Db and opt.Statement.
+//
+// A missing pool or statement leaves the handler disabled rather than falling back somewhere else: a log line that
+// cannot be stored is better dropped than written into the wrong table.
+func NewDatabaseHandler(opt DatabaseOption) *DatabaseHandler {
+	return &DatabaseHandler{
+		db:         opt.Db,
+		statement:  opt.Statement,
+		serializer: opt.Serializer,
+		listener:   opt.Listener,
+		source:     opt.AddSource,
+	}
+}
+
+// WithLevel sets the minimum level; it must be called before concurrent use.
+func (dh *DatabaseHandler) WithLevel(level slog.Level) *DatabaseHandler {
+	dh.level = level
+	return dh
+}
+
+// Close stops further writes and is idempotent; the pool is owned by the caller and is never closed here.
+func (dh *DatabaseHandler) Close() error {
+	dh.closed.CompareAndSwap(false, true)
+	return nil
+}
+
+// Enabled filters here so Handle only ever sees records that can actually be stored.
+func (dh *DatabaseHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return level >= dh.level && dh.db != nil && dh.statement != "" && !dh.closed.Load()
+}
+
+// Handle inserts record through the configured statement.
+//
+// The map is built per record, so a statement may name any subset of the keys; sqlx rejects a placeholder it cannot
+// resolve, which turns a mismatched statement into an error at the first record instead of a silent empty column.
+func (dh *DatabaseHandler) Handle(ctx context.Context, record slog.Record) error {
+	dh.mu.Lock()
+	defer dh.mu.Unlock()
+	if dh.closed.Load() || dh.db == nil || dh.statement == "" {
+		return nil
+	}
+
+	params := map[string]any{
+		"listener": dh.listener,
+		"level":    int64(record.Level),
+		"msg":      record.Message,
+		"time":     record.Time.UnixMilli(),
+		"detail":   dh.detailOf(record),
+	}
+	if dh.source && record.PC != 0 {
+		frame, _ := runtime.CallersFrames([]uintptr{record.PC}).Next()
+		params["source"] = frame.File + ":" + strconv.Itoa(frame.Line)
+	}
+
+	_, err := dh.db.NamedExecContext(ctx, dh.statement, params)
+	return err
+}
+
+// detailOf folds every attribute of record into one string.
+//
+// The two serializers differ only in shape: json keeps the attributes addressable, text keeps the line readable in
+// a terminal. An empty result is returned as an empty string rather than omitted, because the column is not null.
+func (dh *DatabaseHandler) detailOf(record slog.Record) string {
+	attributes := map[string]any{}
+	for _, attr := range dh.attrs {
+		attributes[dh.group+attr.Key] = attr.Value.Any()
+	}
+	record.Attrs(func(attr slog.Attr) bool {
+		attributes[attr.Key] = attr.Value.Any()
+		return true
+	})
+	if len(attributes) == 0 {
+		return ""
+	}
+
+	if strings.EqualFold(dh.serializer, "json") {
+		encoded, err := json.Marshal(attributes)
+		if err != nil {
+			return ""
+		}
+		return string(encoded)
+	}
+
+	keys := make([]string, 0, len(attributes))
+	for key := range attributes {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var builder strings.Builder
+	for index, key := range keys {
+		if index > 0 {
+			builder.WriteString(" ")
+		}
+		builder.WriteString(key)
+		builder.WriteString("=")
+		fmt.Fprint(&builder, attributes[key])
+	}
+	return builder.String()
+}
+
+// WithAttrs derives a handler that stores the attributes with every record.
+//
+// The attributes are kept on the derived value and merged in detailOf, so a logger built with a group writes the
+// same rows as one that is not.
+func (dh *DatabaseHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	// Constructed field by field rather than copied: the struct holds a mutex, and a copy would carry its state.
+	return &DatabaseHandler{
+		db:         dh.db,
+		statement:  dh.statement,
+		serializer: dh.serializer,
+		listener:   dh.listener,
+		source:     dh.source,
+		attrs:      append(append([]slog.Attr(nil), dh.attrs...), attrs...),
+		group:      dh.group,
+		level:      dh.level,
+	}
+}
+
+// WithGroup derives a handler that prefixes the attributes it stores.
+func (dh *DatabaseHandler) WithGroup(name string) slog.Handler {
+	return &DatabaseHandler{
+		db:         dh.db,
+		statement:  dh.statement,
+		serializer: dh.serializer,
+		listener:   dh.listener,
+		source:     dh.source,
+		attrs:      append([]slog.Attr(nil), dh.attrs...),
+		group:      dh.group + name + ".",
+		level:      dh.level,
 	}
 }

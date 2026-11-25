@@ -69,7 +69,7 @@ func (pl *PatternLog) Group() string { return domainEngine.GroupLog }
 func (pl *PatternLog) Name() string { return domainEngine.NamePattern }
 
 // Deps implements domainEngine.Engine: log files live below the store root.
-func (pl *PatternLog) Deps() []string { return []string{domainEngine.StoreFs} }
+func (pl *PatternLog) Deps() []string { return []string{domainEngine.GroupStore} }
 
 // State implements domainEngine.Engine.
 func (pl *PatternLog) State() domainEngine.EngineState {
@@ -86,8 +86,9 @@ func (pl *PatternLog) Init(eCtx domainEngine.EngineContext) error {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	pl.ectx = eCtx
+	pools := poolSourceOf(eCtx.Engines)
 	for _, entry := range entriesOf(pl.entries) {
-		pl.handlers[entry.name] = append(pl.handlers[entry.name], handlersFor(entry)...)
+		pl.handlers[entry.name] = append(pl.handlers[entry.name], handlersFor(entry, pools)...)
 	}
 	pl.state = domainEngine.EngineReady
 	return nil

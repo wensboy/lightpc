@@ -68,7 +68,7 @@ func (fl *FanoutLog) Group() string { return domainEngine.GroupLog }
 func (fl *FanoutLog) Name() string { return domainEngine.NameFanout }
 
 // Deps implements domainEngine.Engine: log files live below the store root.
-func (fl *FanoutLog) Deps() []string { return []string{domainEngine.StoreFs} }
+func (fl *FanoutLog) Deps() []string { return []string{domainEngine.GroupStore} }
 
 // State implements domainEngine.Engine.
 func (fl *FanoutLog) State() domainEngine.EngineState {
@@ -84,8 +84,9 @@ func (fl *FanoutLog) Init(eCtx domainEngine.EngineContext) error {
 
 	fl.mu.Lock()
 	fl.ectx = eCtx
+	pools := poolSourceOf(eCtx.Engines)
 	for _, entry := range entriesOf(fl.entries) {
-		fl.handlers[entry.name] = append(fl.handlers[entry.name], handlersFor(entry)...)
+		fl.handlers[entry.name] = append(fl.handlers[entry.name], handlersFor(entry, pools)...)
 	}
 	fl.state = domainEngine.EngineReady
 	fl.mu.Unlock()

@@ -84,14 +84,23 @@ type LogEntry struct {
 // 终端输出
 type ConsoleOutput struct {
 	Serializer LogSerializer `json:"serializer"`
-	Path       string        `json:"path"`
+	// 语义: 只能为 stdout, stderr
+	Path string `json:"path"`
 }
 
 // 文件输出
 type FileOutput struct {
 	Serializer LogSerializer `json:"serializer"`
-	Path       string        `json:"path"`
-	Mode       string        `json:"mode"`
+	// 语义: 有效的本地文件路径.
+	Path string `json:"path"`
+	Mode string `json:"mode"`
+}
+
+// 数据库输出
+type DatabaseOutput struct {
+	Serializer LogSerializer `json:"serializer"`
+	// 语义: 已注册的 db 名称, 通过 store.db 获取实例.
+	Path string `json:"path"`
 }
 
 // EntriesFor reads the entries of one sub-group.

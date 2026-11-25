@@ -131,7 +131,7 @@ func (s *Setting) Name() string { return domainEngine.NameSetting }
 
 // Deps implements domainEngine.Engine: layers live in the engineStore. Diagnostics use slog directly, so the
 // engine must not force a log sink that the configuration may leave disabled.
-func (s *Setting) Deps() []string { return []string{domainEngine.StoreFs} }
+func (s *Setting) Deps() []string { return []string{domainEngine.StoreFs, domainEngine.GroupLog} }
 
 // State implements domainEngine.Engine.
 func (s *Setting) State() domainEngine.EngineState {
