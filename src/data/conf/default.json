@@ -97,6 +97,20 @@
                                 "path": "stdout"
                             }
                         ]
+                    },
+                    {
+                        "name": "dev.db",
+                        "level": "debug",
+                        "handler": "database",
+                        "output": [
+                            {
+                                "serializer": {
+                                    "type": "json",
+                                    "enableSource": false
+                                },
+                                "path": "sqlite3.dev_sqlite"
+                            }
+                        ]
                     }
                 ],
                 "pattern": []

@@ -325,9 +325,10 @@
                     "enum": [
                         "",
                         "file",
-                        "console"
+                        "console",
+                        "database"
                     ],
-                    "description": "Output kind: file resolves every path as a resource and opens it, console writes to the stream path names."
+                    "description": "Output kind: file resolves every path as a resource and opens it, console writes to the stream path names, database inserts through the pool path names."
                 },
                 "output": {
                     "oneOf": [
@@ -380,12 +381,12 @@
                 "path": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Destination. A file handler resolves it as a resource, for example \"local://~/.config/lightpc/logs/debug.log\"; a console handler uses \"stdout\" or \"stderr\"."
+                    "description": "Destination. A file handler resolves it as a resource, for example \"local://~/.config/lightpc/logs/debug.log\"; a console handler uses \"stdout\" or \"stderr\"; a database handler names a registered pool as \"<driver>.<name>\", for example \"sqlite3.dev_sqlite\"."
                 },
                 "mode": {
                     "type": "string",
                     "pattern": "^\\s*0o[0-7]+\\s*$|^\\s*[0-7]+\\s*$",
-                    "description": "File mode written as an octal literal, for example \"0o644\". Ignored by a console handler."
+                    "description": "File mode written as an octal literal, for example \"0o644\". Ignored by a console or database handler."
                 }
             }
         }
