@@ -44,6 +44,40 @@ func (s *GreetService) Deinit() error {
 	return nil
 }
 
+// EmitLogs writes one record per level through the database entry.
+//
+// It exists so the console has something to show on a fresh start: the boundary of the log service is the moment the
+// service came up, which is later than the records produced during start up, so the panel would otherwise be empty.
+// Each call writes four rows, one per level, which is what makes the level menu observable.
+func (s *GreetService) EmitLogs() int {
+	if s.fanout == nil {
+		return 0
+	}
+	logger, ok := s.fanout.Logger("dev.db")
+	if !ok {
+		return 0
+	}
+
+	written := 0
+	for _, entry := range []struct {
+		emit  func(msg string, args ...any)
+		level string
+	}{
+		{logger.Debug, "debug"},
+		{logger.Info, "info"},
+		{logger.Warn, "warn"},
+		{logger.Error, "error"},
+	} {
+		entry.emit("console sample record",
+			"level", entry.level,
+			"origin", "greet",
+			"detail", "this row exists so the panel has something to show",
+		)
+		written++
+	}
+	return written
+}
+
 // Greet writes one record through every log route before answering.
 //
 // Per invocation the expected outcome is: one console record, two records in debug.log (slog default
