@@ -5,4 +5,5 @@ const (
 	GroupSetting = "service::setting"
 	GroupHelp    = "service::help"
 	GroupSession = "service::session"
+	GroupLog     = "service::log"
 )

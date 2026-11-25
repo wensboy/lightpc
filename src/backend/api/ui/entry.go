@@ -5,6 +5,7 @@ import (
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
 	serviceGreetImpl "github.com/wensboy/lightpc/backend/service/greet"
 	serviceHelpImpl "github.com/wensboy/lightpc/backend/service/help"
+	serviceLogImpl "github.com/wensboy/lightpc/backend/service/log"
 	serviceSessionImpl "github.com/wensboy/lightpc/backend/service/session"
 	serviceSettingImpl "github.com/wensboy/lightpc/backend/service/setting"
 )
@@ -15,13 +16,15 @@ func RegisterService(sr *domainRuntime.ServiceRuntime) application.Options {
 	settingService := serviceSettingImpl.NewSettingService()
 	helpService := serviceHelpImpl.NewHelpService()
 	sessionService := serviceSessionImpl.NewSessionService()
-	sr.Register(greetService, settingService, helpService, sessionService)
+	logService := serviceLogImpl.NewLogService()
+	sr.Register(greetService, settingService, helpService, sessionService, logService)
 	return application.Options{
 		Services: []application.Service{
 			application.NewService(greetService),
 			application.NewService(settingService),
 			application.NewService(helpService),
 			application.NewService(sessionService),
+			application.NewService(logService),
 		},
 	}
 }
