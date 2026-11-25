@@ -120,7 +120,9 @@ func (er *EngineRuntime) Run() error {
 	if er.appRuntime != nil {
 		engineCtx.AppCtx = &er.appRuntime.appCtx
 	}
-	interError.RegisterAll(engineCtx.AppCtx, EngineRuntimeErrors...)
+	if engineCtx.AppCtx != nil {
+		interError.RegisterAll(engineCtx.AppCtx.ErrorContext, EngineRuntimeErrors...)
+	}
 
 	er.mu.RLock()
 	snapshot := make(map[string]domainEngine.Engine, len(er.registry))

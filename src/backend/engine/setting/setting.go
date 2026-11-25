@@ -143,7 +143,9 @@ func (s *Setting) State() domainEngine.EngineState {
 // Init implements domainEngine.Engine: it publishes the setting errors, loads every file backed layer
 // and starts watching it for changes.
 func (s *Setting) Init(eCtx domainEngine.EngineContext) error {
-	interError.RegisterAll(eCtx.AppCtx, engineSetting.Errors...)
+	if eCtx.AppCtx != nil {
+		interError.RegisterAll(eCtx.AppCtx.ErrorContext, engineSetting.Errors...)
+	}
 
 	s.mu.Lock()
 	s.ectx = eCtx

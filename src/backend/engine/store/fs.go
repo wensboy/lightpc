@@ -92,7 +92,9 @@ func (f *FS) State() domainEngine.EngineState {
 // applies configuration defaults for fields left at their zero value, ensures root and watches signals.
 func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 	f.setState(domainEngine.EnginePending)
-	interError.RegisterAll(eCtx.AppCtx, engineStore.Errors...)
+	if eCtx.AppCtx != nil {
+		interError.RegisterAll(eCtx.AppCtx.ErrorContext, engineStore.Errors...)
+	}
 
 	f.mu.Lock()
 	f.ectx = eCtx

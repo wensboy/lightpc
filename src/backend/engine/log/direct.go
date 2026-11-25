@@ -79,7 +79,9 @@ func (dl *DirectLog) State() domainEngine.EngineState {
 // Init implements domainEngine.Engine: it keeps the engine context, opens every configured handler
 // and becomes ready.
 func (dl *DirectLog) Init(eCtx domainEngine.EngineContext) error {
-	interError.RegisterAll(eCtx.AppCtx, engineLog.Errors...)
+	if eCtx.AppCtx != nil {
+		interError.RegisterAll(eCtx.AppCtx.ErrorContext, engineLog.Errors...)
+	}
 
 	dl.mu.Lock()
 	defer dl.mu.Unlock()

@@ -70,7 +70,7 @@ func (s *LogService) State() domainEngine.EngineState {
 // which is what makes a restart show only the logs of the current process while the table keeps the full history.
 func (s *LogService) Init(sCtx domainService.ServiceContext) error {
 	if sCtx.AppCtx != nil {
-		interError.RegisterAll(sCtx.AppCtx, serviceLog.Errors...)
+		interError.RegisterAll(sCtx.AppCtx.ErrorContext, serviceLog.Errors...)
 	}
 
 	engineKey := domainEngine.EngineDep(domainEngine.GroupStore, domainEngine.NameDb)

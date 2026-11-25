@@ -24,15 +24,16 @@ var (
 	registryMu sync.RWMutex
 )
 
-// RegisterAll publishes every option, resolving Kind from the app error context by Code.
+// RegisterAll publishes every option, resolving Kind from the error context by Code.
+//
+// The parameter is the map rather than the application context: this function only needs to look a code up, so
+// taking the whole context would let it reach fields it has no business reading. A nil map is fine and yields an
+// empty kind, which is what a caller with no context to offer gets.
+//
 // The first registration wins, so repeated calls during initialisation are safe.
-func RegisterAll(appCtx *domainContext.AppContext, options ...Option) {
+func RegisterAll(errCtx domainContext.ErrorContext, options ...Option) {
 	for _, option := range options {
-		kind := ""
-		if appCtx != nil {
-			kind = appCtx.ErrorContext[option.Code]
-		}
-		option.Kind = kind
+		option.Kind = errCtx[option.Code]
 		Register(option.Key, New(option))
 	}
 }

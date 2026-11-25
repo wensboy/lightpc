@@ -81,7 +81,9 @@ func (pl *PatternLog) State() domainEngine.EngineState {
 // Init implements domainEngine.Engine: it keeps the engine context, opens every configured handler
 // and becomes ready.
 func (pl *PatternLog) Init(eCtx domainEngine.EngineContext) error {
-	interError.RegisterAll(eCtx.AppCtx, engineLog.Errors...)
+	if eCtx.AppCtx != nil {
+		interError.RegisterAll(eCtx.AppCtx.ErrorContext, engineLog.Errors...)
+	}
 
 	pl.mu.Lock()
 	defer pl.mu.Unlock()

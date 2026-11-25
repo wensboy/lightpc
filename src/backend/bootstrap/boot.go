@@ -20,7 +20,7 @@ var BootstrapErrors = []interError.Option{
 }
 
 func Boot(bootCtx domainContext.BootContext) error {
-	interError.RegisterAll(&bootCtx.AppContext, BootstrapErrors...)
+	interError.RegisterAll(bootCtx.AppContext.ErrorContext, BootstrapErrors...)
 	switch bootCtx.Mode {
 	case domainContext.ModeTui:
 		return RunTui(bootCtx.AppContext)

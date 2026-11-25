@@ -42,7 +42,7 @@ func (s *HelpService) Deps() []string { return []string{domainEngine.StoreFs} }
 // Init implements domainService.Service: it resolves the file store and indexes the documentation sets.
 func (s *HelpService) Init(sCtx domainService.ServiceContext) error {
 	if sCtx.AppCtx != nil {
-		interError.RegisterAll(sCtx.AppCtx, serviceHelp.Errors...)
+		interError.RegisterAll(sCtx.AppCtx.ErrorContext, serviceHelp.Errors...)
 	}
 
 	engineKey := domainEngine.EngineDep(domainEngine.GroupStore, domainEngine.NameFs)

@@ -164,7 +164,9 @@ func (s *SQL) State() domainEngine.EngineState {
 // validates the pool and watches signals.
 func (s *SQL) Init(eCtx domainEngine.EngineContext) error {
 	s.setState(domainEngine.EnginePending)
-	interError.RegisterAll(eCtx.AppCtx, engineStore.Errors...)
+	if eCtx.AppCtx != nil {
+		interError.RegisterAll(eCtx.AppCtx.ErrorContext, engineStore.Errors...)
+	}
 
 	s.mu.Lock()
 	s.ectx = eCtx

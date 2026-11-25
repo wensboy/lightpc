@@ -63,7 +63,7 @@ func (s *SessionService) State() domainEngine.EngineState {
 // window means a sign in never expires, which the cache expresses as no TTL.
 func (s *SessionService) Init(sCtx domainService.ServiceContext) error {
 	if sCtx.AppCtx != nil {
-		interError.RegisterAll(sCtx.AppCtx, serviceSession.Errors...)
+		interError.RegisterAll(sCtx.AppCtx.ErrorContext, serviceSession.Errors...)
 	}
 
 	s.mu.Lock()

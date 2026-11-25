@@ -80,7 +80,9 @@ func (fl *FanoutLog) State() domainEngine.EngineState {
 // Init implements domainEngine.Engine: it keeps the engine context, opens every configured handler,
 // becomes ready and publishes the empty name aggregate as the slog default.
 func (fl *FanoutLog) Init(eCtx domainEngine.EngineContext) error {
-	interError.RegisterAll(eCtx.AppCtx, engineLog.Errors...)
+	if eCtx.AppCtx != nil {
+		interError.RegisterAll(eCtx.AppCtx.ErrorContext, engineLog.Errors...)
+	}
 
 	fl.mu.Lock()
 	fl.ectx = eCtx
