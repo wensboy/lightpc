@@ -247,8 +247,26 @@
                                     }
                                 }
                             }
+                        },
+                        "notice": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Notice engine configuration.",
+                            "required": [
+                                "buf"
+                            ],
+                            "properties": {
+                                "buf": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "description": "Length of the notice buffer. A notice is a short lived process notification, so a fixed ring is enough: the oldest entry is dropped when a new one arrives and the ring is full."
+                                }
+                            }
                         }
-                    }
+                    },
+                    "required": [
+                        "notice"
+                    ]
                 },
                 "services": {
                     "type": "object",

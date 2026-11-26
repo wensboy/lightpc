@@ -9,9 +9,11 @@ const (
 	GroupSetting = "setting"
 	NameSetting  = "setting"
 
-	GroupStore = "store"
-	NameFs     = "fs"
-	NameDb     = "db"
+	GroupStore  = "store"
+	GroupNotice = "notice"
+	NameNotice  = "notice"
+	NameFs      = "fs"
+	NameDb      = "db"
 )
 
 var (

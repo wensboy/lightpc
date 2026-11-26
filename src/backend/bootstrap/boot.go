@@ -49,6 +49,7 @@ func RunGui(appCtx domainContext.AppContext) error {
 	SetupStore(cfg, engineRuntime)
 	SetupLog(cfg, engineRuntime)
 	SetupSetting(cfg, engineRuntime)
+	SetupNotice(cfg, engineRuntime)
 
 	serviceRuntime := domainRuntime.NewServiceRuntime().WithAppRuntime(appRuntime)
 

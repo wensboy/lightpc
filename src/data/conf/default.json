@@ -129,6 +129,9 @@
                         "mode": "rw"
                     }
                 ]
+            },
+            "notice": {
+               "buf": 1024
             }
         },
         "services": {

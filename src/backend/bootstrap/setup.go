@@ -13,12 +13,14 @@ import (
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
+	engineNotice "github.com/wensboy/lightpc/backend/domain/engine/notice"
 	domainEngineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
 	domainEngineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
 	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
 	engineLogImpl "github.com/wensboy/lightpc/backend/engine/log"
+	engineNoticeImpl "github.com/wensboy/lightpc/backend/engine/notice"
 	engineSettingImpl "github.com/wensboy/lightpc/backend/engine/setting"
 	engineStoreImpl "github.com/wensboy/lightpc/backend/engine/store"
 	"github.com/wensboy/lightpc/backend/internal/cast"
@@ -359,4 +361,17 @@ func SetupEventHandle(ar *domainRuntime.AppRuntime, er *domainRuntime.EngineRunt
 			sec.AppEbus.Emit(domainBus.EventSessionExpired, payload)
 		})
 	})
+}
+
+// SetupNotice registers the notice engine.
+//
+// The ring length is read here, not inside the engine: the document is the bootstrap's business, and the engine only
+// receives the number. A value that is absent or unusable is left out, so the engine falls back to its own default.
+func SetupNotice(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
+	noticeSettings := domainContext.Decode[engineNotice.Config](cfg, "default.runtime.engines.notice")
+	options := make([]engineNoticeImpl.NoticeOption, 0, 1)
+	if noticeSettings.Buf > 0 {
+		options = append(options, engineNoticeImpl.WithNoticeSize(noticeSettings.Buf))
+	}
+	er.Register(engineNoticeImpl.NewNotice(options...))
 }
