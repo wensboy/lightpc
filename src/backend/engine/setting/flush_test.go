@@ -15,7 +15,11 @@ import (
 // newLayered builds a settings engine with a writable user layer at dir and an in-memory runtime layer.
 func newLayered(t *testing.T, dir string) *engineSettingImpl.Setting {
 	t.Helper()
-	fsStore := engineStoreImpl.NewFS(engineStoreImpl.WithRoot(dir)).WithDirMode(0o755).WithFileMode(0o644)
+	fsStore := engineStoreImpl.NewFS(
+		engineStoreImpl.WithRoot(dir),
+		engineStoreImpl.WithDirMode(0o755),
+		engineStoreImpl.WithFileMode(0o644),
+	)
 	if err := fsStore.Init(domainEngine.EngineContext{}); err != nil {
 		t.Fatalf("init store: %v", err)
 	}

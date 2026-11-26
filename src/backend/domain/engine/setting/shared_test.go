@@ -1,48 +1,24 @@
 package engineSetting
 
-import (
-	"testing"
+import "testing"
 
-	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
-	domainContext "github.com/wensboy/lightpc/backend/domain/context"
-)
+func TestRuntimesMapsTheConfiguredLayers(t *testing.T) {
+	config := Config{Layers: []LayerConfig{
+		{Layer: "default", Path: "embed://data/conf/setting.default.json", Mode: "ro"},
+		{Layer: "user", Path: "local://~/.config/lightpc/setting.json", Mode: "rw"},
+		{Layer: "", Path: "local:///tmp/unnamed.json", Mode: "rw"},
+	}}
 
-// configSource is a configuration context backed by a literal map, so a test does not need a file.
-type configSource struct {
-	values map[string]any
-}
-
-func (s configSource) Kind() uint8 { return domainConfig.SourceConfig }
-
-func (s configSource) Lookup(key string) (any, bool) {
-	value, ok := s.values[key]
-	return value, ok
-}
-
-func TestLayersForReadsConfiguredLayers(t *testing.T) {
-	cfg := domainContext.ConfigContext(configSource{values: map[string]any{
-		LayersKey: []any{
-			map[string]any{"layer": "default", "path": "embed://data/conf/setting.default.json", "mode": "ro"},
-			map[string]any{"layer": "user", "path": "local://~/.config/lightpc/setting.json", "mode": "rw"},
-			map[string]any{"path": "local:///tmp/unnamed.json", "mode": "rw"},
-		},
-	}})
-
-	entries := LayersFor(cfg)
+	layers := config.GenLayers()
 	// An entry without a name cannot be addressed, so it is dropped rather than producing a layer.
-	if len(entries) != 2 {
-		t.Fatalf("entries = %d", len(entries))
+	if len(layers) != 2 {
+		t.Fatalf("layers = %d", len(layers))
 	}
-	if entries[0].Layer != "default" || entries[1].Layer != "user" {
-		t.Fatalf("entries = %+v", entries)
+	if layers[0].Name != "default" || layers[0].Mode != ModeReadOnly {
+		t.Fatalf("first layer = %+v", layers[0])
 	}
-}
-
-func TestLayersForMissingConfig(t *testing.T) {
-	cfg := domainContext.ConfigContext(configSource{values: map[string]any{}})
-
-	if entries := LayersFor(cfg); len(entries) != 0 {
-		t.Fatalf("entries = %d", len(entries))
+	if layers[1].Name != "user" || layers[1].Mode != ModeReadWrite {
+		t.Fatalf("second layer = %+v", layers[1])
 	}
 }
 

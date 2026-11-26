@@ -14,7 +14,7 @@ import (
 // newStore builds a ready file store rooted at root.
 func newStore(t *testing.T, root string) *engineStoreImpl.FS {
 	t.Helper()
-	fsStore := engineStoreImpl.NewFS(engineStoreImpl.WithRoot(root)).WithFileMode(0o644).WithDirMode(0o755)
+	fsStore := engineStoreImpl.NewFS(engineStoreImpl.WithRoot(root), engineStoreImpl.WithFileMode(0o644), engineStoreImpl.WithDirMode(0o755))
 	if err := fsStore.Init(domainEngine.EngineContext{}); err != nil {
 		t.Fatalf("init store: %v", err)
 	}
