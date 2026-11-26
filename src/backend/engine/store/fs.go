@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -33,6 +32,24 @@ func WithRoot(root string) FSOption {
 	return func(f *FS) { f.root = root }
 }
 
+// WithFileMode sets the mode applied to the files FS creates.
+func WithFileMode(mode fs.FileMode) FSOption {
+	return func(f *FS) {
+		if mode != 0 {
+			f.fileMode = mode
+		}
+	}
+}
+
+// WithDirMode sets the mode applied to the directories FS creates.
+func WithDirMode(mode fs.FileMode) FSOption {
+	return func(f *FS) {
+		if mode != 0 {
+			f.dirMode = mode
+		}
+	}
+}
+
 // FS implements engineStore.FileStore and confines every operation below root.
 type FS struct {
 	root     string
@@ -51,24 +68,6 @@ func NewFS(opts ...FSOption) *FS {
 	for _, opt := range opts {
 		opt(f)
 	}
-	return f
-}
-
-// WithFileMode sets the file mode used by Put and returns *FS for chaining.
-// It must be called before concurrent use.
-func (f *FS) WithFileMode(m fs.FileMode) *FS {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.fileMode = m
-	return f
-}
-
-// WithDirMode sets the directory mode used by MkdirAll and returns *FS for chaining.
-// It must be called before concurrent use.
-func (f *FS) WithDirMode(m fs.FileMode) *FS {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.dirMode = m
 	return f
 }
 
@@ -98,22 +97,6 @@ func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 
 	f.mu.Lock()
 	f.ectx = eCtx
-	if eCtx.AppCtx != nil && eCtx.AppCtx.ConfigContext != nil {
-		settings := engineStore.FsConfigFor(eCtx.AppCtx.ConfigContext)
-		if f.root == "" && !strings.HasPrefix(settings.Root, "embed://") {
-			if resource, err := config.NewResource(settings.Root); err == nil && settings.Root != "" {
-				if resolved, err := resource.Path(); err == nil {
-					f.root = resolved
-				}
-			}
-		}
-		if f.fileMode == 0 {
-			f.fileMode = parseMode(settings.FileMode)
-		}
-		if f.dirMode == 0 {
-			f.dirMode = parseMode(settings.DirMode)
-		}
-	}
 	f.mu.Unlock()
 
 	watchStopSignal(eCtx.Ebus, domainEngine.NameFs, f.Close)
@@ -514,16 +497,4 @@ func (f *FS) setState(state domainEngine.EngineState) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.state = state
-}
-
-// parseMode reads a mode written either as an octal literal ("0o644") or as the bare octal digits ("644").
-func parseMode(text string) fs.FileMode {
-	if text == "" {
-		return 0
-	}
-	mode, err := strconv.ParseUint(strings.TrimPrefix(text, "0o"), 8, 32)
-	if err != nil {
-		return 0
-	}
-	return fs.FileMode(mode)
 }

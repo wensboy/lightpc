@@ -3,7 +3,6 @@ package engineLog
 import (
 	"encoding/json"
 
-	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
@@ -103,37 +102,35 @@ type DatabaseOutput struct {
 	Path string `json:"path"`
 }
 
-// EntriesFor reads the entries of one sub-group.
+// Config maps runtime.engines.log completely: one list per sub-group, each entry describing where its records go.
 //
-// The document is decoded straight into the structures that describe it, so nothing outside this package has to
-// know how a record is shaped. The output stays a raw message because its meaning depends on the entry: a direct
-// entry declares one object while fanout and pattern declare an array.
-func EntriesFor(cfg domainContext.ConfigContext, sub string) []LogEntry {
-	value, found := cfg.Lookup(EntriesKey)
-	if !found {
-		return nil
+// Direct writes to exactly one sink, fanout and pattern to every sink they name. The type is the same because the
+// document uses the same shape; only the arity of output differs, which is why it stays a raw message here.
+type Config struct {
+	Direct  []LogEntry `json:"direct"`
+	Fanout  []LogEntry `json:"fanout"`
+	Pattern []LogEntry `json:"pattern"`
+}
+
+// Entries returns the entries of one sub-group, dropping the ones a caller could not address.
+//
+// It is a conversion, not a read: the config already holds the decoded lists, and this only picks one and removes the
+// entries without a name. A missing sub-group yields an empty slice rather than nil, so a caller can range over it.
+func (c Config) Entries(sub string) []LogEntry {
+	var listed []LogEntry
+	switch sub {
+	case SubDirect:
+		listed = c.Direct
+	case SubFanout:
+		listed = c.Fanout
+	case SubPattern:
+		listed = c.Pattern
+	default:
+		return []LogEntry{}
 	}
 
-	groups, ok := value.(map[string]any)
-	if !ok {
-		return nil
-	}
-	raw, ok := groups[sub]
-	if !ok {
-		return nil
-	}
-
-	encoded, err := json.Marshal(raw)
-	if err != nil {
-		return nil
-	}
-	entries := make([]LogEntry, 0)
-	if err := json.Unmarshal(encoded, &entries); err != nil {
-		return nil
-	}
-
-	kept := entries[:0]
-	for _, entry := range entries {
+	kept := make([]LogEntry, 0, len(listed))
+	for _, entry := range listed {
 		if entry.Name == "" {
 			continue
 		}

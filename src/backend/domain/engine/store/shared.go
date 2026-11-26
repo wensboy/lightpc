@@ -1,10 +1,10 @@
 package engineStore
 
 import (
-	"encoding/json"
-	"log/slog"
+	"io/fs"
+	"strconv"
+	"strings"
 
-	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
@@ -33,25 +33,30 @@ var Errors = []interError.Option{
 	{Key: ErrKeyUnsupportedCommand, Code: interError.ErrCodeInvalidParam, Msg: "store: unsupported command"},
 }
 
-// Configuration paths of the store group. Root and the two modes belong to the file store, while the connection
-// list belongs to the database store; both live under the same engine group.
-const (
-	KeyFsRoot     = "default.runtime.engines.store.root"
-	KeyFsFileMode = "default.runtime.engines.store.fs.fileMode"
-	KeyFsDirMode  = "default.runtime.engines.store.fs.dirMode"
-	KeyDbSQL      = "default.runtime.engines.store.db.sql"
-)
+// Config maps runtime.engines.store completely: the root the file store is chrooted to, the modes it applies, and
+// every connection the database store opens.
+type Config struct {
+	Root string   `json:"root"`
+	Fs   FsConfig `json:"fs"`
+	Db   DbConfig `json:"db"`
+}
 
-// FsConfig maps runtime.engines.store: the root the file store is chrooted to, together with the modes it applies
-// to the files and directories it creates.
+// FsConfig maps runtime.engines.store.fs.
 type FsConfig struct {
-	Root     string `json:"root"`
 	FileMode string `json:"fileMode"`
 	DirMode  string `json:"dirMode"`
 }
 
-// DbConfig maps one entry of runtime.engines.store.db.sql.
+// DbConfig maps runtime.engines.store.db.
 type DbConfig struct {
+	SQL []ConnConfig `json:"sql"`
+}
+
+// ConnConfig maps one entry of runtime.engines.store.db.sql.
+//
+// Options and Migrations are fixed lists, so they decode as themselves. Nothing here is narrowed by a runtime choice:
+// the shape of a connection does not depend on another field of the same entry.
+type ConnConfig struct {
 	Name       string   `json:"name"`
 	Driver     string   `json:"driver"`
 	Skipped    bool     `json:"skipped"`
@@ -60,56 +65,28 @@ type DbConfig struct {
 	Migrations []string `json:"migrations"`
 }
 
-// FsConfigFor reads the file store settings.
+// Usable reports whether a connection can be served at all: it needs a name, a DSN and a driver this build links.
 //
-// The root sits beside the fs object rather than inside it, so the three keys are read separately and assembled
-// here. A missing value stays empty, leaving the engine to fall back to its own default.
-func FsConfigFor(cfg domainContext.ConfigContext) FsConfig {
-	return FsConfig{
-		Root:     textAt(cfg, KeyFsRoot),
-		FileMode: textAt(cfg, KeyFsFileMode),
-		DirMode:  textAt(cfg, KeyFsDirMode),
+// The check is a conversion of the config into a decision, not a read: nothing here touches the document, and the
+// caller still decides what to do with an entry that fails.
+func (c ConnConfig) Usable() bool {
+	if c.Name == "" || c.Dsn == "" || c.Skipped {
+		return false
 	}
+	_, known := DriverOf(c.Driver)
+	return known
 }
 
-// DbConfigsFor reads every configured connection.
+// ParseMode reads a mode written either as an octal literal ("0o644") or as the bare octal digits ("644").
 //
-// Driver names this build does not link stay in the document and are dropped here with a warning, so a shared
-// configuration file still runs on a binary that carries fewer drivers.
-func DbConfigsFor(cfg domainContext.ConfigContext) []DbConfig {
-	value, found := cfg.Lookup(KeyDbSQL)
-	if !found {
-		return nil
+// It is exported because the bootstrap is what reads the document, and the engine only receives the result.
+func ParseMode(text string) fs.FileMode {
+	if text == "" {
+		return 0
 	}
-	encoded, err := json.Marshal(value)
+	mode, err := strconv.ParseUint(strings.TrimPrefix(text, "0o"), 8, 32)
 	if err != nil {
-		return nil
+		return 0
 	}
-	entries := make([]DbConfig, 0)
-	if err := json.Unmarshal(encoded, &entries); err != nil {
-		return nil
-	}
-
-	kept := entries[:0]
-	for _, entry := range entries {
-		if entry.Name == "" || entry.Dsn == "" {
-			continue
-		}
-		if _, known := DriverOf(entry.Driver); !known {
-			slog.Default().Warn("db driver skipped", "name", entry.Name, "driver", entry.Driver)
-			continue
-		}
-		kept = append(kept, entry)
-	}
-	return kept
-}
-
-// textAt reads a text setting, reporting an empty string when it is absent or of another type.
-func textAt(cfg domainContext.ConfigContext, key string) string {
-	value, found := cfg.Lookup(key)
-	if !found {
-		return ""
-	}
-	text, _ := value.(string)
-	return text
+	return fs.FileMode(mode)
 }

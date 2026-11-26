@@ -15,7 +15,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
-	"github.com/wensboy/lightpc/backend/internal/cast"
 	"github.com/wensboy/lightpc/backend/internal/config"
 )
 
@@ -34,17 +33,16 @@ type DBConfig struct {
 //
 // The document is read by the contract package, so this file only decides what a usable entry looks like: a name,
 // a driver this build links, and a DSN the adapter can resolve.
-func DBConfigs(entries []engineStore.DbConfig) []DBConfig {
+func DBConfigs(entries []engineStore.ConnConfig) []DBConfig {
 	configs := make([]DBConfig, 0, len(entries))
 	for _, entry := range entries {
-		driver, known := engineStore.DriverOf(entry.Driver)
-		if !known || entry.Skipped {
+		if !entry.Usable() {
 			continue
 		}
+		driver, _ := engineStore.DriverOf(entry.Driver)
 		configs = append(configs, DBConfig{
 			Name:       entry.Name,
 			Driver:     driver,
-			Skipped:    entry.Skipped,
 			DSN:        entry.Dsn,
 			Options:    entry.Options,
 			Migrations: entry.Migrations,
@@ -59,7 +57,7 @@ func DBConfigs(entries []engineStore.DbConfig) []DBConfig {
 // and hands a mysql value on as written. This function only joins the options, which is the one step every driver
 // shares.
 func (c DBConfig) DSNString() (string, error) {
-	resource, err := config.NewResource(c.DSN)
+	resource, err := c.resource()
 	if err != nil {
 		return "", err
 	}
@@ -80,11 +78,20 @@ func (c DBConfig) DSNString() (string, error) {
 
 // DatabaseFile reports the file the database lives at, and whether there is one at all.
 func (c DBConfig) DatabaseFile() (string, bool) {
-	resource, err := config.NewResource(c.DSN)
+	resource, err := c.resource()
 	if err != nil {
 		return "", false
 	}
 	return resource.DatabaseFile()
+}
+
+// resource resolves the configured dsn once, so both accessors read the same value the same way.
+func (c DBConfig) resource() (config.Resource, error) {
+	resource, err := config.NewResource(c.DSN)
+	if err != nil {
+		return config.Resource{}, fmt.Errorf("db %q: %w", c.Name, err)
+	}
+	return resource, nil
 }
 
 // OpenDB opens the pool for one entry. The parent directory is created because a sqlite database is a file
@@ -126,7 +133,7 @@ func Migrate(dsn string, driver engineStore.Driver, migrations []string, assets 
 // migrateEntry mounts one location as a migration source and applies it. A directory is mounted as is; a
 // single file is mounted through a view that exposes only that file, so both take the same runner.
 func migrateEntry(dsn string, driver engineStore.Driver, entry string, assets fs.FS) error {
-	relative, ok := embeddedRelative(entry)
+	relative, ok := migrationPath(entry)
 	if !ok {
 		return fmt.Errorf("migration must live under embed://, got %q", entry)
 	}
@@ -189,56 +196,28 @@ func migrationRoot(assets fs.FS, relative string) (fs.FS, error) {
 	return fs.Sub(assets, relative)
 }
 
-// databaseURL composes the URL the migrate driver expects: the scheme names the driver and the rest is the
-// DSN the connection already uses, so the runner needs no driver specific introspection.
+// databaseURL composes the URL the migrate driver expects: the scheme names the driver and the rest is the DSN the
+// connection already uses, so the runner needs no driver specific introspection.
+//
+// The concatenation stays here rather than going through the adapter: the adapter trims the leading slash a document
+// value folds away, and a sqlite DSN starts with one, so a round trip would turn "sqlite3:///tmp/x" into
+// "sqlite3://tmp/x" and name a host instead of a file.
 func databaseURL(dsn string, driver engineStore.Driver) string {
 	return string(driver) + "://" + dsn
 }
 
-// embeddedRelative turns an embedded resource into a path inside the embedded tree.
-func embeddedRelative(resource string) (string, bool) {
-	const prefix = "embed://"
-	if !strings.HasPrefix(resource, prefix) {
+// migrationPath resolves a migration entry to the path inside the embedded tree.
+//
+// The value is read the same way as every other resource, so this file carries no scheme of its own: a target that is
+// not embedded is refused, and an embedded one yields the relative path fs.Sub expects.
+func migrationPath(entry string) (string, bool) {
+	resource, err := config.NewResource(entry)
+	if err != nil || !resource.IsEmbed() {
 		return "", false
 	}
-	return strings.TrimPrefix(resource, prefix), true
-}
-
-// expandHome resolves a leading tilde, which the document uses to point into the user directory.
-func expandHome(value string) string {
-	if !strings.HasPrefix(value, "~") {
-		return value
-	}
-	home, err := os.UserHomeDir()
+	relative, err := resource.Path()
 	if err != nil {
-		return value
+		return "", false
 	}
-	return filepath.Join(home, strings.TrimPrefix(value, "~"))
-}
-
-// stringField reads a string member of a decoded record.
-func stringField(fields map[string]any, key string) string {
-	value, _ := cast.To[string](fields[key])
-	return value
-}
-
-// boolField reads a boolean member of a decoded record.
-func boolField(fields map[string]any, key string) bool {
-	value, _ := cast.To[bool](fields[key])
-	return value
-}
-
-// optionList reads the "key=value" options of a decoded record, keeping the declared order.
-func optionList(raw any) []string {
-	list, ok := cast.To[[]any](raw)
-	if !ok {
-		return nil
-	}
-	options := make([]string, 0, len(list))
-	for _, entry := range list {
-		if text, ok := cast.To[string](entry); ok && text != "" {
-			options = append(options, text)
-		}
-	}
-	return options
+	return relative, true
 }

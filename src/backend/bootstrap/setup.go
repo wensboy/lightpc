@@ -16,6 +16,7 @@ import (
 	domainEngineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
 	domainEngineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
+	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
 	engineLogImpl "github.com/wensboy/lightpc/backend/engine/log"
 	engineSettingImpl "github.com/wensboy/lightpc/backend/engine/setting"
@@ -143,7 +144,23 @@ func SetupErrors(cfg domainContext.ConfigContext) domainContext.ErrorContext {
 // Preparing the root directory and checking that it is usable are bootstrap decisions, not engine phases:
 // they run in the pre start hook so the engine only has to report the state it was initialised with.
 func SetupStore(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
-	fsStore := engineStoreImpl.NewFS()
+	settings := domainContext.Decode[domainEngineStore.Config](cfg, "default.runtime.engines.store")
+
+	fsOptions := make([]engineStoreImpl.FSOption, 0, 3)
+	if settings.Root != "" {
+		if resource, err := config.NewResource(settings.Root); err == nil && !resource.IsEmbed() {
+			if resolved, err := resource.Path(); err == nil {
+				fsOptions = append(fsOptions, engineStoreImpl.WithRoot(resolved))
+			}
+		}
+	}
+	if mode := engineStore.ParseMode(settings.Fs.FileMode); mode != 0 {
+		fsOptions = append(fsOptions, engineStoreImpl.WithFileMode(mode))
+	}
+	if mode := engineStore.ParseMode(settings.Fs.DirMode); mode != 0 {
+		fsOptions = append(fsOptions, engineStoreImpl.WithDirMode(mode))
+	}
+	fsStore := engineStoreImpl.NewFS(fsOptions...)
 	er.Register(&domainEngine.EngineHook{
 		Engine: fsStore,
 		PreStart: func(e domainEngine.Engine) error {
@@ -173,7 +190,7 @@ func SetupStore(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime
 	}
 	queue := make([]pending, 0, 2)
 
-	for _, config := range engineStoreImpl.DBConfigs(domainEngineStore.DbConfigsFor(cfg)) {
+	for _, config := range engineStoreImpl.DBConfigs(settings.Db.SQL) {
 		key := domainEngineStore.DBKey(config.Driver, config.Name)
 		// Checked before opening: for a file backed driver, opening is what creates the file, so a
 		// duplicate entry must be rejected while it still has no side effect.
@@ -241,7 +258,8 @@ func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) 
 
 	// Each sub-group names one engine. The contract package reads the records, so this function only decides which
 	// groups to start and hands the entries over.
-	if entries := engineLog.EntriesFor(cfg, engineLog.SubDirect); len(entries) > 0 {
+	logSettings := domainContext.Decode[engineLog.Config](cfg, engineLog.EntriesKey)
+	if entries := logSettings.Entries(engineLog.SubDirect); len(entries) > 0 {
 		options := make([]engineLogImpl.DirectOption, 0, len(entries))
 		for _, entry := range entries {
 			options = append(options, engineLogImpl.WithDirectEntry(entry))
@@ -249,7 +267,7 @@ func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) 
 		engines = append(engines, hookLog(engineLogImpl.NewDirectLog(options...), entries))
 	}
 
-	if entries := engineLog.EntriesFor(cfg, engineLog.SubFanout); len(entries) > 0 {
+	if entries := logSettings.Entries(engineLog.SubFanout); len(entries) > 0 {
 		options := make([]engineLogImpl.FanoutOption, 0, len(entries))
 		for _, entry := range entries {
 			options = append(options, engineLogImpl.WithFanoutEntry(entry))
@@ -257,7 +275,7 @@ func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) 
 		engines = append(engines, hookLog(engineLogImpl.NewFanoutLog(options...), entries))
 	}
 
-	if entries := engineLog.EntriesFor(cfg, engineLog.SubPattern); len(entries) > 0 {
+	if entries := logSettings.Entries(engineLog.SubPattern); len(entries) > 0 {
 		options := make([]engineLogImpl.PatternOption, 0, len(entries))
 		for _, entry := range entries {
 			options = append(options, engineLogImpl.WithPatternEntry(entry))
@@ -269,7 +287,8 @@ func SetupLog(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) 
 }
 
 func SetupSetting(cfg domainContext.ConfigContext, er *domainRuntime.EngineRuntime) {
-	layers := engineSettingImpl.LayersFrom(domainEngineSetting.LayersFor(cfg))
+	settingSettings := domainContext.Decode[domainEngineSetting.Config](cfg, "default.runtime.engines.setting")
+	layers := settingSettings.GenLayers()
 	options := make([]engineSettingImpl.Option, 0, len(layers))
 	for _, layer := range layers {
 		options = append(options, engineSettingImpl.WithLayer(layer))

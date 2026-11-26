@@ -1,81 +1,44 @@
 package engineLog
 
-import (
-	"testing"
+import "testing"
 
-	domainConfig "github.com/wensboy/lightpc/backend/domain/config"
-	domainContext "github.com/wensboy/lightpc/backend/domain/context"
-)
+func TestEntriesPicksTheSubGroup(t *testing.T) {
+	config := Config{
+		Direct:  []LogEntry{{Name: "only.direct", Handler: "console"}},
+		Fanout:  []LogEntry{{Name: "fan.out", Handler: "file"}, {Name: ""}},
+		Pattern: []LogEntry{{Name: "pat", Handler: "console"}},
+	}
 
-// configSource is a configuration context backed by a literal map, so a test does not need a file.
-type configSource struct {
-	values map[string]any
-}
-
-func (s configSource) Kind() uint8 { return domainConfig.SourceConfig }
-
-func (s configSource) Lookup(key string) (any, bool) {
-	value, ok := s.values[key]
-	return value, ok
-}
-
-func TestEntriesForReadsConfiguredGroup(t *testing.T) {
-	cfg := domainContext.ConfigContext(configSource{values: map[string]any{
-		EntriesKey: map[string]any{
-			SubDirect: []any{
-				map[string]any{"name": "dev.console", "level": "debug", "handler": "console"},
-				map[string]any{"level": "info"},
-			},
-		},
-	}})
-
-	entries := EntriesFor(cfg, SubDirect)
 	// The unnamed entry cannot be addressed, so it is dropped rather than producing an engine.
-	if len(entries) != 1 {
-		t.Fatalf("entries = %d", len(entries))
+	if entries := config.Entries(SubFanout); len(entries) != 1 || entries[0].Name != "fan.out" {
+		t.Fatalf("fanout = %+v", entries)
 	}
-	if entries[0].Name != "dev.console" {
-		t.Fatalf("name = %q", entries[0].Name)
+	if entries := config.Entries(SubDirect); len(entries) != 1 || entries[0].Name != "only.direct" {
+		t.Fatalf("direct = %+v", entries)
 	}
-}
-
-func TestEntriesForMissingGroup(t *testing.T) {
-	cfg := domainContext.ConfigContext(configSource{values: map[string]any{}})
-
-	if entries := EntriesFor(cfg, SubDirect); len(entries) != 0 {
-		t.Fatalf("entries = %d", len(entries))
+	if entries := config.Entries(SubPattern); len(entries) != 1 || entries[0].Name != "pat" {
+		t.Fatalf("pattern = %+v", entries)
 	}
 }
 
-func TestEntriesForEmptyGroup(t *testing.T) {
-	cfg := domainContext.ConfigContext(configSource{values: map[string]any{
-		EntriesKey: map[string]any{SubDirect: []any{}},
-	}})
+func TestEntriesOfAnUnknownSubGroupIsEmpty(t *testing.T) {
+	config := Config{Direct: []LogEntry{{Name: "x"}}}
 
-	if entries := EntriesFor(cfg, SubDirect); len(entries) != 0 {
-		t.Fatalf("entries = %d", len(entries))
+	// An empty slice rather than nil: a caller ranges over the answer without a nil check.
+	if entries := config.Entries("unknown"); entries == nil || len(entries) != 0 {
+		t.Fatalf("entries = %+v", entries)
 	}
 }
 
-func TestEntriesForKeepsTheOutputRaw(t *testing.T) {
-	cfg := domainContext.ConfigContext(configSource{values: map[string]any{
-		EntriesKey: map[string]any{
-			SubFanout: []any{
-				map[string]any{
-					"name":    "dev.file",
-					"handler": "file",
-					"output":  []any{map[string]any{"path": "local://~/logs/a.log"}},
-				},
-			},
-		},
-	}})
+func TestEntriesKeepsTheOutputRaw(t *testing.T) {
+	config := Config{Fanout: []LogEntry{{
+		Name:    "dev.file",
+		Handler: "file",
+		Output:  []byte(`[{"path":"local://~/logs/a.log"}]`),
+	}}}
 
-	entries := EntriesFor(cfg, SubFanout)
-	if len(entries) != 1 {
-		t.Fatalf("entries = %d", len(entries))
-	}
-	// The shape depends on the group, so the contract only promises the bytes are preserved.
-	if len(entries[0].Output) == 0 {
-		t.Fatal("output must be kept verbatim")
+	entries := config.Entries(SubFanout)
+	if len(entries) != 1 || len(entries[0].Output) == 0 {
+		t.Fatalf("entries = %+v", entries)
 	}
 }

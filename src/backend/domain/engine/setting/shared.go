@@ -1,10 +1,8 @@
 package engineSetting
 
 import (
-	"encoding/json"
 	"strings"
 
-	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
@@ -32,8 +30,13 @@ var Errors = []interError.Option{
 // Mode controls how a layer may be used. The zero value is intentionally invalid.
 type Mode uint8
 
-// LayersKey is the configuration path that holds the layer list.
-const LayersKey = "default.runtime.engines.setting.layers"
+// Config maps runtime.engines.setting completely: the schema the engine validates against and the ordered layers.
+type Config struct {
+	Schema string `json:"schema"`
+	// Layers is what the document declares, not what the engine ends up holding: the runtime layer is appended during
+	// Init and never appears here.
+	Layers []LayerConfig `json:"layers"`
+}
 
 // LayerConfig maps one entry of runtime.engines.setting.layers.
 type LayerConfig struct {
@@ -42,33 +45,26 @@ type LayerConfig struct {
 	Mode  string `json:"mode"`
 }
 
-// LayersFor reads the configured layers in ascending priority: the first entry has the lowest priority and every
-// following entry overrides the ones before it.
+// GenLayers generates the layer list from the configuration: the declared entries in ascending priority, with the
+// mode translated and the unnamed ones dropped.
 //
-// The runtime layer is deliberately absent from the document. It is the top layer that holds unsaved edits, so the
-// engine creates it during Init instead of asking the bootstrap to wire it.
-func LayersFor(cfg domainContext.ConfigContext) []LayerConfig {
-	value, found := cfg.Lookup(LayersKey)
-	if !found {
-		return nil
-	}
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		return nil
-	}
-	entries := make([]LayerConfig, 0)
-	if err := json.Unmarshal(encoded, &entries); err != nil {
-		return nil
-	}
-
-	kept := entries[:0]
-	for _, entry := range entries {
+// Generating rather than reading, because the result is not what the document holds. Layers is the persisted list;
+// the runtime layer that carries unsaved edits has no path and no configured mode, so the engine appends it during
+// Init and it never appears here. The name keeps the difference visible at the call site: a caller asking for the
+// layers the engine will actually use has to add the runtime one itself.
+func (c Config) GenLayers() []Layer {
+	layers := make([]Layer, 0, len(c.Layers))
+	for _, entry := range c.Layers {
 		if entry.Layer == "" {
 			continue
 		}
-		kept = append(kept, entry)
+		layers = append(layers, Layer{
+			Name: entry.Layer,
+			Mode: ModeOf(entry.Mode),
+			Path: entry.Path,
+		})
 	}
-	return kept
+	return layers
 }
 
 // ModeOf maps a configured mode onto Mode. An unknown value falls back to read only, so a typo never grants write
