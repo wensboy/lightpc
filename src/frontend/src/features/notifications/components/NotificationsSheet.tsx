@@ -9,7 +9,9 @@ import {
 } from '@/components/ui/sheet'
 import { Toggle } from '@/components/ui/toggle'
 import { NotificationItem } from '@/features/notifications/components/NotificationItem'
+import { useNotificationPrefs } from '@/features/notifications/store/useNotificationPrefs'
 import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
+import { settingService } from '@/services/setting'
 import { useText } from '@/locales'
 
 // NotificationsSheet is the notification centre: a right side sheet without the default close button,
@@ -18,9 +20,8 @@ export function NotificationsSheet() {
   const text = useText()
   const open = useNotificationStore((state) => state.open)
   const closeSheet = useNotificationStore((state) => state.closeSheet)
-  const doNotDisturb = useNotificationStore((state) => state.doNotDisturb)
-  const toggleDoNotDisturb = useNotificationStore((state) => state.toggleDoNotDisturb)
-  const clearNotifications = useNotificationStore((state) => state.clearNotifications)
+  const prefs = useNotificationPrefs()
+  const clearNotifications = useNotificationStore((state) => state.clear)
   const notifications = useNotificationStore((state) => state.notifications)
 
   return (
@@ -40,17 +41,21 @@ export function NotificationsSheet() {
               variant="ghost"
               size="icon-sm"
               aria-label={text.notifications.clear}
-              onClick={clearNotifications}
+              onClick={() => void clearNotifications()}
             >
               <ListXIcon />
             </Button>
             <Toggle
               size="sm"
-              pressed={doNotDisturb}
-              onPressedChange={toggleDoNotDisturb}
+              pressed={prefs.doNotDisturb}
+              onPressedChange={(next) => {
+                // The switch writes the setting rather than a local flag: the document is what the toast reads, so
+                // storing it here would give the two views separate ideas of the mode.
+                void settingService.save('general.notification.doNotDisturb', next, 'service')
+              }}
               aria-label={text.notifications.doNotDisturb}
             >
-              {doNotDisturb ? <BellOffIcon /> : <BellIcon />}
+              {prefs.doNotDisturb ? <BellOffIcon /> : <BellIcon />}
             </Toggle>
           </div>
         </SheetHeader>

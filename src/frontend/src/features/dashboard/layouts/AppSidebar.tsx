@@ -14,6 +14,7 @@ import { NavSecondary } from '@/features/dashboard/components/NavSecondary'
 import { NavUser } from '@/features/dashboard/components/NavUser'
 import { WorkspaceSwitcher } from '@/features/dashboard/components/WorkspaceSwitcher'
 import { buildPrimaryNav, buildSecondaryNav } from '@/features/dashboard/config/nav'
+import { useNotificationPrefs } from '@/features/notifications/store/useNotificationPrefs'
 import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
 import { useText } from '@/locales'
 import { useDialogStore } from '@/stores/dialog'
@@ -33,7 +34,8 @@ export function AppSidebar() {
   const openAccount = useDialogStore((state) => state.openAccount)
   const openNotifications = useNotificationStore((state) => state.openSheet)
   const hasUnreadNotifications = useNotificationStore((state) => state.unread)
-  const doNotDisturb = useNotificationStore((state) => state.doNotDisturb)
+  // The mode lives in the settings document now, so the sidebar reads it from the same place the toast does.
+  const { doNotDisturb } = useNotificationPrefs()
 
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set())
 

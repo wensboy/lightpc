@@ -10,6 +10,7 @@ import { SiteHeader } from '@/features/dashboard/layouts/SiteHeader'
 import { HelpDialog } from '@/features/help/components/HelpDialog'
 import { NotificationsSheet } from '@/features/notifications/components/NotificationsSheet'
 import { SettingsDialog } from '@/features/settings/components/SettingsDialog'
+import { NoticeToaster } from '@/features/notifications/components/NoticeToaster'
 import { useWailsEvent } from '@/hooks/use-wails-event'
 import { sessionService } from '@/services/session'
 
@@ -72,6 +73,7 @@ function AppLayout() {
       <ConsoleSheet />
       <CommandPalette />
       <NotificationsSheet />
+      <NoticeToaster />
       <AccountDialog />
     </SidebarProvider>
   )

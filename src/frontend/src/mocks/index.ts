@@ -1,8 +1,6 @@
 import type { ProfileValues } from '@/features/account/schema'
-import type { NotificationEntry } from '@/features/notifications/store/useNotificationStore'
 import { settingService, type SettingDocument } from '@/services/setting'
 import { accountAvatarMock, accountProfileMock } from './account.mock'
-import { notificationsMock } from './notifications.mock'
 
 // mocksEnabled is resolved once at startup; the switch never leaks into business components.
 const mocksEnabled = import.meta.env.VITE_ENABLE_MOCK === 'true'
@@ -14,12 +12,6 @@ const mocksEnabled = import.meta.env.VITE_ENABLE_MOCK === 'true'
 // file store serves, so there is nothing to mock here.
 export function loadSettings(): Promise<SettingDocument> {
   return settingService.load()
-}
-
-// loadNotifications returns the initial notification list. Without mocks the list starts empty, which is
-// what a fresh backend connection would report.
-export function loadNotifications(): NotificationEntry[] {
-  return mocksEnabled ? notificationsMock : []
 }
 
 // loadAccountProfile returns the profile form defaults.

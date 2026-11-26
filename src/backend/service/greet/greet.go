@@ -1,10 +1,12 @@
 package serviceGreetImpl
 
 import (
-	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
+	"fmt"
 	"log/slog"
 
+	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	engineLog "github.com/wensboy/lightpc/backend/domain/engine/log"
+	engineNotice "github.com/wensboy/lightpc/backend/domain/engine/notice"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
 	"github.com/wensboy/lightpc/backend/internal/cast"
 )
@@ -16,6 +18,7 @@ type GreetService struct {
 	direct  engineLog.DirectClient
 	fanout  engineLog.FanoutClient
 	pattern engineLog.PatternClient
+	notice  engineNotice.Client
 }
 
 func NewGreetService() *GreetService {
@@ -36,6 +39,9 @@ func (s *GreetService) Init(sCtx domainService.ServiceContext) error {
 	}
 	if engine, ok := sCtx.Engines[domainEngine.GroupLog+"."+domainEngine.NamePattern]; ok {
 		s.pattern, _ = cast.As[engineLog.PatternClient](engine)
+	}
+	if engine, ok := sCtx.Engines[domainEngine.GroupNotice+"."+domainEngine.NameNotice]; ok {
+		s.notice, _ = cast.As[engineNotice.Client](engine)
 	}
 	return nil
 }
@@ -74,6 +80,20 @@ func (s *GreetService) EmitLogs() int {
 			"detail", "this row exists so the panel has something to show",
 		)
 		written++
+	}
+
+	// One notice per batch, so opening the console proves the whole way through: the engine records it, announces it
+	// and the interface turns the announcement into a toast. A failure here is reported rather than swallowed, because
+	// a silent notice is exactly the kind of thing this check exists to catch.
+	if s.notice != nil {
+		if _, err := s.notice.Notify(engineNotice.Input{
+			Level:   engineNotice.LevelSuccess,
+			Title:   "log sample written",
+			Content: fmt.Sprintf("%d records were added to the console", written),
+			Source:  "greet",
+		}); err != nil {
+			slog.Default().Warn("greet notice failed", "err", err)
+		}
 	}
 	return written
 }

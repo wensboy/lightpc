@@ -158,7 +158,8 @@
       "required": [
         "language",
         "availableLanguages",
-        "log"
+        "log",
+        "notification"
       ],
       "properties": {
         "language": {
@@ -239,6 +240,63 @@
             "autoScroll": {
               "type": "boolean",
               "description": "Keep the view anchored to the newest record as it arrives."
+            }
+          }
+        },
+        "notification": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Notification preferences.",
+          "required": [
+            "doNotDisturb",
+            "history",
+            "fold",
+            "duration",
+            "position",
+            "availablePositions"
+          ],
+          "properties": {
+            "doNotDisturb": {
+              "type": "boolean",
+              "description": "Silences the toast without touching what the engine records. Switching it on hides the popup while every notice keeps landing in the notification centre."
+            },
+            "history": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "How many notices the notification centre shows. The backend keeps the left edge: once the ring holds more than this, the oldest ids fall out of the answer and clearing rewrites the edge."
+            },
+            "fold": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "How many notices a single toast may stack before the rest collapse into a count. It is a display cap, not a record cap: the ones that did not fit are still in the centre."
+            },
+            "duration": {
+              "type": "string",
+              "pattern": "^\\s*[0-9]+(\\.[0-9]+)?\\s*[a-zA-Z]*\\s*$",
+              "description": "How long one toast stays on screen, written as \"<number> <unit>\" such as \"5 s\". The unit is chosen from the second, minute and hour, because a popup that stays for less than a second is not readable and one that stays for a day is forgotten.",
+              "x-units": [
+                "s",
+                "m",
+                "h"
+              ],
+              "x-number": "^\\d+(\\.\\d+)?"
+            },
+            "position": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Where a toast appears. The options come from the sibling availablePositions array.",
+              "x-options": {
+                "from": "availablePositions"
+              }
+            },
+            "availablePositions": {
+              "type": "array",
+              "description": "The positions the picker offers. It sits beside position rather than inside the schema keyword so a document can narrow the list without editing the schema.",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
             }
           }
         }

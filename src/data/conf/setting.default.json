@@ -172,6 +172,14 @@
             "availableLevels": ["debug", "info", "warn", "error"],
             "refreshInterval": "1 s",
             "autoScroll": true
+        },
+        "notification": {
+            "doNotDisturb": false,
+            "history": 32,
+            "fold": 3,
+            "duration": "5 s",
+            "position": "top-right",
+            "availablePositions": ["top-right", "bottom-right", "bottom-left", "top-left"]
         }
     },
     "account": {},

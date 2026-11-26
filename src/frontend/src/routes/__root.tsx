@@ -1,4 +1,6 @@
 import { createRootRoute, Outlet, redirect } from '@tanstack/react-router'
+import { Toaster } from '@/components/ui/sonner'
+import { useNotificationPrefs } from '@/features/notifications/store/useNotificationPrefs'
 import { readAuth } from '@/features/auth/session'
 
 // The paths that stay reachable without a session.
@@ -16,7 +18,7 @@ export const Route = createRootRoute({
       throw redirect({ to: '/login' })
     }
   },
-  component: () => <Outlet />,
+  component: () => <RootLayout />,
   errorComponent: ({ error }) => (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
       <p className="text-sm font-medium">Something went wrong</p>
@@ -41,3 +43,23 @@ export const Route = createRootRoute({
     </div>
   ),
 })
+
+// RootLayout renders the outlet and the toast container.
+//
+// The container lives here rather than in the shell so a notice raised on any screen still has somewhere to appear. Its
+// position and stack size come from the settings document: saving a new one publishes a change event, the hook
+// re-reads, and the next toast lands in the new corner without a reload.
+//
+// visibleToasts is sonner's own stacking limit - the number of cards drawn behind the front one. Setting it here rather
+// than dismissing from the handler keeps the two mechanisms from disagreeing: the library collapses the extras into the
+// stack edge, while a manual dismiss would discard them and leave the count one short.
+function RootLayout() {
+  const prefs = useNotificationPrefs()
+
+  return (
+    <>
+      <Outlet />
+      <Toaster position={prefs.position} visibleToasts={prefs.fold} />
+    </>
+  )
+}
