@@ -102,7 +102,7 @@ export function SettingsDialog() {
                   <SettingRenderer
                     key={field.path}
                     field={field}
-                    onChange={(next) => setValue(field.path, next)}
+                    onChange={(next) => setValue(field.path, next, field.kind)}
                   />
                 ))
               ) : (

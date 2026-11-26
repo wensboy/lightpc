@@ -93,6 +93,14 @@
       "type": "string",
       "description": "Regular expression the number half of a value must match before it is committed, for example \"^\\\\d+(\\\\.\\\\d+)?\". It constrains the value at the control, while pattern constrains the whole document string.",
       "minLength": 1
+    },
+    "x-kind": {
+      "type": "string",
+      "enum": [
+        "service",
+        "engine"
+      ],
+      "description": "Which bus a change is announced on. Only the settings under advanced belong to the engine bus: they drive a parameter another engine re-reads while running. Everything outside advanced, including the log floor and the notification duration, is a service setting and travels on the service bus."
     }
   }
 }

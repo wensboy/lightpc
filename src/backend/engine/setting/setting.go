@@ -248,12 +248,21 @@ func (s *Setting) Set(layer, key string, value any) error {
 		s.dirty = true
 	}
 	s.mu.Unlock()
-
-	s.notify(key, value)
 	return nil
 }
 
-// Load implements engineSetting.Setting by replacing the whole content of the named layer.
+// SetAndNotify implements engineSetting.Setting: it writes the value and announces the single key change.
+//
+// Two entry points rather than one, because the two kinds of setting belong on different buses. A service level
+// setting is frequent and only matters to services and the interface; an engine level one is rare and has to reach the
+// engines themselves. Folding them into one call would force the engine to know which is which.
+func (s *Setting) SetAndNotify(layer, key string, value any) error {
+	if err := s.Set(layer, key, value); err != nil {
+		return err
+	}
+	s.notify(key, value)
+	return nil
+}
 func (s *Setting) Load(layer string, values map[string]any) error {
 	s.mu.Lock()
 	index, found := s.layerIndex(layer)
@@ -273,9 +282,7 @@ func (s *Setting) Load(layer string, values map[string]any) error {
 	}
 	s.mu.Unlock()
 
-	for key, value := range values {
-		s.notify(key, value)
-	}
+	s.announce(engineSetting.SettingReloadedPayload{Layer: layer, Values: values})
 	return nil
 }
 
@@ -417,11 +424,9 @@ func (s *Setting) loadLayer(index int) error {
 	s.stamps[index] = info.ModTime
 	s.mu.Unlock()
 
-	// A reload replaces the whole layer, so every key it carries is republished: the UI hears about a
-	// file edit without waiting for the next request.
-	for key, value := range values {
-		s.notify(key, value)
-	}
+	// A reload replaces the whole layer, so it leaves as one event: a listener that needs a single key finds it in the
+	// payload, and nobody has to run their per-key path once per key of the file.
+	s.announce(engineSetting.SettingReloadedPayload{Layer: layer.Name, Values: values})
 	return nil
 }
 
@@ -484,15 +489,27 @@ func (s *Setting) fileStore() (engineStore.FileStore, bool) {
 	return cast.As[engineStore.FileStore](engine)
 }
 
-// notify publishes the change so services can react to it.
+// notify publishes a single key change on the engine bus.
 func (s *Setting) notify(key string, value any) {
+	s.announce(engineSetting.SettingChangedPayload{Key: key, Value: value})
+}
+
+// announce hands payload to the bus. The payload type is what identifies the event for a listener, so emitting the
+// typed dto rather than a map keeps the two events from being told apart by their keys alone.
+func (s *Setting) announce(payload any) {
 	s.mu.RLock()
 	ebus := s.ectx.Ebus
 	s.mu.RUnlock()
 	if ebus == nil {
 		return
 	}
-	ebus.Emit(domainBus.EventSettingChanged, map[string]any{"key": key, "value": value})
+
+	switch typed := payload.(type) {
+	case engineSetting.SettingChangedPayload:
+		ebus.Emit(domainBus.EventSettingChanged, typed)
+	case engineSetting.SettingReloadedPayload:
+		ebus.Emit(domainBus.EventSettingReloaded, typed)
+	}
 }
 
 // canRead reports whether the mode permits reading.

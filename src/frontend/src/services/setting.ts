@@ -37,7 +37,7 @@ export type SettingDocument = {
 export interface SettingService {
   load(): Promise<SettingDocument>
   /** Persists one group of the document; the backend flushes it to the user layer in the background. */
-  save(key: string, value: unknown): Promise<void>
+  save(key: string, value: unknown, kind?: string): Promise<void>
 }
 
 // settingService asks the backend for the document, since the schema and the default document are
@@ -58,7 +58,9 @@ export const settingService: SettingService = {
     }
   },
 
-  async save(key, value) {
-    await SettingBinding.Save(key, value)
+  async save(key, value, kind) {
+    // A field without x-kind is an ordinary setting, so the backend is told "service" rather than nothing: the routing
+    // decision belongs there, and an empty string would only make it guess.
+    await SettingBinding.Save(key, value, kind ?? 'service')
   },
 }

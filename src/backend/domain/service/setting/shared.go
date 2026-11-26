@@ -23,3 +23,33 @@ type SettingThemeDto struct {
 	Light map[string]string `json:"light"`
 	Dark  map[string]string `json:"dark"`
 }
+
+// Kind routes a change onto one of the two buses.
+//
+// It is the service's vocabulary rather than the engine's: the engine stores layers and knows nothing about who listens.
+// What a change is *for* - an engine that has to re-read a parameter, or a service and the interface that only need the
+// new value - is a business distinction, and it is made once, here.
+type Kind string
+
+const (
+	// KindService is an ordinary setting: frequent, mostly cosmetic, and it only reaches services and the interface.
+	KindService Kind = "service"
+	// KindEngine is an advanced setting: rare, and it drives a parameter another engine reads while running.
+	KindEngine Kind = "engine"
+)
+
+// Known reports whether the kind is one the service can route.
+func (k Kind) Known() bool {
+	return k == KindService || k == KindEngine
+}
+
+// SettingChangedPayload is the payload of EventSettingChanged on the service bus: one key that now resolves to one
+// value.
+//
+// The shape is deliberately a copy of the engine's payload rather than an alias of it. The two buses are isolated, and
+// an alias would couple them: whoever edited the engine's struct to serve a new listener would silently change what
+// services receive. A copy means the two can evolve apart, and a listener casts to the type of the bus it subscribed to.
+type SettingChangedPayload struct {
+	Key   string `json:"key"`
+	Value any    `json:"value"`
+}

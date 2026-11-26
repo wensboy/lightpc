@@ -58,10 +58,11 @@ export function Payload() {
  * blocked by disk IO. A failing flush is retried by the engine's periodic flush.
  * @param {string} key
  * @param {any} value
+ * @param {serviceSetting$0.Kind} kind
  * @returns {$CancellablePromise<void>}
  */
-export function Save(key, value) {
-    return $Call.ByID(1507216379, key, value);
+export function Save(key, value, kind) {
+    return $Call.ByID(1507216379, key, value, kind);
 }
 
 // Private type creation functions

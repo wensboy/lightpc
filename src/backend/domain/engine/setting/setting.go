@@ -33,8 +33,12 @@ type Setting interface {
 	Layered(key string) []any
 	// Resolve returns the highest priority contribution of key.
 	Resolve(key string) (any, bool)
-	// Set writes value into the named layer; the layer must accept writes.
+	// Set writes value into the named layer; the layer must accept writes. It announces nothing: whether a change
+	// should reach the bus depends on which kind of setting it is, and only the caller knows that.
 	Set(layer, key string, value any) error
+	// SetAndNotify writes value and announces it as a single key change on the engine bus. It is for the settings that
+	// drive another engine, where the change has to arrive before the write returns.
+	SetAndNotify(layer, key string, value any) error
 	// Load replaces the whole content of the named layer.
 	Load(layer string, values map[string]any) error
 	// Keys lists every key that has at least one contribution, ordered alphabetically.

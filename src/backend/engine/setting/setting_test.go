@@ -120,21 +120,31 @@ func TestSettingNotifiesChanges(t *testing.T) {
 	if err := s.Init(domainEngine.EngineContext{Ebus: bus}); err != nil {
 		t.Fatal(err)
 	}
+	// Set writes and says nothing: whether a change should reach a bus depends on the kind of setting, which only the
+	// caller knows. SetAndNotify is the entry point that also announces.
 	if err := s.Set("user", "theme", "dark"); err != nil {
 		t.Fatal(err)
 	}
-
 	select {
 	case payload := <-changed:
-		source, ok := cast.To[map[string]any](payload)
+		t.Fatalf("Set must not publish, got %v", payload)
+	default:
+	}
+
+	if err := s.SetAndNotify("user", "theme", "dark"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case payload := <-changed:
+		change, ok := cast.As[engineSetting.SettingChangedPayload](payload)
 		if !ok {
 			t.Fatalf("payload = %v", payload)
 		}
-		if source["key"] != "theme" || source["value"] != "dark" {
-			t.Fatalf("payload = %v", source)
+		if change.Key != "theme" || change.Value != "dark" {
+			t.Fatalf("payload = %+v", change)
 		}
 	default:
-		t.Fatal("a change must be published")
+		t.Fatal("SetAndNotify must publish")
 	}
 }
 

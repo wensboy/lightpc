@@ -7,6 +7,32 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * Kind routes a change onto one of the two buses.
+ * 
+ * It is the service's vocabulary rather than the engine's: the engine stores layers and knows nothing about who listens.
+ * What a change is *for* - an engine that has to re-read a parameter, or a service and the interface that only need the
+ * new value - is a business distinction, and it is made once, here.
+ * @readonly
+ * @enum {string}
+ */
+export const Kind = {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero: "",
+
+    /**
+     * KindService is an ordinary setting: frequent, mostly cosmetic, and it only reaches services and the interface.
+     */
+    KindService: "service",
+
+    /**
+     * KindEngine is an advanced setting: rare, and it drives a parameter another engine reads while running.
+     */
+    KindEngine: "engine",
+};
+
+/**
  * SettingPayloadDto is the settings document handed to the front end: the schema that describes every field
  * together with the values used to render it.
  */

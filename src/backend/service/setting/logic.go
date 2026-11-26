@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	engineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
@@ -20,17 +21,20 @@ import (
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
+// NewSettingService builds an uninitialised service.
+func NewSettingService() *SettingService {
+	return &SettingService{schemaPath: defaultSchemaPath}
+}
+
 // SettingService hands the settings schema and its aggregated values to the front end.
 type SettingService struct {
 	fileStore  engineStore.FileStore
 	setting    engineSetting.Setting
 	schemaPath string
 	appCtx     *domainContext.AppContext
-}
-
-// NewSettingService builds an uninitialised service.
-func NewSettingService() *SettingService {
-	return &SettingService{schemaPath: defaultSchemaPath}
+	// bus is the service bus. An ordinary setting is announced here rather than on the engine bus, so a change that
+	// only concerns services and the interface does not wake every engine.
+	bus domainBus.Bus
 }
 
 // Group implements domainService.Service.
@@ -60,6 +64,7 @@ func (s *SettingService) Init(sCtx domainService.ServiceContext) error {
 	s.setting = instance
 
 	s.appCtx = sCtx.AppCtx
+	s.bus = sCtx.Ebus
 
 	// The schema is a plain document, so its location comes from the configuration rather than a literal.
 	if sCtx.AppCtx != nil && sCtx.AppCtx.ConfigContext != nil {
@@ -117,6 +122,41 @@ func (s *SettingService) Payload() (serviceSetting.SettingPayloadDto, error) {
 	}, nil
 }
 
+// Save writes one value into the runtime layer and flushes it in the background, so the UI update is never
+// blocked by disk IO. A failing flush is retried by the engine's periodic flush.
+func (s *SettingService) Save(key string, value any, kind serviceSetting.Kind) error {
+	if s.setting == nil {
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown)
+	}
+	if !kind.Known() {
+		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown).
+			Wrap(fmt.Errorf("save %q: unknown kind %q", key, kind))
+	}
+
+	// The engine is asked with the entry point that matches the destination: an engine kind is announced on the engine
+	// bus by the engine itself, a service kind is announced here, after the write succeeded. The engine never learns
+	// which bus a change belongs to.
+	var err error
+	if kind == serviceSetting.KindEngine {
+		err = s.setting.SetAndNotify(runtimeLayerName, key, value)
+	} else {
+		err = s.setting.Set(runtimeLayerName, key, value)
+	}
+	if err != nil {
+		return err
+	}
+	if kind == serviceSetting.KindService {
+		s.announce(key, value)
+	}
+	instance := s.setting
+	go func() {
+		if err := instance.Flush(); err != nil {
+			slog.Default().Warn("setting flush failed", "key", key, "err", err)
+		}
+	}()
+	return nil
+}
+
 // pruneBuiltinFonts drops any declared family that has no matching file in the bundle. The picker can
 // therefore never offer a font that would fail to load, and a stale entry is reported instead of hidden.
 func (s *SettingService) pruneBuiltinFonts(flat map[string]any) {
@@ -142,6 +182,34 @@ func (s *SettingService) pruneBuiltinFonts(flat map[string]any) {
 		kept = append(kept, family)
 	}
 	flat[builtinFontKey] = kept
+}
+
+// defaults collects what the default layer contributes, so the renderer has an authored value to fall back
+// to when a hand edited user value breaks the schema.
+func (s *SettingService) defaults() map[string]any {
+	flat := map[string]any{}
+	for _, key := range s.setting.Keys() {
+		for _, raw := range s.setting.Layered(key) {
+			entry, ok := cast.As[engineSetting.Entry[any]](raw)
+			if !ok || entry.Layer != defaultLayerName {
+				continue
+			}
+			flat[key] = entry.Value
+		}
+	}
+	return flat
+}
+
+// announce publishes an ordinary setting change on the service bus.
+//
+// The payload is the service's own type, not the engine's, even though the fields match: the two buses are isolated, so
+// an alias would let a change made for one side leak into the other. A listener casts to the type of the bus it
+// subscribed to, and that is the whole contract between them.
+func (s *SettingService) announce(key string, value any) {
+	if s.bus == nil {
+		return
+	}
+	s.bus.Emit(domainBus.EventSettingChanged, serviceSetting.SettingChangedPayload{Key: key, Value: value})
 }
 
 // mergeThemePalettes combines the shipped palettes with the user ones. A user palette with a new name is
@@ -194,9 +262,7 @@ func mergeThemePalettes(flat, defaults map[string]any) {
 // did not mention keep their shipped value.
 func mergeTheme(base, override map[string]any) map[string]any {
 	result := make(map[string]any, len(base))
-	for key, value := range base {
-		result[key] = value
-	}
+	maps.Copy(result, base)
 
 	for _, mode := range []string{"light", "dark"} {
 		basePalette, _ := cast.To[map[string]any](base[mode])
@@ -210,22 +276,6 @@ func mergeTheme(base, override map[string]any) map[string]any {
 		result[mode] = folded
 	}
 	return result
-}
-
-// defaults collects what the default layer contributes, so the renderer has an authored value to fall back
-// to when a hand edited user value breaks the schema.
-func (s *SettingService) defaults() map[string]any {
-	flat := map[string]any{}
-	for _, key := range s.setting.Keys() {
-		for _, raw := range s.setting.Layered(key) {
-			entry, ok := cast.As[engineSetting.Entry[any]](raw)
-			if !ok || entry.Layer != defaultLayerName {
-				continue
-			}
-			flat[key] = entry.Value
-		}
-	}
-	return flat
 }
 
 // nestValues rebuilds the nested document the renderer expects from the engine's dotted keys.
@@ -245,22 +295,4 @@ func nestValues(flat map[string]any) map[string]any {
 		cursor[segments[len(segments)-1]] = value
 	}
 	return document
-}
-
-// Save writes one value into the runtime layer and flushes it in the background, so the UI update is never
-// blocked by disk IO. A failing flush is retried by the engine's periodic flush.
-func (s *SettingService) Save(key string, value any) error {
-	if s.setting == nil {
-		return interError.Retrieve(engineSetting.ErrKeyLayerUnknown)
-	}
-	if err := s.setting.Set(runtimeLayerName, key, value); err != nil {
-		return err
-	}
-	instance := s.setting
-	go func() {
-		if err := instance.Flush(); err != nil {
-			slog.Default().Warn("setting flush failed", "key", key, "err", err)
-		}
-	}()
-	return nil
 }

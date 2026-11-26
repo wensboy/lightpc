@@ -7,7 +7,7 @@ import { settingService, type SettingDocument } from '@/services/setting'
 export type SettingsState = {
   groups: SettingGroup[]
   error: string | null
-  setValue: (path: string, value: SettingValue) => void
+  setValue: (path: string, value: SettingValue, kind?: string) => void
 }
 
 // useSettings loads the settings document whenever the dialog opens. The document has to be re-read
@@ -67,14 +67,16 @@ export function useSettings(active = true): SettingsState {
           continue
         }
         repaired.current.add(field.path)
-        void settingService.save(field.path, field.value)
+        void settingService.save(field.path, field.value, field.kind)
       }
     }
   }, [groups])
 
   // Typing fires one change per keystroke, so writes are coalesced: the UI updates immediately while the
   // backend receives one save per quiet period instead of one per character.
-  const pending = useRef(new Map<string, SettingValue>())
+  // Each pending write keeps the kind it was made with: the field is gone by the time the batch flushes, and the
+  // backend needs to know which bus the change belongs on.
+  const pending = useRef(new Map<string, { value: SettingValue; kind?: string }>())
   const timer = useRef<number | null>(null)
 
   const flushPending = useCallback(() => {
@@ -82,8 +84,8 @@ export function useSettings(active = true): SettingsState {
       window.clearTimeout(timer.current)
       timer.current = null
     }
-    for (const [path, value] of pending.current) {
-      void settingService.save(path, value)
+    for (const [path, entry] of pending.current) {
+      void settingService.save(path, entry.value, entry.kind)
     }
     pending.current.clear()
   }, [])
@@ -91,13 +93,13 @@ export function useSettings(active = true): SettingsState {
   useEffect(() => () => flushPending(), [flushPending])
 
   const setValue = useCallback(
-    (path: string, value: SettingValue) => {
+    (path: string, value: SettingValue, kind?: string) => {
       // Frontend effects run first: a themed switch must repaint immediately instead of waiting for the
       // value to reach the backend and come back. Keys without an effect skip straight to the save.
       applySettingEffect(path, value)
       edited.current.add(path)
       setValues((previous) => setAt(previous, path, value))
-      pending.current.set(path, value)
+      pending.current.set(path, { value, kind })
       if (timer.current !== null) {
         window.clearTimeout(timer.current)
       }

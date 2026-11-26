@@ -24,6 +24,8 @@ export type JsonSchemaNode = {
   'x-units'?: string | string[]
   /** Grammar the number half of a quantity must satisfy, for example "^\d+(\.\d+)?". */
   'x-number'?: string
+  /** Which bus a change belongs on: "engine" for the rare settings another engine re-reads, absent for the rest. */
+  'x-kind'?: string
 
   /** Swaps the option source while a sibling boolean is enabled. */
   'x-options-when'?: { key: string; from: string }
@@ -49,6 +51,10 @@ export type SettingField = {
   units?: string[]
   /** Grammar the number half must satisfy before it is committed. */
   number?: string
+  /** Bus the change is announced on. Absent means an ordinary service level setting. */
+  kind?: string
+  /** Declared JSON type of the value, so a control produces what the schema expects. */
+  type?: string
   pattern?: string
   /** True when the stored value violated the schema and the shown value is a fallback. */
   invalid: boolean
@@ -320,6 +326,8 @@ function collectFields(
       options,
       units,
       number: child['x-number'],
+      kind: child['x-kind'],
+      type: child.type,
       pattern: child.pattern,
       invalid,
     })

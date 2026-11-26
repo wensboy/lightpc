@@ -79,3 +79,25 @@ func ModeOf(text string) Mode {
 		return ModeReadOnly
 	}
 }
+
+// SettingChangedPayload is the payload of EventSettingChanged: one key that now resolves to one value.
+//
+// The payload carries the resolved value rather than the contribution, because every listener asks the same question -
+// "what do I use now" - and re-resolving it from the engine would race with the next write.
+//
+// It is named after the event, never after a dto: a payload describes what crossed the bus, and the shape a front end
+// receives is a separate concern that happens to look similar today.
+type SettingChangedPayload struct {
+	Key   string `json:"key"`
+	Value any    `json:"value"`
+}
+
+// SettingReloadedPayload is the payload of EventSettingReloaded: a layer replaced as a whole.
+//
+// Values lists only the keys that arrived, not the whole resolved view. A listener that cares about one key looks it
+// up here; a listener that cares about everything reads the engine. Sending the full view would mean resolving every
+// key on every layer swap, including the ones nothing is listening for.
+type SettingReloadedPayload struct {
+	Layer  string         `json:"layer"`
+	Values map[string]any `json:"values"`
+}
