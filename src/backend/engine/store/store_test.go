@@ -8,12 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	domainBus "github.com/wensboy/lightpc/backend/domain/bus"
 	domainContext "github.com/wensboy/lightpc/backend/domain/context"
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
 	"github.com/wensboy/lightpc/backend/internal/config"
-	"github.com/wensboy/lightpc/backend/internal/ebus"
 	interError "github.com/wensboy/lightpc/backend/internal/error"
 )
 
@@ -89,8 +87,10 @@ func newConfiguredEngineContext(t *testing.T) domainEngine.EngineContext {
 	}}
 }
 
-func TestFSInitAppliesDefaultsFromConfig(t *testing.T) {
-	fsStore := NewFS(WithRoot(t.TempDir()))
+func TestFSInitKeepsWhatTheCallerPassed(t *testing.T) {
+	// The engine does not read the document: a mode arrives through an option, so what the caller set is what Init
+	// leaves in place.
+	fsStore := NewFS(WithRoot(t.TempDir()), WithFileMode(0o644), WithDirMode(0o755))
 
 	if err := fsStore.Init(newConfiguredEngineContext(t)); err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func TestFSInitAppliesDefaultsFromConfig(t *testing.T) {
 }
 
 func TestFSInitKeepsConfiguredOverrides(t *testing.T) {
-	fsStore := NewFS(WithRoot(t.TempDir())).WithFileMode(0o600).WithDirMode(0o700)
+	fsStore := NewFS(WithRoot(t.TempDir()), WithFileMode(0o600), WithDirMode(0o700))
 
 	if err := fsStore.Init(newConfiguredEngineContext(t)); err != nil {
 		t.Fatal(err)
@@ -158,7 +158,7 @@ func TestFSRejectsEmbeddedWrites(t *testing.T) {
 
 func TestFSHookContextReportsThePreparedState(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "nested", "store")
-	fsStore := NewFS(WithRoot(root))
+	fsStore := NewFS(WithRoot(root), WithFileMode(0o644), WithDirMode(0o755))
 
 	if err := fsStore.Init(newConfiguredEngineContext(t)); err != nil {
 		t.Fatal(err)
@@ -180,21 +180,20 @@ func TestFSHookContextReportsThePreparedState(t *testing.T) {
 	}
 }
 
-func TestFSInitWatchesStopSignal(t *testing.T) {
-	bus := ebus.NewEventBus()
-	engineCtx := domainEngine.EngineContext{
-		AppCtx: &domainContext.AppContext{Context: context.Background(), ErrorContext: domainContext.ErrorContext{}},
-		Ebus:   bus,
-	}
+func TestFSStopClosesTheStore(t *testing.T) {
 	fsStore := NewFS(WithRoot(t.TempDir()))
-	if err := fsStore.Init(engineCtx); err != nil {
+	if err := fsStore.Init(domainEngine.EngineContext{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := fsStore.Start(); err != nil {
 		t.Fatal(err)
 	}
 
-	bus.Emit(domainBus.EventEngineStop, map[string]any{"group": domainEngine.GroupStore, "name": domainEngine.NameFs})
+	// Stopping is what the runtime does, by calling the method rather than by publishing an event - the stop event is
+	// announced afterwards, so a listener would only ever arrive once the store is already closed.
+	if err := fsStore.Stop(); err != nil {
+		t.Fatal(err)
+	}
 
 	if state := fsStore.State(); state != domainEngine.EngineStopped {
 		t.Fatalf("state = %v", state)

@@ -110,12 +110,6 @@ func (er *EngineRuntime) Engine(group, name string) []domainEngine.Engine {
 // Run initialises and starts every engine in dependency order. Each engine receives the engines
 // it depends on through EngineContext; a missing or cyclic dependency aborts the start.
 func (er *EngineRuntime) Run() error {
-	type engineEvent struct {
-		Group string `json:"group"`
-		Name  string `json:"name"`
-		State string `json:"state"`
-	}
-
 	engineCtx := domainEngine.EngineContext{Ebus: er.ebus}
 	if er.appRuntime != nil {
 		engineCtx.AppCtx = &er.appRuntime.appCtx
@@ -185,8 +179,7 @@ func (er *EngineRuntime) Run() error {
 	}
 
 	for _, engine := range ordered {
-		event := engineEvent{Group: engine.Group(), Name: engine.Name()}
-		payload := map[string]any{"group": event.Group, "name": event.Name, "state": ""}
+		payload := domainEngine.EngineStatePayload{Group: engine.Group(), Name: engine.Name()}
 
 		engineCtx.Engines = make(map[string]domainEngine.Engine, len(engine.Deps()))
 		for _, dependency := range engine.Deps() {
@@ -200,23 +193,19 @@ func (er *EngineRuntime) Run() error {
 		}
 
 		if err := engine.Init(engineCtx); err != nil {
-			event.State = string(engine.State())
-			payload["state"] = event.State
+			payload.State = string(engine.State())
 			er.ebus.Emit(domainBus.EventEngineError, payload)
 			return err
 		}
-		event.State = string(engine.State())
-		payload["state"] = event.State
+		payload.State = string(engine.State())
 		er.ebus.Emit(domainBus.EventEngineInit, payload)
 
 		if err := engine.Start(); err != nil {
-			event.State = string(engine.State())
-			payload["state"] = event.State
+			payload.State = string(engine.State())
 			er.ebus.Emit(domainBus.EventEngineError, payload)
 			return err
 		}
-		event.State = string(engine.State())
-		payload["state"] = event.State
+		payload.State = string(engine.State())
 		er.ebus.Emit(domainBus.EventEngineStart, payload)
 		er.ebus.Emit(domainBus.EventEngineReady, payload)
 	}
@@ -232,20 +221,20 @@ func (er *EngineRuntime) Exit() error {
 	var firstErr error
 	for index := len(ordered) - 1; index >= 0; index-- {
 		engine := ordered[index]
-		payload := map[string]any{
-			"group": engine.Group(),
-			"name":  engine.Name(),
-			"state": string(engine.State()),
+		payload := domainEngine.EngineStatePayload{
+			Group: engine.Group(),
+			Name:  engine.Name(),
+			State: string(engine.State()),
 		}
 		if err := engine.Stop(); err != nil {
 			if firstErr == nil {
 				firstErr = err
 			}
-			payload["state"] = string(engine.State())
+			payload.State = string(engine.State())
 			er.ebus.Emit(domainBus.EventEngineError, payload)
 			continue
 		}
-		payload["state"] = string(engine.State())
+		payload.State = string(engine.State())
 		er.ebus.Emit(domainBus.EventEngineStop, payload)
 	}
 	return firstErr

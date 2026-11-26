@@ -15,6 +15,17 @@ const (
 
 type EngineState string
 
+// EngineStatePayload is the payload of every lifecycle event - init, start, ready, stop and error.
+//
+// One type rather than one per event: all five report the same three facts about the same thing, and a listener that
+// switches on the event name reads them identically. A payload is named after what crossed the bus, never after a dto,
+// and it is emitted by reference so the interface can assert one concrete type instead of decoding a map.
+type EngineStatePayload struct {
+	Group string `json:"group"`
+	Name  string `json:"name"`
+	State string `json:"state"`
+}
+
 // EngineContext 作为引擎初始化传递上下文传递必要的信息.
 type EngineContext struct {
 	AppCtx  *domainContext.AppContext

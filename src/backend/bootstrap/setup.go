@@ -16,8 +16,8 @@ import (
 	engineNotice "github.com/wensboy/lightpc/backend/domain/engine/notice"
 	domainEngineSetting "github.com/wensboy/lightpc/backend/domain/engine/setting"
 	domainEngineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
-	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
 	engineStore "github.com/wensboy/lightpc/backend/domain/engine/store"
+	domainRuntime "github.com/wensboy/lightpc/backend/domain/runtime"
 	domainService "github.com/wensboy/lightpc/backend/domain/service"
 	engineLogImpl "github.com/wensboy/lightpc/backend/engine/log"
 	engineNoticeImpl "github.com/wensboy/lightpc/backend/engine/notice"
@@ -330,19 +330,22 @@ func SetupEventHandle(ar *domainRuntime.AppRuntime, er *domainRuntime.EngineRunt
 	})
 
 	er.WithEventFn(func(eec domainEngine.EngineEventContext) {
+		for _, name := range domainBus.EngineOpaqueEvents {
+			eec.Ebus.On(name, func(payload any) {
+				if eec.AppEbus == nil {
+					return
+				}
+				eec.AppEbus.Emit(name, payload)
+			})
+		}
 		eec.Ebus.On(domainBus.EventEngineError, func(payload any) {
-			type engineEvent struct {
-				Group string `json:"group"`
-				Name  string `json:"name"`
-				State string `json:"state"`
-			}
-			source, ok := cast.To[map[string]any](payload)
+			// One assertion, the same shape the setting handlers use: the emitter sends a named payload, so a listener
+			// casts to it instead of decoding a map field by field.
+			event, ok := cast.As[domainEngine.EngineStatePayload](payload)
 			if !ok {
 				return
 			}
-			event := engineEvent{}
-			cast.ToStruct(source, &event, "json")
-			engine, ok := eec.Engines[event.Group+"."+event.Name]
+			engine, ok := eec.Engines[domainEngine.EngineDep(event.Group, event.Name)]
 			if !ok {
 				return
 			}
@@ -354,12 +357,15 @@ func SetupEventHandle(ar *domainRuntime.AppRuntime, er *domainRuntime.EngineRunt
 		// Services already act on their own events, but an expiry has to reach the interface. The service bus
 		// is a different bus from the app one, so the event is re-published there; the app runtime forwards
 		// every name in UiEvents to the webview, which is where the layout listens.
-		sec.Ebus.On(domainBus.EventSessionExpired, func(payload any) {
-			if sec.AppEbus == nil {
-				return
-			}
-			sec.AppEbus.Emit(domainBus.EventSessionExpired, payload)
-		})
+		for _, name := range domainBus.ServiceOpaqueEvents {
+			sec.Ebus.On(name, func(payload any) {
+				if sec.AppEbus == nil {
+					return
+				}
+				sec.AppEbus.Emit(name, payload)
+			})
+		}
+
 	})
 }
 

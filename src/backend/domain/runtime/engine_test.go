@@ -143,16 +143,14 @@ func TestEngineRuntimeRunStartError(t *testing.T) {
 }
 
 func TestEngineRuntimeRunEmitsParsablePayload(t *testing.T) {
-	type engineEvent struct {
-		Group string `json:"group"`
-		Name  string `json:"name"`
-		State string `json:"state"`
-	}
-	var received []engineEvent
+	var received []domainEngine.EngineStatePayload
 	engineRuntime := NewEngineRuntime()
 	engineRuntime.ebus.On(domainBus.EventEngineReady, func(payload any) {
-		event := engineEvent{}
-		cast.ToStruct(payload.(map[string]any), &event, "json")
+		// The emitter sends the named type, so a listener asserts it directly rather than decoding a map.
+		event, ok := cast.As[domainEngine.EngineStatePayload](payload)
+		if !ok {
+			t.Fatalf("payload = %T", payload)
+		}
 		received = append(received, event)
 	})
 	engineRuntime.Register(&stubEngine{group: "core", name: "a"})

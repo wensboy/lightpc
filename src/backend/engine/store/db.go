@@ -177,7 +177,6 @@ func (s *SQL) Init(eCtx domainEngine.EngineContext) error {
 		return err
 	}
 
-	watchStopSignal(eCtx.Ebus, domainEngine.NameDb, s.Close)
 	s.setState(domainEngine.EngineReady)
 	return nil
 }

@@ -99,7 +99,6 @@ func (f *FS) Init(eCtx domainEngine.EngineContext) error {
 	f.ectx = eCtx
 	f.mu.Unlock()
 
-	watchStopSignal(eCtx.Ebus, domainEngine.NameFs, f.Close)
 	f.setState(domainEngine.EngineReady)
 	return nil
 }
