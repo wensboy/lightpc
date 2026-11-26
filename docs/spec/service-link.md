@@ -41,7 +41,7 @@ description: '新增服务处理链路.'
 
 ## Example
 
-**当前 help service 的结构完美符合规范, 后续所有服务参照类似结构实现**
+**当前 help service 的结构完美符合规范, 后续所有服务参照类似结构实现. 以下示例同时取自 `session` `setting` `log` `notice`, 凡涉及数据库与事件的地方以它们为准**
 
 以下共性抽取自 `help`, `session`, `setting` 三个已完成的服务实现, 是对上述 Step 与 Hint 的落实方式.
 
@@ -61,11 +61,13 @@ backend/service/<id>/
 
 | 服务 | domain 文件 | impl 文件 |
 |---|---|---|
-| `help` | `help.go` `shared.go` | `logic.go` `model.go` `shared.go` |
+| `help` | `help.go` `shared.go` | `logic.go` `shared.go` |
 | `session` | `session.go` `shared.go` | `logic.go` `model.go` `repo.go` `shared.go` |
 | `setting` | `setting.go` `shared.go` | `logic.go` `shared.go` |
+| `log` | `log.go` `shared.go` | `logic.go` `model.go` `repo.go` `shared.go` |
+| `notice` | `notice.go` `shared.go` | `logic.go` `shared.go` |
 
-`model.go` 只在服务有内部结构时存在(`help` 的 `meta`, `session` 的 `entry`); `repo.go` 只在服务直接执行 SQL 时存在(`session`); `setting` 两者皆无, 因此只有 `logic.go` 与 `shared.go`.
+`model.go` 与 `repo.go` 成对出现, 因为两者都是「服务自己碰数据库」的产物: `session` 与 `log` 各有 dao 和 SQL, 其余三个服务既不映射表也不查询, 因此只有 `logic.go` 与 `shared.go`. 一个服务若只读一个已解析好的引擎状态(`notice` 读引擎的环), 同样不需要 `model.go`.
 
 ### 契约层(domain)
 
@@ -89,13 +91,15 @@ type HelpClient interface {
 }
 ```
 
-三个服务的接口与所在文件:
+五个服务的接口与所在文件:
 
 | 服务 | 接口 | 文件 | 方法 |
 |---|---|---|---|
 | `help` | `HelpClient` | `help/help.go` | `Payload` `Read` |
 | `session` | `SessionClient` | `session/session.go` | `Register` `Login` `Logout` `Unregister` `Current` |
 | `setting` | `SettingClient` | `setting/setting.go` | `Payload` `Save` |
+| `log` | `LogClient` | `log/log.go` | `Listeners` `Records` `Clear` `SetFilter` |
+| `notice` | `NoticeClient` | `notice/notice.go` | `History` `Send` `Remove` |
 
 错误 key 的三段式命名, 中间是 service id:
 
@@ -125,24 +129,36 @@ dto 一律带 `json` 标签, 且**返回切片时不用 nil**:
 | 服务 | dto |
 |---|---|
 | `help` | `DocsPayloadDto` `DocsVersionDto` `DocsGroupDto` `DocsItemDto` |
-| `session` | `StatusDto` `RegisterInputDto` `LoginInputDto` |
+| `session` | `StatusDto` `AuthMetaDto` `RegisterInputDto` `LoginInputDto` |
 | `setting` | `SettingPayloadDto` `SettingThemeDto` |
+| `log` | `LogRecordDto` `LogRecordsDto` `LogQueryDto` `FilterParamsDto` `ListenerDto` |
+| `notice` | `NoticeItemDto` `NoticeHistoryDto` `NoticeSendInputDto` `NoticeRemoveInputDto` |
+
+请求结构以 `InputDto` 结尾, 应答结构以 `Dto` 结尾, 一个方法一个结构而不是把两者合并: `LogQueryDto` 只出现在入参位置, `LogRecordsDto` 只出现在返回位置, 读代码时方向一目了然.
 
 ### 实现层(service)
 
 结构体命名 `<Id>Service`, 由 `New<Id>Service()` 构造. 字段分两组, 中间空行:
 
 ```go
-// SessionService owns the accounts and the live tokens.
+// SessionService owns the accounts and the one session this process signed in.
 type SessionService struct {
-	mu         sync.RWMutex        // 核心: 依赖与状态
-	store      engineStore.DBStore
-	cache      *ttlcache.Cache[string, entry]
+	mu    sync.RWMutex
+	store engineStore.DBStore
+	bus   domainBus.Bus
+	// pair is the one session this process signed in. A single client means a single live pair, so no lookup
+	// structure is needed: the pair either matches or it does not.
+	pair       serviceSession.AuthMetaDto
+	// expiresAt is the deadline of that pair, zero when the window never closes.
+	expiresAt  time.Time
+	timer      *time.Timer
 	expiration time.Duration
 	softDelete bool
 	state      domainEngine.EngineState
 }
 ```
+
+字段顺序是「先依赖与业务状态, 空行, 再同步原语」的反面——这里把 `mu` 放在最前, 因为它是所有字段的守卫, 读结构体时先看到锁, 再看它保护什么.
 
 生命周期方法固定这一组, 顺序与文件内一致:
 
@@ -156,19 +172,21 @@ func (s *XxxService) Stop() error
 func (s *XxxService) Deinit() error            { return nil }   // 或转调 Stop
 ```
 
-三个服务各自实现了哪些:
+五个服务各自实现了哪些:
 
-| 方法 | `HelpService` | `SessionService` | `SettingService` |
-|---|---|---|---|
-| `Group` | ✓ | ✓ | ✓ |
-| `Deps` | ✓ | ✓ | — |
-| `State` | — | ✓ | — |
-| `Init` | ✓ | ✓ | ✓ |
-| `Start` | — | ✓ | — |
-| `Stop` | — | ✓ | — |
-| `Deinit` | ✓ | ✓ | ✓ |
+| 方法 | `HelpService` | `SessionService` | `SettingService` | `LogService` | `NoticeService` |
+|---|---|---|---|---|---|
+| `Group` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `Deps` | `store.fs` | `store.db` | — | `store.db` | `notice` + `setting` |
+| `State` | — | ✓ | — | ✓ | — |
+| `Init` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `Start` | — | ✓ | — | ✓ | — |
+| `Stop` | — | ✓ | — | ✓ | — |
+| `Deinit` | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-`Deps` 缺失的 `SettingService` 在 `Init` 内直接取引擎, 靠 `Init` 的错误返回暴露依赖问题; 新服务应声明 `Deps`, 让调度器在注册阶段就校验.
+`State` / `Start` / `Stop` 三者同进同出: 一个服务需要状态机, 就说明它有需要启动与释放的运行期资源(会话的计时器、日志的边界表). 只做一次性解析的服务三者皆无, `Deinit` 写成 `return nil`.
+
+`Deps` 缺失的 `SettingService` 在 `Init` 内直接取引擎, 靠 `Init` 的错误返回暴露依赖问题; 新服务应声明 `Deps`, 让调度器在注册阶段就校验. `NoticeService` 是唯一依赖两个引擎的例子, 缺任一个都按各自的 `ErrKey` 报错, 而不是带着半个能力启动.
 
 ### Init 的固定五步
 
@@ -207,21 +225,46 @@ func (s *XxxService) Init(sCtx domainService.ServiceContext) error {
 }
 ```
 
-`session` 在此基础上多了缓存建立与过期回调:
+`session` 在此基础上把「何时过期」做成了一个倒计时器, 而不是一个带 TTL 的缓存:
 
 ```go
-s.cache = ttlcache.New(
-	ttlcache.WithTTL[string, entry](s.expiration),
-	ttlcache.WithDisableTouchOnHit[string, entry](),   // 读不续期
-)
-s.cache.OnEviction(func(_ context.Context, reason ttlcache.EvictionReason, item *ttlcache.Item[string, entry]) {
-	// Only an expiry is worth a line: an explicit delete is what Logout and Unregister do on purpose.
-	if reason == ttlcache.EvictionReasonExpired {
-		slog.Default().Warn("session token expired", "account", item.Value().account)
+// arm schedules the expiry of the current pair. A zero window means the session never closes, so no timer is armed
+// and the deadline stays zero.
+func (s *SessionService) arm() {
+	if s.timer != nil {
+		s.timer.Stop()
+		s.timer = nil
 	}
-})
-go s.cache.Start()
+	if s.expiration <= 0 {
+		s.expiresAt = time.Time{}
+		return
+	}
+
+	s.expiresAt = time.Now().Add(s.expiration)
+	account := s.pair.Account
+	s.timer = time.AfterFunc(s.expiration, func() {
+		s.expire(account)
+	})
+}
 ```
+
+三个理由, 都来自实际踩过的坑:
+
+| 项 | 缓存 | 计时器 |
+|---|---|---|
+| 到期时刻 | 由清理协程决定, 与实际 TTL 有偏差 | `AfterFunc` 精确在截止点触发 |
+| 事件 | 只能事后从驱逐回调得知 | 立即执行回调, 可同步发总线事件 |
+| 状态 | 缓存里是否有条目 | `pair` + `expiresAt`, 一个进程一份 |
+
+到期时向总线发事件, 让界面跳到登录页:
+
+```go
+// Notify the interface before dropping the pair: a listener that reloads the view asks Current, and by then the
+// answer must already be "signed out".
+s.bus.Emit(domainBus.EventSessionExpired, account)
+```
+
+顺序与日志服务的「先存后发」相同——先让状态成立, 再通知别人.
 
 ### 依赖声明与取用
 
@@ -252,7 +295,11 @@ instance, ok := cast.As[engineSetting.Setting](settingEngine)
 | `session` | `expirationKey` | `default.runtime.services.session.expiration` |
 | `session` | `databaseKey` | `default.runtime.services.session.database` |
 | `session` | `softDeleteKey` | `default.runtime.services.softDelete` |
-| `setting` | `defaultSchemaPath` | 兜底默认值 |
+| `log` | `databaseKey` | `default.runtime.services.log.database` |
+| `log` | `limitKey` | `default.runtime.services.log.limit` |
+| `notice` | `historyKey` | `general.notification.history` |
+
+`notice` 是唯一读**设置文档**而不是**引擎文档**的服务: 条数是一个用户偏好, 可能被任意一层覆盖, 所以经设置引擎的 `Resolve` 取值, 而不是直接 `Lookup`.
 
 带单位的字段一律经 `internal/config` 解析, 缺省回退到硬编码的默认值而非零值:
 
@@ -270,6 +317,26 @@ func durationValue(cfg domainContext.ConfigContext, key string, fallback time.Du
 	return parsed
 }
 ```
+
+数值字段的形态要按来源区分: 引擎文档解出来是 `float64`, 设置引擎的 `Resolve` 则可能给出任意层里的原始类型, 所以收敛函数接受三种:
+
+```go
+// intValue narrows a resolved setting onto an int, reporting false when the value is of another shape.
+func intValue(value any) (int, bool) {
+	switch typed := value.(type) {
+	case int:
+		return typed, true
+	case int64:
+		return int(typed), true
+	case float64:
+		return int(typed), true
+	default:
+		return 0, false
+	}
+}
+```
+
+`cast.To` 是纯类型断言, `cast.As` 才做可转换翻译. 从 `Lookup` 取标量时用后者, 否则 `float64` 永远匹配不上 `int`.
 
 ### 返回值与错误
 
@@ -313,18 +380,29 @@ if err != nil {
 }
 ```
 
-### 数据访问(session 为范例)
+### 数据访问(session 与 log 为范例)
 
 `repo.go` 内全部是**非导出**的 service 方法, 一个方法对应一个意图, SQL 不外泄:
 
 ```go
-func (s *SessionService) findAccount(store engineStore.DBStore, account string) (*accountRow, error)
-func (s *SessionService) latestLogin(store engineStore.DBStore) (*sessionRow, error)
-func (s *SessionService) insertAccount(store engineStore.DBStore, row accountRow, profileID, historyID string) error
-func (s *SessionService) record(store engineStore.DBStore, action Action, uid, account string) error
+// session
+func (s *SessionService) findAccount(store engineStore.DBStore, account string) (*UserDao, error)
+func (s *SessionService) latestSignIn(store engineStore.DBStore, auth serviceSession.AuthMetaDto) (*UserSessionDao, error)
+func (s *SessionService) findAccountByUID(store engineStore.DBStore, uid, account string) (*UserDao, error)
+func (s *SessionService) insertAccount(store engineStore.DBStore, user UserDao, expiration int64) error
+func (s *SessionService) record(store engineStore.DBStore, action Action, auth serviceSession.AuthMetaDto, expiration int64) error
 func (s *SessionService) removeAccount(store engineStore.DBStore, uid string, at int64) error
 func (s *SessionService) deleteAccount(store engineStore.DBStore, uid string) error
 ```
+
+```go
+// log
+func (s *LogService) latest(store engineStore.DBStore, listener string, since int64, limit int) ([]serviceLog.LogRecordDto, error)
+func (s *LogService) listeners(store engineStore.DBStore) ([]string, error)
+func (s *LogService) boundaryOf(listener string) int64
+```
+
+`store` 作为第一个参数显式传入, 而不是从结构体字段读: 这些方法都要在同一个事务或同一份快照上工作, 让调用方交出句柄比隐式依赖字段更清楚. `boundaryOf` 是例外——它只碰内存里的边界表, 不接触数据库, 放在 `repo.go` 是因为它是 `latest` 的配套.
 
 带 `LIMIT 1` 的查询不写成 `for rows.Next() { return }`, 一律 `if !rows.Next()`:
 
@@ -364,22 +442,33 @@ if softDelete {
 
 | 类别 | 命名 | 位置 | 标签 | 示例 |
 |---|---|---|---|---|
-| dto | `<X>Dto` | `domain/service/<id>/shared.go` | `json` | `StatusDto` |
-| entity | `<X>` | `service/<id>/model.go` | 视用途 | `entry` `meta` `sessionRow` |
-| dao | `<X>Dao` | `service/<id>/model.go` | `json` + `db` | `accountRow` |
+| dto | `<X>Dto` / `<X>InputDto` | `domain/service/<id>/shared.go` | `json` | `StatusDto` `LogQueryDto` |
+| entity | `<X>` | `service/<id>/model.go` | 视用途 | `meta` `entry` |
+| dao | `<X>Dao` | `service/<id>/model.go` | `json` + `db` | `UserDao` `LogDao` |
+
+`help` 目前没有 `model.go`: 它读到的 `meta.json` 直接解进 dto, 中间不存在需要命名的结构. 一旦某个解析结果要在多个方法间传递, 就必须提到 `model.go` 并给它一个名字.
+
+dao 映射整张表, 而不是只映射当前流程用到的列:
 
 ```go
-// accountRow is the dao of the users table, narrowed to the columns the session flow reads.
+// UserDao maps a row of users.
 //
-// The db tags name the columns and the json tags keep the struct usable if it is ever logged; the password is
-// the stored hash, never the plain text.
-type accountRow struct {
-	UID      string `json:"uid" db:"uid"`
-	Uname    string `json:"uname" db:"uname"`
-	Account  string `json:"account" db:"account"`
-	Password string `json:"password" db:"password"`
+// Every column of a row is present, including the ones the current flow does not read: the struct is the single
+// description of a table, so a column added by a migration has exactly one place to land and a reader never has
+// to cross reference the SQL to know what a row holds.
+type UserDao struct {
+	ID        int64         `json:"id" db:"id"`
+	UID       string        `json:"uid" db:"uid"`
+	Uname     string        `json:"uname" db:"uname"`
+	Account   string        `json:"account" db:"account"`
+	Password  string        `json:"-" db:"password"`
+	CreatedAt int64         `json:"createdAt" db:"created_at"`
+	UpdatedAt int64         `json:"updatedAt" db:"updated_at"`
+	DeletedAt sql.NullInt64 `json:"deletedAt" db:"deleted_at"`
 }
 ```
+
+两处细节: 密码列用 `json:"-"` 防止结构体被序列化时泄露哈希; 可空列用 `sql.NullInt64` 而不是指针, 因为值直接来自 `database/sql`, 保留包装类型让扫描不需要转换步骤.
 
 转换不抽函数, 在发生处直接构造:
 
@@ -397,7 +486,7 @@ s.versions = append(s.versions, serviceHelp.DocsVersionDto{
 
 | 场景 | 级别 | 键 |
 |---|---|---|
-| 服务就绪 | `Warn`(与其他启动日志一致可查) | `roots` `versions` / `database` `expiration` |
+| 服务就绪 | `Warn`(与其他启动日志一致可查) | `roots` `versions` / `database` `expiration` / `limit` / `history` |
 | 配置缺失 | `Warn` | `key` |
 | 单个资源不可用 | `Warn` | `path` `err` |
 | 令牌过期 | `Warn` | `account` |
@@ -405,7 +494,11 @@ s.versions = append(s.versions, serviceHelp.DocsVersionDto{
 ```go
 slog.Default().Warn("help service ready", "roots", s.roots, "versions", len(s.versions))
 slog.Default().Warn("session service ready", "database", key, "expiration", s.expiration.String())
+slog.Default().Warn("log service ready", "database", key, "limit", s.limit)
+slog.Default().Warn("notice service ready", "history", s.limit())
 ```
+
+键值取「排查时会想知道的那个数」: `log` 给数据库键与条数上限, `notice` 给当前生效的历史长度——这两个服务的行为都由配置决定, 一条日志就能看出配置有没有生效.
 
 每个失败点都留一条, 使「界面空白但日志干净」不会发生: `help meta unreadable`, `help meta invalid`, `db driver skipped`, `db duplicate key skipped` 都属此类.
 
@@ -416,6 +509,8 @@ slog.Default().Warn("session service ready", "database", key, "expiration", s.ex
 | 注册 | `backend/api/ui/entry.go` | `serviceXxxImpl.NewXxxService()` → `sr.Register(...)` → `application.NewService(...)` |
 | 前端封装 | `frontend/src/services/<id>.ts` | Zod 校验 + 方法一一对应 |
 | 调用 | `features/<feature>/` | 只经封装层, 不直接碰 binding |
+
+当前已暴露: `greet` `setting` `help` `session` `log` `notice`. 引擎**不**在此列——它经事件总线到达界面, 经 `sCtx.Engines` 到达服务, 没有 binding.
 
 ```ts
 // services/help.ts
