@@ -273,7 +273,8 @@
                     "additionalProperties": false,
                     "description": "Service configuration. Each key matches a service and is read by that service.",
                     "required": [
-                        "softDelete"
+                        "softDelete",
+                        "log"
                     ],
                     "properties": {
                         "softDelete": {
@@ -305,6 +306,69 @@
                                 "database": {
                                     "type": "string",
                                     "description": "Key of the database entry the session tables live in, for example sqlite3.dev_sqlite."
+                                }
+                            }
+                        },
+                        "log": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Log service configuration.",
+                            "required": [
+                                "limit",
+                                "filters"
+                            ],
+                            "properties": {
+                                "limit": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "description": "Most records one read returns. The console may ask for fewer."
+                                },
+                                "filters": {
+                                    "type": "array",
+                                    "description": "Filter steps, applied in order. Each entry names an implementation and carries the parameters that implementation reads; a step ignores the parameters it does not own.",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "name",
+                                            "enable",
+                                            "bindParams"
+                                        ],
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "description": "Filter implementation to run."
+                                            },
+                                            "enable": {
+                                                "type": "boolean",
+                                                "description": "Run this step at all."
+                                            },
+                                            "bindParams": {
+                                                "type": "object",
+                                                "description": "Parameters handed to the implementation as is.",
+                                                "properties": {
+                                                    "levels": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "debug",
+                                                                "info",
+                                                                "warn",
+                                                                "error"
+                                                            ]
+                                                        },
+                                                        "description": "Levels allowed through, for the level filter."
+                                                    },
+                                                    "text": {
+                                                        "type": "string",
+                                                        "description": "Search text, for the pattern filter."
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

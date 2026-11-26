@@ -141,6 +141,25 @@
             ],
             "session": {
                 "expiration": "7200 s"
+            },
+            "log": {
+                "limit": 1024,
+                "filters": [
+                    {
+                        "name": "level.filter.log",
+                        "enable": true,
+                        "bindParams": {
+                            "levels": ["debug", "info", "warn", "error"]
+                        }
+                    },
+                    {
+                        "name": "rigexp.filter.log",
+                        "enable": true,
+                        "bindParams": {
+                            "text": ""
+                        }
+                    }
+                ]
             }
         }
     }
