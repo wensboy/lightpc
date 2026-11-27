@@ -26,7 +26,7 @@ import {
 import { DocumentationSwitcher } from '@/features/help/components/DocumentationSwitcher'
 import { HelpMarkdown } from '@/features/help/components/HelpMarkdown'
 import { SearchCombobox, type SearchSection } from '@/features/help/components/SearchCombobox'
-import { useHelp } from '@/features/help/useHelp'
+import { useHelp } from '@/features/help/hooks/useHelp'
 import { useText } from '@/locales'
 import type { DocsItemDto } from '@/services/help'
 import { useDialogStore } from '@/stores/dialog'

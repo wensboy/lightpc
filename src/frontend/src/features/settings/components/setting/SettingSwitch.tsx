@@ -1,6 +1,6 @@
 import { Switch } from '@/components/ui/switch'
-import { SettingField } from '@/features/settings/components/setting/SettingField'
-import type { SettingField as SettingFieldModel, SettingValue } from '@/features/settings/schema'
+import { SettingField } from '@/features/settings/layouts/SettingField'
+import type { SettingField as SettingFieldModel, SettingValue } from '@/features/settings/models/schema'
 
 type SettingSwitchProps = {
   field: SettingFieldModel

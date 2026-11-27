@@ -1,7 +1,7 @@
 import { createRootRoute, Outlet, redirect } from '@tanstack/react-router'
 import { Toaster } from '@/components/ui/sonner'
-import { useNotificationPrefs } from '@/features/notifications/store/useNotificationPrefs'
-import { readAuth } from '@/features/auth/session'
+import { useNotificationPrefs } from '@/features/notifications/hooks/useNotificationPrefs'
+import { readAuth } from '@/features/auth/libs/session'
 
 // The paths that stay reachable without a session.
 const publicPaths = new Set(['/login', '/signup'])

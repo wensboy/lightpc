@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { AuthLayout } from '@/features/auth/layouts/AuthLayout'
-import { writeAuth } from '@/features/auth/session'
+import { writeAuth } from '@/features/auth/libs/session'
 import { useText } from '@/locales'
 import { sessionService } from '@/services/session'
 import { loginSchema, type LoginInput } from '@/services/auth'

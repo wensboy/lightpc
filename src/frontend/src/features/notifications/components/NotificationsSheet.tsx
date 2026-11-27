@@ -10,10 +10,10 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Toggle } from '@/components/ui/toggle'
-import { NotificationItem } from '@/features/notifications/components/NotificationItem'
-import { noticeLevelTones } from '@/features/notifications/notice-level'
-import { useNotificationPrefs } from '@/features/notifications/store/useNotificationPrefs'
-import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
+import { NotificationItem } from '@/features/notifications/layouts/NotificationItem'
+import { noticeLevelTones } from '@/features/notifications/config/noticeLevel'
+import { useNotificationPrefs } from '@/features/notifications/hooks/useNotificationPrefs'
+import { useNotificationStore } from '@/features/notifications/stores/useNotificationStore'
 import { settingService } from '@/services/setting'
 import { useText } from '@/locales'
 

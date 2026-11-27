@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { isVerified, readAuth } from '@/features/auth/session'
+import { isVerified, readAuth } from '@/features/auth/libs/session'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 
 export const Route = createFileRoute('/login')({

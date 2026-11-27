@@ -7,15 +7,15 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import { useLogout } from '@/features/auth/useLogout'
+import { useLogout } from '@/features/auth/hooks/useLogout'
 import { NavContextMenu, type NavToggleGroup } from '@/features/dashboard/components/NavContextMenu'
 import { NavMain } from '@/features/dashboard/components/NavMain'
 import { NavSecondary } from '@/features/dashboard/components/NavSecondary'
 import { NavUser } from '@/features/dashboard/components/NavUser'
 import { WorkspaceSwitcher } from '@/features/dashboard/components/WorkspaceSwitcher'
 import { buildPrimaryNav, buildSecondaryNav } from '@/features/dashboard/config/nav'
-import { useNotificationPrefs } from '@/features/notifications/store/useNotificationPrefs'
-import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
+import { useNotificationPrefs } from '@/features/notifications/hooks/useNotificationPrefs'
+import { useNotificationStore } from '@/features/notifications/stores/useNotificationStore'
 import { useText } from '@/locales'
 import { useDialogStore } from '@/stores/dialog'
 

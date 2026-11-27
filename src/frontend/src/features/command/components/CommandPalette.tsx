@@ -7,8 +7,8 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import { useLogout } from '@/features/auth/useLogout'
-import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
+import { useLogout } from '@/features/auth/hooks/useLogout'
+import { useNotificationStore } from '@/features/notifications/stores/useNotificationStore'
 import { useText } from '@/locales'
 import { useDialogStore } from '@/stores/dialog'
 

@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/sidebar'
 import { SettingRenderer } from '@/features/settings/components/setting/SettingRenderer'
 import { SettingsSkeleton } from '@/features/settings/components/SettingsSkeleton'
-import { useSettings } from '@/features/settings/useSettings'
+import { useSettings } from '@/features/settings/hooks/useSettings'
 import { useText } from '@/locales'
 import { useDialogStore } from '@/stores/dialog'
 

@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { createHashHistory, createRouter, RouterProvider } from '@tanstack/react-router'
-import { applyAllSettingEffects } from '@/features/settings/effects'
+import { applyAllSettingEffects } from '@/features/settings/libs/effects'
 import { applySystemColorMode } from './lib/color-mode'
 import { settingService } from '@/services/setting'
 import { routeTree } from './routeTree.gen'

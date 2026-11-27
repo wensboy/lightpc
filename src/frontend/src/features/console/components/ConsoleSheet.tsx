@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Sidebar, SidebarContent, SidebarProvider } from '@/components/ui/sidebar'
-import { ConsoleHeader } from '@/features/console/components/ConsoleHeader'
+import { ConsoleHeader } from '@/features/console/layouts/ConsoleHeader'
 import { ConsoleLogView } from '@/features/console/components/ConsoleLogView'
 import { ConsoleNav } from '@/features/console/components/ConsoleNav'
 import { buildConsoleNav, type ConsoleSectionKey } from '@/features/console/config/nav'

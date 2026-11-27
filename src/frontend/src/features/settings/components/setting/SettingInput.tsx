@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Input } from '@/components/ui/input'
-import { SettingField } from '@/features/settings/components/setting/SettingField'
-import type { SettingField as SettingFieldModel, SettingValue } from '@/features/settings/schema'
+import { SettingField } from '@/features/settings/layouts/SettingField'
+import type { SettingField as SettingFieldModel, SettingValue } from '@/features/settings/models/schema'
 
 type SettingInputProps = {
   field: SettingFieldModel

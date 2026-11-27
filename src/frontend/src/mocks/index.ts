@@ -1,4 +1,4 @@
-import type { ProfileValues } from '@/features/account/schema'
+import type { ProfileValues } from '@/features/account/models/schema'
 import { accountAvatarMock, accountProfileMock } from './account.mock'
 
 // mocksEnabled is resolved once at startup; the switch never leaks into business components.

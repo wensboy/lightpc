@@ -2,7 +2,7 @@ import { SettingInput } from '@/features/settings/components/setting/SettingInpu
 import { SettingQuantity } from '@/features/settings/components/setting/SettingQuantity'
 import { SettingSelect } from '@/features/settings/components/setting/SettingSelect'
 import { SettingSwitch } from '@/features/settings/components/setting/SettingSwitch'
-import type { SettingField, SettingValue } from '@/features/settings/schema'
+import type { SettingField, SettingValue } from '@/features/settings/models/schema'
 
 type SettingRendererProps = {
   field: SettingField

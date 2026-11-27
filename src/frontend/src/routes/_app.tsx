@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect, useNavigate } from '@tanstack/react-
 import { useCallback } from 'react'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AccountDialog } from '@/features/account/components/AccountDialog'
-import { clearAuth, isVerified, markVerified, readAuth } from '@/features/auth/session'
+import { clearAuth, isVerified, markVerified, readAuth } from '@/features/auth/libs/session'
 import { CommandPalette } from '@/features/command/components/CommandPalette'
 import { ConsoleSheet } from '@/features/console/components/ConsoleSheet'
 import { AppSidebar } from '@/features/dashboard/layouts/AppSidebar'
@@ -11,7 +11,7 @@ import { HelpDialog } from '@/features/help/components/HelpDialog'
 import { NotificationsSheet } from '@/features/notifications/components/NotificationsSheet'
 import { SettingsDialog } from '@/features/settings/components/SettingsDialog'
 import { NoticeToaster } from '@/features/notifications/components/NoticeToaster'
-import { useWailsEvent } from '@/hooks/use-wails-event'
+import { useWailsEvent } from '@/hooks/useWailsEvent'
 import { sessionService } from '@/services/session'
 
 export const Route = createFileRoute('/_app')({

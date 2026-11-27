@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { SettingService as SettingBinding } from '../../bindings/github.com/wensboy/lightpc/backend/service/setting'
 import { Kind } from '../../bindings/github.com/wensboy/lightpc/backend/domain/service/setting/models'
-import type { JsonSchemaNode } from '@/features/settings/schema'
+import type { JsonSchemaNode } from '@/features/settings/models/schema'
 
 // settingPayloadSchema guards the boundary: the renderer only ever sees a payload that passed this check,
 // so a backend shape change fails loudly instead of rendering an empty page.

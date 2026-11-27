@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { SettingField } from '@/features/settings/components/setting/SettingField'
-import type { SettingField as SettingFieldModel, SettingValue } from '@/features/settings/schema'
+import { SettingField } from '@/features/settings/layouts/SettingField'
+import type { SettingField as SettingFieldModel, SettingValue } from '@/features/settings/models/schema'
 import { useText } from '@/locales'
 
 type SettingQuantityProps = {

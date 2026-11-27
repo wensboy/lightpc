@@ -10,7 +10,7 @@ import {
   CodeBlockLine,
   CodeBlockTitle,
 } from '@/components/ui/code-block'
-import { useHighlightedCode } from '@/hooks/use-highlighted-code'
+import { useHighlightedCode } from '@/hooks/useHighlightedCode'
 
 type MarkdownCodeBlockProps = {
   /** language is the fence info string; an empty value means the block declared none. */

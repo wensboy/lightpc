@@ -1,4 +1,4 @@
-import type { ProfileValues } from '@/features/account/schema'
+import type { ProfileValues } from '@/features/account/models/schema'
 
 // The mock profile mirrors the shape the real service will return.
 export const accountProfileMock: ProfileValues = {

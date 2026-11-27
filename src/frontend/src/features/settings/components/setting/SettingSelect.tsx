@@ -13,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { SettingField } from '@/features/settings/components/setting/SettingField'
-import type { SettingField as SettingFieldModel, SettingValue } from '@/features/settings/schema'
+import { SettingField } from '@/features/settings/layouts/SettingField'
+import type { SettingField as SettingFieldModel, SettingValue } from '@/features/settings/models/schema'
 import { useText } from '@/locales'
 
 // comboboxThreshold is where a list becomes too long to scan by scrolling. The system font list routinely

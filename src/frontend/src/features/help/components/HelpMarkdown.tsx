@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Frontmatter } from '@/features/help/components/markdown/Frontmatter'
 import { MarkdownCodeBlock } from '@/features/help/components/markdown/CodeBlock'
-import { prose, readFrontmatter, renderMarkdown, sanitizeHtml, splitBlocks } from '@/features/help/render'
+import { prose, readFrontmatter, renderMarkdown, sanitizeHtml, splitBlocks } from '@/features/help/libs/render'
 
 // HelpMarkdown renders one document. The frontmatter block becomes the metadata table above the body, and
 // the rest is split so fenced blocks render as components.

@@ -7,8 +7,8 @@ import { FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Toggle } from '@/components/ui/toggle'
-import { SettingGroupCard } from '@/features/account/components/common/SettingGroupCard'
-import { securitySchema, type SecurityValues } from '@/features/account/schema'
+import { SettingGroupCard } from '@/features/account/layouts/SettingGroupCard'
+import { securitySchema, type SecurityValues } from '@/features/account/models/schema'
 import { useText } from '@/locales'
 
 // SecuritySection collects the current password and its replacement. Validation runs on blur, so the
