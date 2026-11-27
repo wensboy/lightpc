@@ -81,7 +81,7 @@ func TestNotifyAnnouncesOnTheBus(t *testing.T) {
 		received = append(received, notice.ID)
 	})
 
-	sent, err := engine.Notify(engineNotice.Input{Title: "announce", Level: engineNotice.LevelWarning})
+	sent, err := engine.Notify(engineNotice.Input{Title: "announce", Level: engineNotice.LevelWarn})
 	if err != nil {
 		t.Fatalf("notify: %v", err)
 	}

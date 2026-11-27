@@ -86,11 +86,18 @@ func (s *GreetService) EmitLogs() int {
 	// and the interface turns the announcement into a toast. A failure here is reported rather than swallowed, because
 	// a silent notice is exactly the kind of thing this check exists to catch.
 	if s.notice != nil {
+		// The text is long on purpose: a toast and a sheet row both have to survive a title that does not fit, a body
+		// that needs several lines and a source wide enough to push the layout. Short samples never reveal that.
 		if _, err := s.notice.Notify(engineNotice.Input{
-			Level:   engineNotice.LevelSuccess,
-			Title:   "log sample written",
-			Content: fmt.Sprintf("%d records were added to the console", written),
-			Source:  "greet",
+			Level: engineNotice.LevelSuccess,
+			Title: "Console sample written: every severity level now has a record",
+			Content: fmt.Sprintf(
+				"The greet service added %d records through the database entry, one per level, so the console has "+
+					"something to show on a fresh start. This body is long enough to need a second line and a third, "+
+					"which is exactly what the clamped layout has to handle without pushing the source out of view.",
+				written,
+			),
+			Source: "greet.service.sample-notice-very-long-notice-source",
 		}); err != nil {
 			slog.Default().Warn("greet notice failed", "err", err)
 		}

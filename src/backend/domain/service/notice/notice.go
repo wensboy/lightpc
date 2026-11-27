@@ -6,6 +6,8 @@ type NoticeClient interface {
 	History() (NoticeHistoryDto, error)
 	// Send raises a notice through the engine, so both sides of the application share one pipeline.
 	Send(input NoticeSendInputDto) (NoticeItemDto, error)
+	// Clear hides everything currently shown, and anything older, for the rest of the process.
+	Clear() (int, error)
 	// Remove drops the notices named by the request and reports how many were there.
 	Remove(input NoticeRemoveInputDto) (int, error)
 }

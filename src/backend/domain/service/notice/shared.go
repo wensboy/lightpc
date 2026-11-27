@@ -26,6 +26,14 @@ var Errors = []interError.Option{
 // what the interface talks to, and its vocabulary should stand on its own.
 type Level string
 
+const (
+	LevelInfo    Level = "info"    // 信息
+	LevelSuccess Level = "success" // 成功
+	LevelFail    Level = "fail"    // 失败
+	LevelError   Level = "error"   // 错误
+	LevelWarn    Level = "warn"    // 警告
+)
+
 // NoticeItemDto is one notice the sheet shows.
 type NoticeItemDto struct {
 	ID        uint64 `json:"id"`
@@ -34,6 +42,17 @@ type NoticeItemDto struct {
 	Content   string `json:"content"`
 	Source    string `json:"source"`
 	Timestamp int64  `json:"timestamp"`
+}
+
+// NoticeSummaryDto counts the notices the answer carries, by severity.
+//
+// Total plus the three severities worth a badge: the footer shows four cells, and computing them here keeps the count
+// and the list from disagreeing when a window is capped or a notice is removed between two reads.
+type NoticeSummaryDto struct {
+	Total int `json:"total"`
+	Fail  int `json:"fail"`
+	Error int `json:"error"`
+	Warn  int `json:"warn"`
 }
 
 // NoticeHistoryDto is the answer of one read.
@@ -45,9 +64,10 @@ type NoticeItemDto struct {
 // the cap, so the interface cannot compute this on its own: once the ring holds more than the cap, the oldest ids fall
 // out of the answer, and that boundary is what "capped" means.
 type NoticeHistoryDto struct {
-	Items    []NoticeItemDto `json:"items"`
-	Limit    int             `json:"limit"`
-	LeftEdge uint64          `json:"leftEdge"`
+	Items    []NoticeItemDto  `json:"items"`
+	Limit    int              `json:"limit"`
+	LeftEdge uint64           `json:"leftEdge"`
+	Summary  NoticeSummaryDto `json:"summary"`
 }
 
 // NoticeSendInputDto is what the interface submits to raise a notice.

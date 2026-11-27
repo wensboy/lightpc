@@ -19,16 +19,17 @@ var Errors = []interError.Option{
 type Level string
 
 const (
-	LevelInfo    Level = "info"
-	LevelSuccess Level = "success"
-	LevelWarning Level = "warning"
-	LevelError   Level = "error"
+	LevelInfo    Level = "info"    // 信息
+	LevelSuccess Level = "success" // 成功
+	LevelFail    Level = "fail"    // 失败
+	LevelError   Level = "error"   // 错误
+	LevelWarn    Level = "warn"    // 警告
 )
 
 // Known reports whether the level is one the interface can render.
 func (l Level) Known() bool {
 	switch l {
-	case LevelInfo, LevelSuccess, LevelWarning, LevelError:
+	case LevelInfo, LevelSuccess, LevelFail, LevelError, LevelWarn:
 		return true
 	default:
 		return false

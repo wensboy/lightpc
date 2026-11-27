@@ -3,6 +3,7 @@ package serviceNoticeImpl
 import (
 	"fmt"
 	"log/slog"
+	"sync"
 
 	domainEngine "github.com/wensboy/lightpc/backend/domain/engine"
 	engineNotice "github.com/wensboy/lightpc/backend/domain/engine/notice"
@@ -29,6 +30,12 @@ type NoticeService struct {
 	// resolve reads a setting through the settings engine, so a user override is honoured without this service
 	// knowing which layer it came from.
 	resolve func(string) (any, bool)
+
+	mu sync.RWMutex
+	// clearedAt is the newest id the person dismissed with the clear button. Everything up to it stays out of the sheet
+	// for the life of the process, even after new notices push it past the window: clearing means those ids are gone,
+	// not that the ring forgot them.
+	clearedAt uint64
 }
 
 // NewNoticeService builds the service. Init resolves the two engines.
@@ -76,6 +83,10 @@ func (s *NoticeService) Init(sCtx domainService.ServiceContext) error {
 	}
 	s.resolve = settings.Resolve
 
+	s.mu.Lock()
+	s.clearedAt = 0
+	s.mu.Unlock()
+
 	slog.Default().Warn("notice service ready", "history", s.limit())
 	return nil
 }
@@ -94,9 +105,21 @@ func (s *NoticeService) History() (serviceNotice.NoticeHistoryDto, error) {
 	}
 
 	limit := s.limit()
-	records := s.notices.History()
-	if len(records) > limit {
-		records = records[:limit]
+	s.mu.RLock()
+	clearedAt := s.clearedAt
+	s.mu.RUnlock()
+
+	// Filtering before the window, not after: ids below the mark are invisible whether or not they would fit, and a
+	// window applied first would let them back in as soon as the list shrank.
+	records := make([]engineNotice.Record, 0, limit)
+	for _, record := range s.notices.History() {
+		if record.ID <= clearedAt {
+			continue
+		}
+		if len(records) == limit {
+			break
+		}
+		records = append(records, record)
 	}
 
 	items := make([]serviceNotice.NoticeItemDto, 0, len(records))
@@ -117,7 +140,21 @@ func (s *NoticeService) History() (serviceNotice.NoticeHistoryDto, error) {
 	if len(items) > 0 {
 		leftEdge = items[len(items)-1].ID
 	}
-	return serviceNotice.NoticeHistoryDto{Items: items, Limit: limit, LeftEdge: leftEdge}, nil
+
+	// The counts come from the rows being returned, not from the ring: a capped window shows a capped count, and the
+	// footer describes what the sheet holds rather than what the process produced.
+	summary := serviceNotice.NoticeSummaryDto{Total: len(items)}
+	for _, item := range items {
+		switch item.Level {
+		case serviceNotice.LevelFail:
+			summary.Fail++
+		case serviceNotice.LevelError:
+			summary.Error++
+		case serviceNotice.LevelWarn:
+			summary.Warn++
+		}
+	}
+	return serviceNotice.NoticeHistoryDto{Items: items, Limit: limit, LeftEdge: leftEdge, Summary: summary}, nil
 }
 
 // Send implements serviceNotice.NoticeClient.
@@ -154,6 +191,32 @@ func (s *NoticeService) Send(input serviceNotice.NoticeSendInputDto) (serviceNot
 // One list serves both gestures: a single row sends one id, the clear button sends every id it holds. Ids that are no
 // longer present are not an error, because the caller cannot know what another window removed in between; the count
 // reports what actually went.
+// Clear implements serviceNotice.NoticeClient.
+//
+// It raises a floor rather than deleting: everything currently visible, and anything older, stops being shown, while
+// the engine keeps the ring intact. Removing the visible ids alone would let the ones just outside the window reappear
+// on the next read, which is the opposite of what clearing means.
+func (s *NoticeService) Clear() (int, error) {
+	if s.notices == nil {
+		return 0, interError.Retrieve(serviceNotice.ErrKeyNoticeMissing)
+	}
+
+	records := s.notices.History()
+	if len(records) == 0 {
+		return 0, nil
+	}
+	// History answers newest first, so the head is the highest id in the ring.
+	newest := records[0].ID
+
+	s.mu.Lock()
+	if newest > s.clearedAt {
+		s.clearedAt = newest
+	}
+	s.mu.Unlock()
+
+	return len(records), nil
+}
+
 func (s *NoticeService) Remove(input serviceNotice.NoticeRemoveInputDto) (int, error) {
 	if s.notices == nil {
 		return 0, interError.Retrieve(serviceNotice.ErrKeyNoticeMissing)
@@ -176,15 +239,23 @@ func (s *NoticeService) Remove(input serviceNotice.NoticeRemoveInputDto) (int, e
 }
 
 // limit resolves how many notices the sheet shows, falling back when the preference is unreadable.
+//
+// Resolve hands back an Entry, not the value on its own: every layer contribution travels wrapped so a caller can see
+// which layer won. Reading the wrapper as the value is what made this setting look like it never applied - the type
+// assertion failed, and the fallback ran on every call.
 func (s *NoticeService) limit() int {
 	if s.resolve == nil {
 		return defaultHistory
 	}
-	value, found := s.resolve(historyKey)
+	raw, found := s.resolve(historyKey)
 	if !found {
 		return defaultHistory
 	}
-	limit, ok := intValue(value)
+	entry, ok := cast.As[engineSetting.Entry[any]](raw)
+	if !ok {
+		return defaultHistory
+	}
+	limit, ok := intValue(entry.Value)
 	if !ok || limit <= 0 {
 		return defaultHistory
 	}
