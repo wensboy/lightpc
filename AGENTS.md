@@ -72,6 +72,7 @@ task build
 - Automatically sync with remote VCS repositories.
 - Automatically install third-party libraries without permission.
 - Automatically flesh out design document details and start coding immediately.
+- Commit generated artifacts. `frontend/bindings/` is written by the generator, so it stays ignored: run `task generate:bindings` after the backend surface changes. Never invoke `wails3 generate bindings` by hand with different flags; dropping `-ts` rewrites every file and turns a single build into a repository-wide rename.
 
 ## Further Reading
 

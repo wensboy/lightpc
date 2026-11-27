@@ -2,6 +2,8 @@
 bin
 frontend/dist
 frontend/node_modules
+# Written by the generator on every build. Run `task generate:bindings` after the backend surface changes.
+frontend/bindings
 build/linux/appimage/build
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 # Mobile generated (per-machine; overlays hold absolute paths)
