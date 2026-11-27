@@ -6,3 +6,6 @@
 test/
 *.db
 !skills-lock.json
+# Wails writes the bindings on every build; the generator output is not source, and tracking it made every run that
+# changed its format look like a refactor. Run `task generate:bindings` after changing what the backend exposes.
+src/frontend/bindings/
