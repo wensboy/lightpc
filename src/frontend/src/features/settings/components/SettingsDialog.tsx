@@ -21,6 +21,7 @@ import {
   SidebarProvider,
 } from '@/components/ui/sidebar'
 import { SettingRenderer } from '@/features/settings/components/setting/SettingRenderer'
+import { SettingsSkeleton } from '@/features/settings/components/SettingsSkeleton'
 import { useSettings } from '@/features/settings/useSettings'
 import { useText } from '@/locales'
 import { useDialogStore } from '@/stores/dialog'
@@ -41,7 +42,7 @@ export function SettingsDialog() {
   const closeSettings = useDialogStore((state) => state.closeSettings)
   // Opening the dialog triggers a reload, so an edit made to the user layer outside the UI shows up
   // immediately instead of requiring a restart.
-  const { groups, error, setValue } = useSettings(settingsOpen)
+  const { groups, loading, error, setValue } = useSettings(settingsOpen)
   const [activeKey, setActiveKey] = useState(() => groups[0]?.key ?? '')
 
   const activeGroup = groups.find((group) => group.key === activeKey) ?? groups[0]
@@ -59,57 +60,63 @@ export function SettingsDialog() {
         <DialogTitle className="sr-only">{text.settings.title}</DialogTitle>
         <DialogDescription className="sr-only">{text.settings.description}</DialogDescription>
         <SidebarProvider className="h-full min-h-0 w-full min-w-0 items-stretch">
-          <Sidebar collapsible="none" className="hidden border-r border-sidebar-border md:flex">
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupContent>
-                  <SidebarMenu className="gap-1">
-                    {groups.map((group) => (
-                      <SidebarMenuItem key={group.key}>
-                        <SidebarMenuButton
-                          isActive={group.key === activeGroup?.key}
-                          onClick={() => setActiveKey(group.key)}
-                        >
-                          {groupIcons[group.key] ?? <SettingsIcon />}
-                          <span>{group.title}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
-          </Sidebar>
-          <main className="flex h-full flex-1 flex-col overflow-hidden">
-            <header className="flex h-16 shrink-0 items-center gap-2">
-              <div className="flex items-center gap-2 px-4">
-                <Breadcrumb>
-                  <BreadcrumbList>
-                    <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink href="#">{text.settings.title}</BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden md:block" />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>{activeGroup?.title ?? text.settings.title}</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </BreadcrumbList>
-                </Breadcrumb>
-              </div>
-            </header>
-            <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-4 pt-2">
-              {activeGroup ? (
-                activeGroup.fields.map((field) => (
-                  <SettingRenderer
-                    key={field.path}
-                    field={field}
-                    onChange={(next) => setValue(field.path, next, field.kind)}
-                  />
-                ))
-              ) : (
-                <p className="p-4 text-xs text-muted-foreground">{error ?? text.settings.empty}</p>
-              )}
-            </div>
-          </main>
+          {loading ? (
+            <SettingsSkeleton />
+          ) : (
+            <>
+              <Sidebar collapsible="none" className="hidden border-r border-sidebar-border md:flex">
+                <SidebarContent>
+                  <SidebarGroup>
+                    <SidebarGroupContent>
+                      <SidebarMenu className="gap-1">
+                        {groups.map((group) => (
+                          <SidebarMenuItem key={group.key}>
+                            <SidebarMenuButton
+                              isActive={group.key === activeGroup?.key}
+                              onClick={() => setActiveKey(group.key)}
+                            >
+                              {groupIcons[group.key] ?? <SettingsIcon />}
+                              <span>{group.title}</span>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </SidebarGroup>
+                </SidebarContent>
+              </Sidebar>
+              <main className="flex h-full flex-1 flex-col overflow-hidden">
+                <header className="flex h-16 shrink-0 items-center gap-2">
+                  <div className="flex items-center gap-2 px-4">
+                    <Breadcrumb>
+                      <BreadcrumbList>
+                        <BreadcrumbItem className="hidden md:block">
+                          <BreadcrumbLink href="#">{text.settings.title}</BreadcrumbLink>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator className="hidden md:block" />
+                        <BreadcrumbItem>
+                          <BreadcrumbPage>{activeGroup?.title ?? text.settings.title}</BreadcrumbPage>
+                        </BreadcrumbItem>
+                      </BreadcrumbList>
+                    </Breadcrumb>
+                  </div>
+                </header>
+                <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-4 pt-2">
+                  {activeGroup ? (
+                    activeGroup.fields.map((field) => (
+                      <SettingRenderer
+                        key={field.path}
+                        field={field}
+                        onChange={(next) => setValue(field.path, next, field.kind)}
+                      />
+                    ))
+                  ) : (
+                    <p className="p-4 text-xs text-muted-foreground">{error ?? text.settings.empty}</p>
+                  )}
+                </div>
+              </main>
+            </>
+          )}
         </SidebarProvider>
       </DialogContent>
     </Dialog>
