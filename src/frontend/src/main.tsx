@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { createHashHistory, createRouter, RouterProvider } from '@tanstack/react-router'
 import { applyAllSettingEffects } from '@/features/settings/effects'
 import { applySystemColorMode } from './lib/color-mode'
-import { loadSettings } from '@/mocks'
+import { settingService } from '@/services/setting'
 import { routeTree } from './routeTree.gen'
 import './styles/index.css'
 
@@ -23,7 +23,7 @@ applySystemColorMode()
 // The stored mode decides the first paint: the system default covers the moment before the document
 // arrives, then the effect registry applies whatever the user layer holds. A failure here only leaves the
 // default theme in place, so it is allowed to stay silent.
-void loadSettings()
+void settingService.load()
   .then((document) => applyAllSettingEffects(document.values, document.themes))
   .catch(() => undefined)
 

@@ -1,4 +1,6 @@
-import { BellIcon, BellOffIcon, ListXIcon } from 'lucide-react'
+import { BellIcon, BellOffIcon, CircleAlertIcon, CircleXIcon, LayersIcon, ListXIcon, TriangleAlertIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -9,6 +11,7 @@ import {
 } from '@/components/ui/sheet'
 import { Toggle } from '@/components/ui/toggle'
 import { NotificationItem } from '@/features/notifications/components/NotificationItem'
+import { noticeLevelTones } from '@/features/notifications/notice-level'
 import { useNotificationPrefs } from '@/features/notifications/store/useNotificationPrefs'
 import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
 import { settingService } from '@/services/setting'
@@ -23,6 +26,7 @@ export function NotificationsSheet() {
   const prefs = useNotificationPrefs()
   const clearNotifications = useNotificationStore((state) => state.clear)
   const notifications = useNotificationStore((state) => state.notifications)
+  const summary = useNotificationStore((state) => state.summary)
 
   return (
     <Sheet
@@ -62,16 +66,60 @@ export function NotificationsSheet() {
         <SheetDescription className="sr-only">{text.notifications.description}</SheetDescription>
         <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
           {notifications.length === 0 ? (
-            <p className="p-4 text-center text-xs text-muted-foreground">
-              {text.notifications.empty}
-            </p>
+            <Empty className="border-0 p-4">
+              <EmptyHeader>
+                <EmptyTitle className="text-sm font-normal text-muted-foreground">
+                  {text.notifications.empty}
+                </EmptyTitle>
+              </EmptyHeader>
+            </Empty>
           ) : (
             notifications.map((notification) => (
               <NotificationItem key={notification.id} notification={notification} />
             ))
           )}
         </div>
+
+        {/* The footer describes the list above it, so its numbers come from the same read that produced the rows. Four
+            cells share one row: a total, then the three severities worth a badge. */}
+        <div className="flex items-center gap-2 border-t bg-card px-3 py-2">
+          <FooterCell
+            icon={<LayersIcon />}
+            label={text.notifications.total}
+            count={summary.total}
+          />
+          <FooterCell
+            icon={<CircleXIcon className={noticeLevelTones.fail} />}
+            label={text.notifications.fail}
+            count={summary.fail}
+          />
+          <FooterCell
+            icon={<CircleAlertIcon className={noticeLevelTones.error} />}
+            label={text.notifications.error}
+            count={summary.error}
+          />
+          <FooterCell
+            icon={<TriangleAlertIcon className={noticeLevelTones.warn} />}
+            label={text.notifications.warn}
+            count={summary.warn}
+          />
+        </div>
       </SheetContent>
     </Sheet>
+  )
+}
+
+// FooterCell is one counter in the sheet footer: a badge carrying an icon and a number, sharing the row with the others.
+//
+// The label is not drawn - four badges in one row cannot afford words - but it is announced and shown on hover, so the
+// icon is never the only thing saying which count this is.
+function FooterCell({ icon, label, count }: { icon: React.ReactNode; label: string; count: number }) {
+  return (
+    <div className="flex min-w-0 flex-1 items-center justify-center" title={label}>
+      <Badge variant="ghost" aria-label={`${label}: ${count}`} className="gap-1">
+        {icon}
+        <span className="tabular-nums">{count}</span>
+      </Badge>
+    </div>
   )
 }

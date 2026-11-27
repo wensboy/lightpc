@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { SettingService as SettingBinding } from '../../bindings/github.com/wensboy/lightpc/backend/service/setting'
+import { Kind } from '../../bindings/github.com/wensboy/lightpc/backend/domain/service/setting/models'
 import type { JsonSchemaNode } from '@/features/settings/schema'
 
 // settingPayloadSchema guards the boundary: the renderer only ever sees a payload that passed this check,
@@ -61,6 +62,9 @@ export const settingService: SettingService = {
   async save(key, value, kind) {
     // A field without x-kind is an ordinary setting, so the backend is told "service" rather than nothing: the routing
     // decision belongs there, and an empty string would only make it guess.
-    await SettingBinding.Save(key, value, kind ?? 'service')
+    //
+    // The generator renders Kind as an enum, so the bare string has to be translated here - the same reason the notice
+    // levels go through a table.
+    await SettingBinding.Save(key, value, kind === 'engine' ? Kind.KindEngine : Kind.KindService)
   },
 }

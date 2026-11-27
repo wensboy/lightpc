@@ -13,9 +13,11 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup } from '@/components/ui/toggle-group'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { ConsoleHeader } from '@/features/console/components/ConsoleHeader'
+import { useWailsEvent } from '@/hooks/use-wails-event'
 import { useText } from '@/locales'
-import { loadSettings } from '@/mocks'
+import { settingService } from '@/services/setting'
 import { greetService } from '@/services/greet'
 import { logService, type LogListenerDto, type LogRecordDto } from '@/services/log'
 
@@ -90,14 +92,13 @@ export function ConsoleLogView({ leading }: ConsoleLogViewProps) {
     overscan: 12,
   })
 
-  // The stored preferences decide how often to poll and which levels to tick at first.
-  useEffect(() => {
-    let cancelled = false
-    loadSettings()
+  // The stored preferences decide how often to poll and whether the view follows new records. The same read runs when
+  // a save lands, so flipping the switch in the settings dialog moves this one too - and the reverse, because the
+  // toolbar writes back instead of keeping a copy.
+  const reloadPrefs = useCallback(() => {
+    settingService
+      .load()
       .then((document) => {
-        if (cancelled) {
-          return
-        }
         const log = (document.values.general as Record<string, unknown> | undefined)?.log as
           | Record<string, unknown>
           | undefined
@@ -108,10 +109,13 @@ export function ConsoleLogView({ leading }: ConsoleLogViewProps) {
         setRefreshInterval(readInterval(log.refreshInterval))
       })
       .catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
   }, [])
+
+  useEffect(() => {
+    reloadPrefs()
+  }, [reloadPrefs])
+
+  useWailsEvent('setting::changed', reloadPrefs)
 
   // The panel seeds a sample batch before its first read. The boundary of every source is the moment the log service
   // came up, which is later than the records written during start up, so without this the list opens empty.
@@ -269,7 +273,13 @@ export function ConsoleLogView({ leading }: ConsoleLogViewProps) {
             </Button>
             <ToggleGroup
               value={autoScroll ? ['auto-scroll'] : []}
-              onValueChange={(next) => setAutoScroll(next.includes('auto-scroll'))}
+              onValueChange={(next) => {
+                const enabled = next.includes('auto-scroll')
+                // Paint first, then persist: the switch must not lag behind the click, and the reload that follows the
+                // save confirms the same value instead of fighting it.
+                setAutoScroll(enabled)
+                void settingService.save('general.log.autoScroll', enabled, 'service')
+              }}
             >
               {/* No size preset: the compact one carries its own padding, and the row is aligned by height alone so
                   every control shares one vertical centre. */}
@@ -282,10 +292,14 @@ export function ConsoleLogView({ leading }: ConsoleLogViewProps) {
       />
 
       {records.length === 0 ? (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-1 p-4 text-center">
-          <p className="text-sm font-medium text-foreground">{text.console.empty.title}</p>
-          <p className="max-w-sm text-xs text-muted-foreground">{text.console.empty.description}</p>
-        </div>
+        // The same shell the notification sheet uses, so both panels say "nothing yet" the same way. This one keeps its
+        // description: a log panel explains why it is empty, which is what tells a reader the filters still apply.
+        <Empty className="min-h-0 flex-1">
+          <EmptyHeader>
+            <EmptyTitle className="text-sm">{text.console.log.empty.title}</EmptyTitle>
+            <EmptyDescription className="text-xs">{text.console.log.empty.description}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div ref={scrollRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
           {/* The spacer carries the full scroll height; each row is absolutely placed by the virtualiser, so the list

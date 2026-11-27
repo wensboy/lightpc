@@ -9,4 +9,9 @@ export const notifications = {
   expand: 'Expand notification',
   collapse: 'Collapse notification',
   dismiss: 'Dismiss notification',
+  // Footer counters. Each badge names its severity, so the icon alone never has to carry the meaning.
+  total: 'Total',
+  fail: 'Failed',
+  error: 'Errors',
+  warn: 'Warnings',
 }

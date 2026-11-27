@@ -9,4 +9,9 @@ export const notifications = {
   expand: '展开通知',
   collapse: '收起通知',
   dismiss: '忽略通知',
+  // 底部计数. 每个徽章都标出所属级别, 图标不必单独承担含义.
+  total: '总计',
+  fail: '失败',
+  error: '错误',
+  warn: '警告',
 }

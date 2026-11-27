@@ -1,23 +1,12 @@
-import { CircleAlertIcon, CircleCheckIcon, InfoIcon, TriangleAlertIcon, XIcon } from 'lucide-react'
+import { XIcon } from 'lucide-react'
 import { useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
-import { levelTones, type levelIcons } from '@/features/notifications/components/NotificationItem'
+import { noticeLevelIcons, noticeLevelTones } from '@/features/notifications/notice-level'
 import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
 import { useNotificationPrefs } from '@/features/notifications/store/useNotificationPrefs'
 import { useWailsEvent } from '@/hooks/use-wails-event'
 import { useText } from '@/locales'
-import type { NoticeItemDto, NoticeLevelDto } from '@/services/notice'
-
-// The tone and icon tables live with the sheet item, but a toast needs its own copies: importing the component's maps
-// would mean the toast pulls the whole card in, and the two render very differently.
-const toneOf: Record<NoticeLevelDto, string> = levelTones
-
-const iconOf: Record<NoticeLevelDto, typeof InfoIcon> = {
-  info: InfoIcon,
-  success: CircleCheckIcon,
-  warning: TriangleAlertIcon,
-  error: CircleAlertIcon,
-} satisfies typeof levelIcons
+import type { NoticeItemDto } from '@/services/notice'
 
 // payloadOf narrows what the bus delivered. The event carries the engine's record, so an unexpected shape is dropped
 // rather than rendered as an empty toast.
@@ -64,18 +53,18 @@ export function NoticeToaster() {
         return
       }
 
-      const Icon = iconOf[notice.level]
+      const Icon = noticeLevelIcons[notice.level]
       toast.custom(
         (id) => (
           <div className="flex w-full items-start gap-2 rounded-lg border bg-popover p-3 text-popover-foreground shadow-lg">
-            <Icon className={`mt-0.5 size-4 shrink-0 ${toneOf[notice.level]}`} />
+            <Icon className={`mt-0.5 size-4 shrink-0 ${noticeLevelTones[notice.level]}`} />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <p className="truncate text-sm font-medium">{notice.title}</p>
               {notice.content ? (
-                <p className="line-clamp-3 text-xs text-muted-foreground">{notice.content}</p>
+                <p className="line-clamp-3 text-xs break-words text-muted-foreground">{notice.content}</p>
               ) : null}
               {notice.source ? (
-                <p className="text-xs text-muted-foreground/70">
+                <p className="truncate text-xs text-muted-foreground/70" title={notice.source}>
                   {text.notifications.source}: {notice.source}
                 </p>
               ) : null}

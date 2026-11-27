@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import { noticeService, type NoticeItemDto, type NoticeLevelDto } from '@/services/notice'
+import {
+  noticeService,
+  type NoticeItemDto,
+  type NoticeLevelDto,
+  type NoticeSummaryDto,
+} from '@/services/notice'
 
 /** NotificationLevel is the severity a notice carries, mirroring the backend vocabulary. */
 export type NotificationLevel = NoticeLevelDto
@@ -20,6 +25,16 @@ type NotificationStore = {
   open: boolean
   unread: boolean
   notifications: NotificationEntry[]
+  /**
+   * summary is what the backend counted while reading. It describes the rows the sheet holds, so a capped window shows
+   * a capped count instead of a number the interface derived on its own.
+   */
+  summary: NoticeSummaryDto
+  /**
+   * limit is the size of the visible window, as the backend reports it. The ring keeps far more than this; the sheet
+   * only ever shows the newest few, so a new notice pushes the oldest one out of view while it stays recorded.
+   */
+  limit: number
   openSheet: () => void
   closeSheet: () => void
   /** refresh re-reads the backend list, keeping the rows in the order the engine returns them. */
@@ -60,6 +75,8 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   open: false,
   unread: false,
   notifications: [],
+  summary: { total: 0, fail: 0, error: 0, warn: 0 },
+  limit: 0,
 
   openSheet: () => {
     set({ open: true, unread: false })
@@ -71,21 +88,25 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   refresh: async () => {
     try {
       const history = await noticeService.history()
-      set({ notifications: history.items.map(toEntry).sort(byIdDescending) })
+      set({
+        notifications: history.items.map(toEntry).sort(byIdDescending),
+        summary: history.summary,
+        limit: history.limit,
+      })
     } catch {
       // A failed read leaves the list as it was: a transient backend error should not empty the sheet.
     }
   },
 
   clear: async () => {
-    const ids = get().notifications.map((entry) => entry.id)
-    if (ids.length === 0) {
+    if (get().notifications.length === 0) {
       return
     }
     try {
-      await noticeService.remove(ids)
+      // One request, not one per row: clearing raises a floor on the backend, so the older notices outside the window
+      // cannot come back on the next read either.
+      await noticeService.clear()
     } finally {
-      // The local list is re-read even when the call fails, so the sheet never claims to hold rows the engine dropped.
       await get().refresh()
     }
   },
@@ -111,7 +132,29 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
       const next = state.notifications.filter((existing) => existing.id !== entry.id)
       next.push(entry)
       next.sort(byIdDescending)
-      return { notifications: next, unread: state.open ? state.unread : true }
+      // The window slides: past the limit the oldest leaves the view, though the engine still holds it. Trimming here
+      // rather than on the next read is what keeps a burst of notices from growing the list past the setting.
+      return {
+        notifications: state.limit > 0 ? next.slice(0, state.limit) : next,
+        unread: state.open ? state.unread : true,
+      }
     })
+
+    // The counts are the backend's to keep. A read shortly after the burst replaces the appended row and refreshes them,
+    // so several notices arriving together still cost one request.
+    scheduleRefresh()
   },
 }))
+
+// refreshDelay is how long the store waits after a notice arrives before re-reading. A burst of notices arrives as
+// several events in quick succession; one read afterwards settles both the list and the counts.
+const refreshDelay = 400
+let refreshTimer: number | undefined
+
+// scheduleRefresh coalesces the reads that follow a burst into one.
+function scheduleRefresh(): void {
+  window.clearTimeout(refreshTimer)
+  refreshTimer = window.setTimeout(() => {
+    void useNotificationStore.getState().refresh()
+  }, refreshDelay)
+}

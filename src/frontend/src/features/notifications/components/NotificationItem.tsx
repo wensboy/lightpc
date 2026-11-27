@@ -1,33 +1,10 @@
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  CircleAlertIcon,
-  CircleCheckIcon,
-  InfoIcon,
-  TriangleAlertIcon,
-  XIcon,
-} from 'lucide-react'
+import { ChevronDownIcon, ChevronUpIcon, XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { NotificationEntry, NotificationLevel } from '@/features/notifications/store/useNotificationStore'
+import { noticeLevelIcons, noticeLevelTones } from '@/features/notifications/notice-level'
+import type { NotificationEntry } from '@/features/notifications/store/useNotificationStore'
 import { useNotificationStore } from '@/features/notifications/store/useNotificationStore'
 import { cn } from '@/lib/utils'
 import { useText } from '@/locales'
-
-// The four levels map onto the tones the rest of the interface already uses, so a notice reads in the same palette as
-// the log rows beside it: blue for information, green for a success, amber for a warning, red for a failure.
-export const levelIcons = {
-  info: InfoIcon,
-  success: CircleCheckIcon,
-  warning: TriangleAlertIcon,
-  error: CircleAlertIcon,
-}
-
-export const levelTones: Record<NotificationLevel, string> = {
-  info: 'text-blue-400',
-  success: 'text-emerald-400',
-  warning: 'text-amber-400',
-  error: 'text-red-400',
-}
 
 // NotificationItem renders one notification as a card. Collapsed it keeps the title and the description
 // on a single line each; expanded it shows them in full. The source line stays at the bottom of the card
@@ -36,14 +13,14 @@ export function NotificationItem({ notification }: { notification: NotificationE
   const text = useText()
   const toggleExpanded = useNotificationStore((state) => state.toggleExpanded)
   const dismissNotification = useNotificationStore((state) => state.dismiss)
-  const Icon = levelIcons[notification.level]
+  const Icon = noticeLevelIcons[notification.level]
   const expanded = notification.isExpanded
 
   return (
     <div className="flex flex-col gap-1 rounded-lg border border-transparent p-4 transition-colors hover:border-border hover:bg-accent/60">
       <div className="flex items-start gap-2">
-        <Icon className={cn('mt-0.5 size-4 shrink-0', levelTones[notification.level])} />
-        <p className={cn('min-w-0 flex-1 text-sm font-medium', !expanded && 'truncate')}>
+        <Icon className={cn('mt-0.5 size-4 shrink-0', noticeLevelTones[notification.level])} />
+        <p className={cn('min-w-0 flex-1 text-sm font-medium break-words', !expanded && 'truncate')}>
           {notification.title}
         </p>
         <div className="-mt-1 flex shrink-0 items-center">
@@ -66,10 +43,11 @@ export function NotificationItem({ notification }: { notification: NotificationE
           </Button>
         </div>
       </div>
-      <p className={cn('pl-6 text-xs text-muted-foreground', !expanded && 'truncate')}>
+      <p className={cn('pl-6 text-xs break-words text-muted-foreground', !expanded && 'truncate')}>
         {notification.description}
       </p>
-      <p className="pl-6 text-xs text-muted-foreground">
+      {/* The source is an identifier, so one line with an ellipsis reads better than a wrapped one. */}
+      <p className="truncate pl-6 text-xs text-muted-foreground" title={notification.source}>
         {text.notifications.source}: {notification.source}
       </p>
     </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { loadSettings } from '@/mocks'
+import { settingService } from '@/services/setting'
 import { useWailsEvent } from '@/hooks/use-wails-event'
 
 /** ToastPosition is where a notice popup appears. */
@@ -84,7 +84,7 @@ export function useNotificationPrefs(): NotificationPrefs {
   const [prefs, setPrefs] = useState<NotificationPrefs>(fallback)
 
   const reload = useCallback(() => {
-    void loadSettings()
+    void settingService.load()
       .then((document) => setPrefs(readPrefs(document.values)))
       .catch(() => undefined)
   }, [])

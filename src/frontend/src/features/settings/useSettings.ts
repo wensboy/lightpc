@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { applyAllSettingEffects, applySettingEffect } from '@/features/settings/effects'
 import { buildGroups, setAt, type SettingGroup, type SettingValue } from '@/features/settings/schema'
-import { loadSettings } from '@/mocks'
 import { settingService, type SettingDocument } from '@/services/setting'
 
 export type SettingsState = {
   groups: SettingGroup[]
+  /**
+   * loading is true between opening the dialog and the document arriving. The view draws a skeleton of the final
+   * layout while it holds, so the panel does not flash an empty state it is about to replace.
+   */
+  loading: boolean
   error: string | null
   setValue: (path: string, value: SettingValue, kind?: string) => void
 }
@@ -14,6 +18,10 @@ export type SettingsState = {
 // because the user layer can change outside the UI: a manual file edit, or a flush from another window.
 export function useSettings(active = true): SettingsState {
   const [document, setDocument] = useState<SettingDocument | null>(null)
+  const [loading, setLoading] = useState(active)
+  // hydrated records whether a document has ever arrived. Reopening the dialog re-reads it, but the previous content is
+  // still on screen, so the skeleton only belongs to the first load.
+  const hydrated = useRef(false)
   const [values, setValues] = useState<Record<string, unknown>>({})
   // Fields the user touched are excluded from the default fallback until the document is reloaded.
   const edited = useRef(new Set<string>())
@@ -25,15 +33,21 @@ export function useSettings(active = true): SettingsState {
     }
     let cancelled = false
     setError(null)
-    loadSettings()
+    // Only the first load leaves the panel empty; a reload keeps what is drawn and swaps it when the answer arrives.
+    if (!hydrated.current) {
+      setLoading(true)
+    }
+    settingService.load()
       .then((loaded) => {
         if (cancelled) {
           return
         }
         edited.current = new Set()
         repaired.current = new Set()
+        hydrated.current = true
         setDocument(loaded)
         setValues(loaded.values)
+        setLoading(false)
         // The view replays every effect, so a stored theme applies before the first paint of the dialog.
         applyAllSettingEffects(loaded.values, loaded.themes)
       })
@@ -42,6 +56,7 @@ export function useSettings(active = true): SettingsState {
           return
         }
         setError(cause instanceof Error ? cause.message : 'settings could not be loaded')
+        setLoading(false)
       })
     return () => {
       cancelled = true
@@ -108,5 +123,5 @@ export function useSettings(active = true): SettingsState {
     [flushPending],
   )
 
-  return { groups, error, setValue }
+  return { groups, loading, error, setValue }
 }
