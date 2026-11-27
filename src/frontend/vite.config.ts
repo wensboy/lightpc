@@ -15,6 +15,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // shadcn writes `from "cn"`; the alias lets the registry output stay byte for byte as generated.
+      cn: fileURLToPath(new URL("./src/lib/utils", import.meta.url)),
     },
   },
   plugins: [

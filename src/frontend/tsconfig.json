@@ -26,7 +26,8 @@
 
     /* Paths: resolved against this file, so the deprecated baseUrl option is not needed. */
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "cn": ["./src/lib/utils"]
     }
   },
   "include": ["src", "bindings", "vite.config.ts"]

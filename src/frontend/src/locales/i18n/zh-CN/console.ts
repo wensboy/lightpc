@@ -24,9 +24,15 @@ export const consoleText = {
       clear: '清空日志',
       autoScroll: '自动滚动',
     },
+    // 每个面板拥有自己的空状态: 日志说明自己的过滤器, 尚未实现的面板用占位文案. 共用一份会让除第一个面板外的
+    // 文案都不成立.
+    empty: {
+      title: '暂无日志',
+      description: '后端写入的记录会显示在这里. 如果预期有输出, 请切换来源或清除过滤器.',
+    },
   },
-  empty: {
+  pending: {
     title: '暂无内容',
-    description: '此视图预留给控制台面板. 内容随对应功能一起落地.',
+    description: '此面板随对应功能一起落地.',
   },
 }

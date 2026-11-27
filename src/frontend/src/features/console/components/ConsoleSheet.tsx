@@ -52,8 +52,8 @@ export function ConsoleSheet() {
               <>
                 <ConsoleHeader leading={<span className="truncate text-sm font-medium">{current?.title}</span>} />
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-1 p-4 text-center">
-                  <p className="text-sm font-medium text-foreground">{text.console.empty.title}</p>
-                  <p className="max-w-sm text-xs text-muted-foreground">{text.console.empty.description}</p>
+                  <p className="text-sm font-medium text-foreground">{text.console.pending.title}</p>
+                  <p className="max-w-sm text-xs text-muted-foreground">{text.console.pending.description}</p>
                 </div>
               </>
             )}

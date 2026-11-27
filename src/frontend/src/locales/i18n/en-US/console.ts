@@ -23,9 +23,17 @@ export const consoleText = {
       clear: 'Clear logs',
       autoScroll: 'Auto scroll',
     },
+    // Each panel owns its empty state: the log view explains its own filters, and a panel that has no implementation
+    // yet gets the pending text instead of borrowing one. Sharing a single empty block made the copy wrong for every
+    // panel but the first.
+    empty: {
+      title: 'No log records',
+      description:
+        'Records appear here as the backend writes them. Switch the source or clear the filters if you expected output.',
+    },
   },
-  empty: {
+  pending: {
     title: 'Nothing here yet',
-    description: 'This view is reserved for the console panel. The content lands with its own feature.',
+    description: 'This panel lands with its own feature.',
   },
 }
