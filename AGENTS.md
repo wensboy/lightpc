@@ -64,7 +64,6 @@ task build
 - Verify the environment thoroughly so that environment issues do not cause failures that cannot be worked around.
 - Check code style to ensure it conforms to the conventions (both format and logic), with no dead, redundant, or ineffective code and no hardcoding.
 - Test-driven development: Unit-test key functions for both normal cases and extreme boundaries; run integration tests on call chains and end-to-end tests on the whole system. Treat tests as reusable assets. When a test fails, suspect the code first (if the logic is unchanged); when the code logic changes, update the tests accordingly.
-- Automatically sync pitfalls into the designated section of the designated document, for example `## Notes\n xxx`.
 - For every task involving the frontend or backend, always read the corresponding rules under `Methods and Conventions`.
 
 ## Must Not Do
@@ -72,7 +71,6 @@ task build
 - Automatically sync with remote VCS repositories.
 - Automatically install third-party libraries without permission.
 - Automatically flesh out design document details and start coding immediately.
-- Commit generated artifacts. `frontend/bindings/` is written by the generator, so it stays ignored: run `task generate:bindings` after the backend surface changes. Never invoke `wails3 generate bindings` by hand with different flags; dropping `-ts` rewrites every file and turns a single build into a repository-wide rename.
 
 ## Further Reading
 

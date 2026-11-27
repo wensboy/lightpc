@@ -77,6 +77,7 @@
 17. 在 `.tsx` 组件或任何 UI 逻辑中硬编码面向用户的字符串（`<button>Submit</button>` 和 `placeholder="Enter your username"` 都算违规）。
 18. 在组件中内联复杂的条件文本拼接（如 `isVip ? 'VIP' : 'Regular' + ' member'`）；应移到字典的计算属性或专用格式化函数中。
 19. 依赖字符串字面量作为业务逻辑条件（如 `if (text === 'Success')`）；业务逻辑必须使用专用枚举或状态码，文本只用于展示。
+20. 提交生成物。`frontend/bindings/` 由 `task generate:bindings` 写出并保持忽略；后端暴露面变化后重跑该任务，绝不手敲 `wails3 generate bindings` 并改动参数——漏掉 `-ts` 会重写全部文件，把一次构建变成全仓库重命名。
 
 ## 应当
 
@@ -117,3 +118,4 @@
 13. 为了简单的文本替换引入重量级的完整 i18n 运行时。在纯客户端的 Wails 应用中，优先使用轻量的纯 TypeScript 字典。
 14. 在一个文件中混放不同领域的文本 key，这会导致无意义的 Git 冲突（例如修改 Dashboard 文案却在 Auth 模块产生 diff）。
 15. 在文本插值中执行未转义的 HTML。如果必须渲染富文本，应显式使用 `dangerouslySetInnerHTML` 并用 DOMPurify 净化；绝不把用户输入直接插入插值模板。
+16. 让空状态挂在共用父级。一个导航入口有真实面板后，空状态归属该面板；未实现的入口共用一份 `pending` 文案，已实现的面板各自描述自己的状态。
